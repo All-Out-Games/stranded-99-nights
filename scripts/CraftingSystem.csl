@@ -1,0 +1,504 @@
+Crafting_Stack :: struct {
+    item_id: string;
+    count: s64;
+}
+
+Crafting_Recipe :: class {
+    id: string;
+    name: string;
+    description: string;
+    inputs: [..]Crafting_Stack;
+    outputs: [..]Crafting_Stack;
+}
+
+CraftingSystem :: struct {
+    get_primary_recipe_icon :: proc(recipe: Crafting_Recipe) -> Texture_Asset {
+        if recipe == null return null;
+
+        if recipe.outputs.count > 0 {
+            out_def := ItemManager.TryFindItem(recipe.outputs[0].item_id);
+            if out_def != null {
+                return out_def->get_icon();
+            }
+        }
+
+        if recipe.inputs.count > 0 {
+            in_def := ItemManager.TryFindItem(recipe.inputs[0].item_id);
+            if in_def != null {
+                return in_def->get_icon();
+            }
+        }
+
+        return null;
+    }
+
+    make_stack :: proc(item_id: string, count: s64) -> Crafting_Stack {
+        stack: Crafting_Stack;
+        stack.item_id = item_id;
+        stack.count = count;
+        return stack;
+    }
+
+    make_recipe :: proc(id: string, name: string, description: string) -> Crafting_Recipe {
+        recipe := new(Crafting_Recipe);
+        recipe.id = id;
+        recipe.name = name;
+        recipe.description = description;
+        return recipe;
+    }
+
+    add_input :: proc(recipe: Crafting_Recipe, item_id: string, count: s64) {
+        if recipe == null return;
+        if item_id.count <= 0 return;
+        if count <= 0 return;
+        recipe.inputs->append(CraftingSystem.make_stack(item_id, count));
+    }
+
+    add_output :: proc(recipe: Crafting_Recipe, item_id: string, count: s64) {
+        if recipe == null return;
+        if item_id.count <= 0 return;
+        if count <= 0 return;
+        recipe.outputs->append(CraftingSystem.make_stack(item_id, count));
+    }
+
+    get_recipes :: proc() -> [..]Crafting_Recipe {
+        #static initted: bool;
+        #static recipes: [..]Crafting_Recipe;
+
+        if !initted {
+            initted = true;
+            recipes->clear();
+
+            // Starter progression recipes for gathered wood.
+            r1 := CraftingSystem.make_recipe(
+                "saw_planks",
+                "Saw Planks",
+                "Turn raw logs into usable planks."
+            );
+            CraftingSystem.add_input(r1, "wood", 3);
+            CraftingSystem.add_output(r1, "plank", 2);
+            recipes->append(r1);
+
+            r2 := CraftingSystem.make_recipe(
+                "whittle_sticks",
+                "Whittle Sticks",
+                "Carve sticks from planks."
+            );
+            CraftingSystem.add_input(r2, "plank", 1);
+            CraftingSystem.add_output(r2, "stick", 2);
+            recipes->append(r2);
+
+            r3 := CraftingSystem.make_recipe(
+                "bundle_kindling",
+                "Bundle Kindling",
+                "Pack sticks into quick-to-use fuel."
+            );
+            CraftingSystem.add_input(r3, "wood", 1);
+            CraftingSystem.add_input(r3, "stick", 2);
+            CraftingSystem.add_output(r3, "plank", 1);
+            recipes->append(r3);
+        }
+
+        return recipes;
+    }
+
+    clamp_recipe_index :: proc(index: s64) -> s64 {
+        recipes := CraftingSystem.get_recipes();
+        if recipes.count <= 0 return -1;
+        if index < 0 return 0;
+        if index >= recipes.count return recipes.count - 1;
+        return index;
+    }
+
+    get_recipe :: proc(index: s64) -> Crafting_Recipe {
+        recipes := CraftingSystem.get_recipes();
+        if index < 0 || index >= recipes.count return null;
+        return recipes[index];
+    }
+
+    get_item_count_in_inventory :: proc(inventory: Inventory, defn: Item_Definition) -> s64 {
+        if inventory == null return 0;
+        if defn == null return 0;
+
+        total: s64 = 0;
+        i := 0;
+        while i < inventory.capacity {
+            item := inventory->get_item(i);
+            if item != null {
+                if item->get_definition() == defn {
+                    total += item.quantity;
+                }
+            }
+            i += 1;
+        }
+        return total;
+    }
+
+    consume_item_from_inventory :: proc(inventory: Inventory, defn: Item_Definition, count: s64) -> bool {
+        if inventory == null return false;
+        if defn == null return false;
+        if count <= 0 return true;
+
+        remaining := count;
+        i := 0;
+        while i < inventory.capacity && remaining > 0 {
+            item := inventory->get_item(i);
+            if item != null {
+                if item->get_definition() == defn {
+                    if item.quantity <= remaining {
+                        remaining -= item.quantity;
+                        Items.destroy_item_instance(item);
+                    }
+                    else {
+                        Items.destroy_item_instance(item, remaining);
+                        remaining = 0;
+                    }
+                }
+            }
+            i += 1;
+        }
+
+        return remaining <= 0;
+    }
+
+    can_craft_recipe :: proc(player: Player, recipe: Crafting_Recipe) -> bool {
+        if player == null return false;
+        if recipe == null return false;
+        if player.default_inventory == null return false;
+        if player.default_inventory.self == null return false;
+        if player.default_inventory.capacity <= 0 return false;
+
+        inv := player.default_inventory;
+
+        for input: recipe.inputs {
+            input_def := ItemManager.TryFindItem(input.item_id);
+            if input_def == null return false;
+
+            have := CraftingSystem.get_item_count_in_inventory(inv, input_def);
+            if have < input.count {
+                return false;
+            }
+        }
+
+        for output: recipe.outputs {
+            output_def := ItemManager.TryFindItem(output.item_id);
+            if output_def == null return false;
+
+            room := Items.calculate_room_in_inventory_for_item(output_def, inv);
+            if room < output.count {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    try_craft_recipe :: proc(player: Player, recipe: Crafting_Recipe) -> bool {
+        if player == null return false;
+        if recipe == null return false;
+        if !Game.is_server() return false;
+        if player.default_inventory == null return false;
+        if player.default_inventory.self == null return false;
+        if player.default_inventory.capacity <= 0 return false;
+
+        inv := player.default_inventory;
+
+        for input: recipe.inputs {
+            input_def := ItemManager.TryFindItem(input.item_id);
+            if input_def == null {
+                Notifier.notify(player, "Recipe item is missing: %", {input.item_id});
+                return false;
+            }
+
+            have := CraftingSystem.get_item_count_in_inventory(inv, input_def);
+            if have < input.count {
+                Notifier.notify(player, "Need % x% (have %)", {input_def->get_name(), input.count, have});
+                return false;
+            }
+        }
+
+        for output: recipe.outputs {
+            output_def := ItemManager.TryFindItem(output.item_id);
+            if output_def == null {
+                Notifier.notify(player, "Recipe output is missing: %", {output.item_id});
+                return false;
+            }
+
+            room := Items.calculate_room_in_inventory_for_item(output_def, inv);
+            if room < output.count {
+                Notifier.notify(player, "Not enough room for %", {output_def->get_name()});
+                return false;
+            }
+        }
+
+        for input: recipe.inputs {
+            input_def := ItemManager.TryFindItem(input.item_id);
+            ok := CraftingSystem.consume_item_from_inventory(inv, input_def, input.count);
+            if !ok {
+                Notifier.notify(player, "Craft failed while consuming materials.", {});
+                return false;
+            }
+        }
+
+        for output: recipe.outputs {
+            output_def := ItemManager.TryFindItem(output.item_id);
+            new_item := Items.create_item_instance(output_def, output.count);
+            if new_item == null {
+                Notifier.notify(player, "Craft failed while creating output item.", {});
+                return false;
+            }
+            Items.move_item_to_inventory(new_item, inv);
+        }
+
+        Notifier.notify(player, "Crafted: %", {recipe.name});
+        return true;
+    }
+
+    draw_ui :: proc(player: Player) {
+        if player == null return;
+
+        ts := UI.default_text_settings();
+        ts.do_outline = true;
+        ts.outline_color = {0, 0, 0, 1};
+        ts.outline_thickness = 2;
+
+        bs := UI.default_button_settings();
+        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_5.png");
+        bs.press_scaling = 0.35;
+
+        toggle_rect := UI.get_safe_screen_rect()->top_right_rect()->grow(34, 130, 34, 130)->offset(-20, -130);
+        if UI.button(toggle_rect, bs, ts, "Crafting").clicked {
+            player.crafting_ui_open = !player.crafting_ui_open;
+        }
+
+        if !player.crafting_ui_open return;
+
+        // Keep the crafting modal above other HUD elements.
+        UI.push_layer(1000);
+        defer UI.pop_layer();
+
+        overlay_rect := UI.get_screen_rect();
+        UI.quad(overlay_rect, core_globals.white_sprite, {0, 0, 0, 0.6});
+
+        panel_rect := UI.get_safe_screen_rect()->center_rect()->grow(383, 630, 383, 630);
+        UI.quad(panel_rect, core_globals.white_sprite, {0.05, 0.06, 0.08, 0.95});
+        UI.quad(panel_rect->inset(5), core_globals.white_sprite, {0.12, 0.13, 0.18, 0.95});
+
+        content_rect := panel_rect->inset(20);
+        header_rect := content_rect->cut_top(70);
+        body_rect := content_rect;
+        list_rect := body_rect->cut_left(320)->inset(0, 10, 0, 0);
+        details_rect := body_rect->inset(0, 0, 0, 10);
+
+        title_ts := ts;
+        title_ts.size = 52;
+        title_ts.halign = .LEFT;
+        title_ts.valign = .CENTER;
+        UI.text(header_rect, title_ts, "Crafting");
+
+        recipes := CraftingSystem.get_recipes();
+        if recipes.count <= 0 {
+            empty_ts := ts;
+            empty_ts.size = 36;
+            empty_ts.halign = .CENTER;
+            empty_ts.valign = .CENTER;
+            UI.text(details_rect, empty_ts, "No recipes found.");
+
+            close_button_rect := details_rect->bottom_center_rect()->grow(36, 160, 36, 160)->offset(0, 16);
+            bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
+            close_ts := ts;
+            close_ts.size = 32;
+            close_ts.halign = .CENTER;
+            if UI.button(close_button_rect, bs, close_ts, "Close").clicked {
+                player.crafting_ui_open = false;
+            }
+            return;
+        }
+
+        player.selected_crafting_recipe_index = CraftingSystem.clamp_recipe_index(player.selected_crafting_recipe_index);
+        selected_recipe := CraftingSystem.get_recipe(player.selected_crafting_recipe_index);
+        if selected_recipe == null return;
+
+        row_rect := list_rect->cut_top(58);
+        list_title := ts;
+        list_title.size = 30;
+        list_title.halign = .LEFT;
+        list_title.offset.x = 8;
+        UI.text(row_rect, list_title, "Recipes");
+
+        scroll_bar_area := list_rect->cut_left(20)->inset(1);
+
+        scroll_settings: Scroll_View_Settings;
+        scroll_settings.vertical = true;
+        scroll_settings.horizontal = false;
+        scroll_settings.clip_padding = {2, 2, 2, 2};
+
+        scroll_id := format_string("craft_recipe_scroll_%", {player->get_user_id()});
+        sv := UI.push_scroll_view(list_rect, scroll_id, scroll_settings); {
+            defer UI.pop_scroll_view();
+
+            row_base := sv.content_rect;
+            i := 0;
+            while i < recipes.count {
+                recipe := recipes[i];
+                row := row_base->cut_top(74)->inset(4);
+                if recipe != null {
+                    {
+                        UI.push_id("craft_recipe_%", {i});
+                        defer UI.pop_id();
+
+                        bs.color = {1, 1, 1, 1};
+                        if i == player.selected_crafting_recipe_index {
+                            bs.color = {0.85, 1, 0.85, 1};
+                        }
+                        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_8.png");
+
+                        recipe_ts := ts;
+                        recipe_ts.halign = .LEFT;
+                        recipe_ts.size = 30;
+                        recipe_ts.offset.x = 0;
+
+                        button_result := UI.button(row, bs, recipe_ts, "");
+                        if button_result.clicked {
+                            player.selected_crafting_recipe_index = i;
+                            selected_recipe = recipe;
+                        }
+
+                        icon := CraftingSystem.get_primary_recipe_icon(recipe);
+                        text_rect := row->inset(8, 8, 8, 8);
+                        if icon != null {
+                            icon_rect := text_rect->cut_left(48)->fit_aspect(icon->get_aspect());
+                            UI.quad(icon_rect, icon);
+                            text_rect->cut_left(8);
+                        }
+
+                        recipe_name_ts := ts;
+                        recipe_name_ts.size = 30;
+                        recipe_name_ts.halign = .LEFT;
+                        recipe_name_ts.valign = .CENTER;
+                        recipe_name_ts.offset.x = 0;
+                        UI.text(text_rect, recipe_name_ts, recipe.name);
+                    }
+                }
+                i += 1;
+            }
+        }
+
+        scroll_bar_rect := sv->compute_scroll_bar_rect(scroll_bar_area);
+        UI.quad(scroll_bar_area, core_globals.white_sprite, {0.02, 0.02, 0.03, 1});
+        UI.quad(scroll_bar_rect, core_globals.white_sprite, {0.15, 0.15, 0.2, 1});
+
+        details_bg := details_rect->inset(4);
+        UI.quad(details_bg, core_globals.white_sprite, {0.08, 0.09, 0.12, 0.8});
+
+        details_title := details_bg->cut_top(56);
+        details_ts := ts;
+        details_ts.halign = .LEFT;
+        details_ts.offset.x = 8;
+        details_ts.size = 36;
+        UI.text(details_title, details_ts, selected_recipe.name);
+
+        description_rect := details_bg->cut_top(62)->inset(0, 0, 6, 0);
+        desc_ts := ts;
+        desc_ts.size = 28;
+        desc_ts.halign = .LEFT;
+        desc_ts.valign = .TOP;
+        desc_ts.word_wrap = true;
+        desc_ts.offset.x = 8;
+        UI.text(description_rect, desc_ts, selected_recipe.description);
+
+        req_title_rect := details_bg->cut_top(40);
+        section_ts := ts;
+        section_ts.size = 30;
+        section_ts.halign = .LEFT;
+        section_ts.offset.x = 8;
+        UI.text(req_title_rect, section_ts, "Required");
+
+        for input: selected_recipe.inputs {
+            line_rect := details_bg->cut_top(46)->inset(2);
+            input_def := ItemManager.TryFindItem(input.item_id);
+            have: s64 = 0;
+            display_name := input.item_id;
+            input_icon: Texture_Asset;
+            if input_def != null {
+                display_name = input_def->get_name();
+                have = CraftingSystem.get_item_count_in_inventory(player.default_inventory, input_def);
+                input_icon = input_def->get_icon();
+            }
+
+            line_ts := ts;
+            line_ts.size = 28;
+            line_ts.halign = .LEFT;
+            line_ts.offset.x = 0;
+            line_ts.color = {1, 0.5, 0.5, 1};
+            if have >= input.count {
+                line_ts.color = {0.65, 1, 0.65, 1};
+            }
+
+            text_rect := line_rect->inset(0, 0, 0, 8);
+            if input_icon != null {
+                icon_rect := text_rect->cut_left(38)->fit_aspect(input_icon->get_aspect());
+                UI.quad(icon_rect, input_icon);
+                text_rect->cut_left(8);
+            }
+
+            UI.text(text_rect, line_ts, "%: %/%", {display_name, have, input.count});
+        }
+
+        details_bg->cut_top(12);
+        out_title_rect := details_bg->cut_top(40);
+        UI.text(out_title_rect, section_ts, "Result");
+
+        for output: selected_recipe.outputs {
+            out_line := details_bg->cut_top(46)->inset(2);
+            output_def := ItemManager.TryFindItem(output.item_id);
+            output_name := output.item_id;
+            output_icon: Texture_Asset;
+            if output_def != null {
+                output_name = output_def->get_name();
+                output_icon = output_def->get_icon();
+            }
+
+            out_ts := ts;
+            out_ts.size = 28;
+            out_ts.halign = .LEFT;
+            out_ts.offset.x = 0;
+            out_ts.color = {0.9, 0.95, 1, 1};
+
+            out_text_rect := out_line->inset(0, 0, 0, 8);
+            if output_icon != null {
+                out_icon_rect := out_text_rect->cut_left(38)->fit_aspect(output_icon->get_aspect());
+                UI.quad(out_icon_rect, output_icon);
+                out_text_rect->cut_left(8);
+            }
+
+            UI.text(out_text_rect, out_ts, "% x%", {output_name, output.count});
+        }
+
+        can_craft := CraftingSystem.can_craft_recipe(player, selected_recipe);
+        action_row_rect := details_bg->bottom_center_rect()->grow(36, 340, 36, 340)->offset(0, 50);
+        action_layout := UI.make_directional_layout(action_row_rect, .RIGHT);
+        close_button_rect := action_layout->next(300)->inset(0, 6, 0, 0);
+        craft_button_rect := action_layout->next(300)->inset(0, 0, 0, 6);
+
+        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
+        close_ts := ts;
+        close_ts.size = 32;
+        close_ts.halign = .CENTER;
+        if UI.button(close_button_rect, bs, close_ts, "Close").clicked {
+            player.crafting_ui_open = false;
+            return;
+        }
+
+        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_2.png");
+        craft_ts := ts;
+        craft_ts.size = 32;
+        craft_ts.halign = .CENTER;
+
+        UI.push_disabled(!can_craft);
+        defer UI.pop_disabled();
+        if UI.button(craft_button_rect, bs, craft_ts, "Craft").clicked {
+            _ := CraftingSystem.try_craft_recipe(player, selected_recipe);
+        }
+    }
+}

@@ -1,0 +1,349 @@
+import "core:ao"
+import "reusable_weapons"
+
+ao_before_scene_load :: proc() {
+    // Called before the scene is loaded
+    ItemManager.AllItemDefinitions();
+}
+
+ao_start :: proc() {
+    // Called after the scene is loaded
+    ensure_game_manager_exists();
+}
+
+ao_update :: proc(dt: float) {
+    // Called once per frame
+     
+}
+
+ao_late_update :: proc(dt: float) {
+    // Called once per frame after physics has been resolved
+}
+
+
+PLAYER_LIGHT_BASE_INNER_RADIUS :: 9;
+PLAYER_LIGHT_BASE_OUTER_RADIUS :: 12;
+PLAYER_LIGHT_MIN_INNER_RADIUS :: 4;
+PLAYER_LIGHT_MIN_OUTER_RADIUS :: 6;
+PLAYER_LIGHT_INTENSITY :: 1.0;
+PLAYER_LIGHT_COLOR := v4.{1.0, 1.0, 1.0, 1.0};
+
+CLOCK_ROTATION_LERP_STEP :: 0.35;
+CLOCK_ALPHA_LERP_STEP :: 0.03;
+RESOURCE_GATHER_SWING_INTERVAL :: 0.5;
+
+lerp_towards :: proc(current: float, target: float, max_step: float) -> float {
+    delta := target - current;
+    if delta == 0.0 return target;
+
+    step := max(max_step, 0.0);
+    if abs(delta) <= step return target;
+
+    return current + (delta / abs(delta)) * step;
+}
+
+Player :: class : Player_Base {
+    health: float;
+    max_health: float;
+    equipped_weapon_type: Weapon_Type;
+    equipped_item_def: Item_Definition;
+    last_selected_index: s64;
+    boomwheel_cannon: Boomwheel_Cannon; // only needed if using Boomwheel
+    next_resource_gather_swing_time: float;
+    crafting_ui_open: bool;
+    selected_crafting_recipe_index: s64;
+
+    // Local-only LOS light (viewer-specific).
+	local_light_entity: Entity;
+	local_light: Light;
+	local_light_caster: LOS_Caster;
+	clock_cur_alpha: float;
+	clock_cur_rotation: float;
+
+    ao_start :: method() {
+        health = 100.0;
+        max_health = 100.0;
+        last_selected_index = -1;
+        clock_cur_alpha = 1.0;
+        clock_cur_rotation = -90.0;
+        next_resource_gather_swing_time = 0.0;
+        crafting_ui_open = false;
+        selected_crafting_recipe_index = 0;
+
+        if Game.is_server() {
+            init_weapon_items();
+        }
+        setup_reusable_weapons_player_state_machine(this);
+    }
+
+    ao_update :: method(dt: float) {
+        // Called once per frame
+        if this->is_local_or_server() {
+			if this->is_local() {
+				this->update_local_vision_light();
+			}
+        }
+    }
+
+   ao_late_update :: method(dt: float) {
+    if is_local_or_server() {
+        // Draw fire ability button based on equipped weapon
+        if equipped_weapon_type != .NONE {
+            config := get_weapon_config(equipped_weapon_type);
+            switch config.fire_mode {
+                case .CONTINUOUS:  { draw_ability_button(this, Continuous_Fire_Ability, 0); }
+                case .SINGLE_SHOT: { draw_ability_button(this, Single_Shot_Ability, 0); }
+                case .SPREAD:      { draw_ability_button(this, Spread_Shot_Ability, 0); }
+                case .LOBBED:      { draw_ability_button(this, Lobbed_Shot_Ability, 0); }
+                case .BEAM:        { draw_ability_button(this, Beam_Ability, 0); }
+                case .SPECIAL:     { draw_ability_button(this, Special_Ability, 0); }
+            }
+            draw_ability_button(this, Melee_Ability, 1); // optional melee
+        }
+
+        // Draw hotbar and handle equip/unequip
+        options := Inventory_Draw_Options.default();
+        hotbar := Items.draw_hotbar(this, default_inventory, options);
+        handle_equipped_item_changing(hotbar.selected_item_index);
+
+        // Crafting UI and actions are player-scoped state.
+        CraftingSystem.draw_ui(this);
+    }
+
+    if !Game.is_server() {
+        draw_health_bar(this); // from weapons_ui_helpers.csl
+    }
+
+    if this->is_local_or_server() && !crafting_ui_open {
+        this->draw_day_night_clock();
+    }
+
+    if this->is_local() {
+        this->draw_lobby_waiting_text();
+    }
+   }
+
+    ao_end :: method() {
+        // Called when this component is destroyed
+        // Local-only: destroy LOS light.
+		if this->is_local() {
+			if local_light_entity != null && #alive(local_light_entity) {
+				local_light_entity->destroy();
+			}
+			local_light_entity = null;
+			local_light = null;
+			local_light_caster = null;
+		}
+    }
+
+    ao_can_use_ability :: method(ability: Ability_Base) -> bool {
+        // Called to determine if the player is allowed to use the given ability
+        return true;
+    }
+
+    ao_can_use_interactable :: method(interactable: Interactable) -> bool {
+        // Called to determine if the player is allowed to use the given interactable
+        return true;
+    }
+
+    ao_on_interactable_used :: method(interactable: Interactable) {
+        // Called when the player uses the given interactable
+        if interactable == null return;
+        if interactable.#type != ResourceNode return;
+
+        node := interactable.(ResourceNode);
+        this->drive_resource_gather_feedback(node);
+    }
+
+    ao_on_holding_interactable :: method(interactable: Interactable) {
+        // Called once per frame while the player is holding on the interactable
+        if interactable == null return;
+        if interactable.#type != ResourceNode return;
+
+        node := interactable.(ResourceNode);
+        this->drive_resource_gather_feedback(node);
+    }
+
+    drive_resource_gather_feedback :: method(node: ResourceNode) {
+        if node == null return;
+        if node.entity == null return;
+        if !is_local_or_server() return;
+
+        this->set_aim_target(node.entity.world_position);
+
+        if animator == null return;
+        if animator.instance == null return;
+        if animator.instance.state_machine == null return;
+
+        now := get_time();
+        if now < next_resource_gather_swing_time return;
+
+        animator.instance.state_machine->set_trigger("resource_gather_swing");
+        next_resource_gather_swing_time = now + RESOURCE_GATHER_SWING_INTERVAL;
+    }
+
+    ao_on_state_sync :: method() {
+        // Called on the client after applying a state sync from the server
+        // Use this to override things for the local player only like name colors or lighting for example
+    }
+
+    get_local_light_radii :: proc(using this: Player) -> v2 {
+		night_blend := 0.0;
+		manager := get_game_manager();
+		if manager != null {
+			night_blend = clamp(manager->get_night_blend(), 0.0, 1.0);
+		}
+
+		base_inner := PLAYER_LIGHT_BASE_INNER_RADIUS.(float);
+		base_outer := PLAYER_LIGHT_BASE_OUTER_RADIUS.(float);
+		min_inner := PLAYER_LIGHT_MIN_INNER_RADIUS.(float);
+		min_outer := PLAYER_LIGHT_MIN_OUTER_RADIUS.(float);
+
+		radii := v2.{
+			lerp(base_inner, min_inner, night_blend),
+			lerp(base_outer, min_outer, night_blend)
+		};
+
+		// Clamp to avoid a zero/negative radius.
+		radii.x = max(radii.x, min_inner);
+		radii.y = max(radii.y, min_outer);
+		if radii.x > radii.y {
+			radii.x = radii.y;
+		}
+		return radii;
+	}
+
+	ensure_local_vision_light :: proc(using this: Player) {
+		if local_light_entity != null && #alive(local_light_entity) return;
+
+		local_light_entity = Scene.create_entity();
+		local_light_entity->set_parent(this.entity, false);
+		local_light_entity->set_local_enabled(true);
+		local_light_entity->set_local_position(v2.{0.0, 0.0});
+		local_light_entity->set_local_rotation(0.0);
+		local_light_entity->set_local_scale(v2.{1.0, 1.0});
+
+		local_light = local_light_entity->add_component(Light);
+		local_light.color = PLAYER_LIGHT_COLOR;
+		local_light.intensity = PLAYER_LIGHT_INTENSITY;
+		local_light.radii = v2.{PLAYER_LIGHT_BASE_INNER_RADIUS, PLAYER_LIGHT_BASE_OUTER_RADIUS};
+
+		local_light_caster = local_light_entity->add_component(LOS_Caster);
+		local_light_caster.radii = local_light.radii;
+	}
+
+	update_local_vision_light :: proc(using this: Player) {
+		if !this->is_local() return;
+		if !#alive(this.entity) return;
+
+		this->ensure_local_vision_light();
+
+		if local_light == null && local_light_entity != null {
+			local_light = local_light_entity->get_component(Light);
+		}
+		if local_light_caster == null && local_light_entity != null {
+			local_light_caster = local_light_entity->get_component(LOS_Caster);
+		}
+		if local_light == null || local_light_caster == null return;
+
+		radii := this->get_local_light_radii();
+		local_light.radii = radii;
+		local_light_caster.radii = radii;
+	}
+
+    draw_day_night_clock :: method() {
+        manager := get_game_manager();
+        if manager == null return;
+
+        clock_rect := UI.get_safe_screen_rect()->top_center_rect()->grow(75)->offset(0, -140);
+        night := get_asset(Texture_Asset, "UI/Clock_Night.png");
+        day := get_asset(Texture_Asset, "UI/Clock_Day.png");
+        overlay := get_asset(Texture_Asset, "UI/Clock_OL.png");
+
+        target_rotation := -90.0 + (360.0 * (manager->get_day_night_clock_hours() / 24.0));
+        // Keep the target on a forward-only unwrapped timeline so the hand never rotates backward.
+        while target_rotation < clock_cur_rotation {
+            target_rotation += 360.0;
+        }
+        target_alpha := clamp(manager->get_day_alpha_target(), 0.0, 1.0);
+
+        clock_cur_rotation = lerp_towards(clock_cur_rotation, target_rotation, CLOCK_ROTATION_LERP_STEP);
+        clock_cur_alpha = lerp_towards(clock_cur_alpha, target_alpha, CLOCK_ALPHA_LERP_STEP);
+
+        // Fallback baseline in case clock textures are not imported yet.
+        if night == null || day == null || overlay == null {
+            UI.quad(clock_rect, core_globals.white_sprite, {0.05, 0.05, 0.08, 0.85});
+            return;
+        }
+
+        base_rect := clock_rect->inset(5)->fit_aspect(night->get_aspect());
+
+        {
+            UI.push_matrix(Matrix4.rotate_about_point(base_rect->center(), clock_cur_rotation));
+            defer UI.pop_matrix();
+            UI.quad(base_rect, night);
+            UI.quad(base_rect, day, {1, 1, 1, clock_cur_alpha});
+        }
+
+        UI.quad(clock_rect->fit_aspect(overlay->get_aspect()), overlay);
+    }
+
+    draw_lobby_waiting_text :: method() {
+        manager := get_game_manager();
+        if manager == null return;
+        if manager->get_phase() != .LOBBY return;
+
+        player_count := manager->get_player_count();
+        required_players := manager->get_required_players_to_start();
+
+        text_rect := UI.get_safe_screen_rect()->top_center_rect()->grow(35, 450, 35, 450)->offset(0, -65);
+        ts := UI.default_text_settings();
+        ts.size = 36;
+        ts.halign = .CENTER;
+        ts.valign = .CENTER;
+        ts.color = {1, 1, 1, 1};
+        ts.do_outline = true;
+        ts.outline_thickness = 2;
+        ts.outline_color = {0, 0, 0, 1};
+
+        UI.text(text_rect, ts, "Waiting for Players to Start: %/%", {player_count, required_players});
+    }
+
+    handle_equipped_item_changing :: method(selected_index: s64) {
+        // Resolve item from hotbar index
+        selected_item: Item_Instance;
+        if selected_index >= 0 && selected_index < default_inventory.capacity {
+            selected_item = default_inventory->get_item(selected_index);
+        }
+
+        new_def: Item_Definition;
+        if selected_item != null {
+            new_def = selected_item->get_definition();
+        }
+
+        // Skip if nothing changed
+        if selected_index == last_selected_index && new_def == equipped_item_def return;
+        last_selected_index = selected_index;
+
+        // Skip if same item definition
+        if new_def == equipped_item_def return;
+
+        // Unequip old weapon
+        if equipped_weapon_type != .NONE {
+            weapon_unequip(this, equipped_weapon_type);
+            equipped_weapon_type = .NONE;
+        }
+        equipped_item_def = null;
+
+        // Equip new weapon if it's a registered weapon
+        if new_def != null {
+            wt := get_weapon_type_for_item(new_def);
+            if wt != .NONE {
+                weapon_equip(this, wt);
+                equipped_weapon_type = wt;
+                equipped_item_def = new_def;
+            }
+        }
+    }
+
+}

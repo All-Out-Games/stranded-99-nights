@@ -1,0 +1,153 @@
+// Notes:
+// - In CSL, item definitions should ideally be registered in `ao_before_scene_load`.
+//   To avoid modifying `main.csl` right now, this port lazily registers definitions
+//   the first time any ItemManager API is called.
+// - If you want definitions registered earlier, call `ItemManager.AllItemDefinitions()`
+//   once from `ao_before_scene_load` in `scripts/main.csl`.
+
+ItemManager :: struct {
+    // Internal storage + one-time init.
+    // Returns a copy of the dynamic array header (data/count/capacity) pointing to the same storage.
+    _definitions :: proc() -> [..]Item_Definition {
+        #static initted: bool;
+        #static defs: [..]Item_Definition;
+
+        if !initted {
+            initted = true;
+            defs->clear();
+
+
+            wood_icon := get_asset(Texture_Asset, "Items/Wood.png");
+
+            // Wood
+            wood := Items.register_item_definition(
+                {"wood", "Wood", wood_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(wood);
+
+            // Crafting progression items (temporary icons until dedicated art is added).
+            plank := Items.register_item_definition(
+                {"plank", "Plank", wood_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(plank);
+
+            stick := Items.register_item_definition(
+                {"stick", "Stick", wood_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(stick);
+
+        }
+
+        return defs;
+    }
+
+    AllItemDefinitions :: proc() -> [..]Item_Definition {
+        return ItemManager._definitions();
+    }
+
+    GetColorForRarity :: proc(rarity: Item_Tier) -> v4 {
+        // Match the C# colors (COMMON is white rather than gray).
+        switch rarity {
+            case .UNCOMMON:  return {0.425, 1.0, 0.107, 1.0}; // Green
+            case .RARE:      return {0.0,   0.978, 1.0,   1.0}; // Blue
+            case .EPIC:      return {0.867, 0.0,   1.0,   1.0}; // Purple
+            case .LEGENDARY: return {1.0,   0.8,   0.0,   1.0}; // Yellow
+            case .MYTHIC:    return {1.0,   0.044, 0.1,   1.0}; // Red
+            case .COMMON:    return {1.0,   1.0,   1.0,   1.0}; // White
+        }
+        return {1, 1, 1, 1};
+    }
+
+    GetArticle :: proc(defn: Item_Definition) -> string {
+        if defn == null return "a";
+        switch defn->get_id() {
+            case "Gold":   return "some";
+            case "Silver": return "some";
+            case "Axe":    return "an";
+        }
+        return "a";
+    }
+
+    CreateItem :: proc(item_id: string, count: s64 = 1) -> Item_Instance {
+        defn := ItemManager.TryFindItem(item_id);
+        assert(defn != null, "Unknown item %", {item_id});
+        return ItemManager.CreateItemFromDefinition(defn, count);
+    }
+
+    CreateItemFromDefinition :: proc(defn: Item_Definition, count: s64 = 1) -> Item_Instance {
+        
+        instance := Items.create_item_instance(defn, count);
+
+        // C# special-case:
+        // `if (defn.Id == "Breakable_Item") instance.Durability = 1f;`
+        //
+        // In CSL, durability would need a custom Item_Instance subclass field. Left as a TODO.
+        _ := instance;
+
+        return instance;
+    }
+
+    TryUseItem :: proc(player: Player, item: Item_Instance) {
+        // Placeholder port. Hook this up to inventory UI / hotbar selection if needed.
+        if player == null return;
+        if !player->is_local_or_server() return;
+
+        if item == null {
+            log_warning("Tried to use a null item", {});
+            return;
+        }
+
+        defn := item->get_definition();
+        if defn == null {
+            log_warning("Tried to use an item with no definition", {});
+            return;
+        }
+
+        id := defn->get_id();
+        if id == "" {
+            log_warning("Tried to use an empty item", {});
+        }
+    }
+
+    GetPickupScale :: proc(item_id: string) -> v2 {
+        scale := v2{1.0, 1.0};
+        switch item_id {
+            case "Bullet":    return {5.0, 5.0};
+            case "Revolver":  return {0.5, 0.5};
+        }
+        return scale;
+    }
+
+    FindItem :: proc(item_id: string) -> Item_Definition {
+        defn := ItemManager.TryFindItem(item_id);
+        assert(defn != null, "Unknown item %", {item_id});
+        return defn;
+    }
+
+    TryFindItem :: proc(item_id: string) -> Item_Definition {
+        defs := ItemManager._definitions();
+        for defn: defs {
+            if defn != null && defn->get_id() == item_id {
+                return defn;
+            }
+        }
+        return null;
+    }
+
+    TryFindItemByName :: proc(item_name: string) -> Item_Definition {
+        defs := ItemManager._definitions();
+        for defn: defs {
+            if defn != null && defn->get_name() == item_name {
+                return defn;
+            }
+        }
+        return null;
+    }
+}
+

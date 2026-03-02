@@ -1,0 +1,306 @@
+g_game_manager: GameManager;
+
+DamageNumbers :: class {
+    Text: string;
+    Position: v2;
+    Color: v4;
+    T: float;
+    TextSettings: Text_Settings;
+    SpaceText: bool;
+    DoingFading: bool;
+    LastPosition: v2;
+}
+
+Game_Phase :: enum {
+    LOBBY;
+    IN_ROUND;
+    POST_ROUND;
+}
+
+Day_Night_Phase :: enum {
+    DAY;
+    NIGHT;
+}
+
+get_game_manager :: proc() -> GameManager {
+    return g_game_manager;
+}
+
+ensure_game_manager_exists :: proc() -> GameManager {
+    if g_game_manager != null return g_game_manager;
+
+    foreach manager: component_iterator(GameManager) {
+        g_game_manager = manager;
+        break;
+    }
+
+    if g_game_manager == null {
+        entity := Scene.create_entity();
+        g_game_manager = entity->add_component(GameManager);
+        log_info("GameManager singleton created at runtime.", {});
+    }
+
+    return g_game_manager;
+}
+
+start :: proc(player: Player) {
+    manager := ensure_game_manager_exists();
+    if manager == null {
+        Notifier.notify(player, "GameManager is unavailable.");
+        return;
+    }
+
+    if manager->is_round_active() {
+        Notifier.notify(player, "Round is already active.");
+        return;
+    }
+
+    manager->start_game();
+    Notifier.notify(player, "Forced game start.");
+    log_info("% forced start_game via /start", {player->get_username()});
+} @chat_command @youtuber
+
+GameManager :: class : Component {
+
+    damage_numbers: [..]DamageNumbers;
+    
+    current_phase: Game_Phase;
+    game_time_seconds: float;
+    phase_time_seconds: float;
+    day_night_phase: Day_Night_Phase;
+    day_night_phase_time_seconds: float;
+    day_night_blend: float;
+    day_night_blend_from: float;
+    day_night_blend_to: float;
+    day_night_blend_transition_time_seconds: float;
+
+    DAY_DURATION_SECONDS :: 15.0;
+    NIGHT_DURATION_SECONDS :: 8.0;
+    DAY_NIGHT_BLEND_TRANSITION_SECONDS :: 3.0;
+    PLAYERS_REQUIRED_TO_START :: 6;
+
+    ao_start :: method() {
+        if g_game_manager != null && g_game_manager != this {
+            log_info("Duplicate GameManager detected; destroying duplicate.", {});
+            entity->destroy();
+            return;
+        }
+
+        g_game_manager = this;
+        reset_game_state();
+    }
+
+    ao_update :: method(dt: float) {
+        // Keep core game state authoritative on the server.
+        if !Game.is_server() return;
+
+        game_time_seconds += dt;
+        phase_time_seconds += dt;
+
+        switch current_phase {
+            case .LOBBY: {
+                // Lobby state: waiting for players/game start conditions.
+                try_auto_start_from_lobby();
+            }
+            case .IN_ROUND: {
+                // Round state: active gameplay should run here.
+                update_day_night_cycle(dt);
+                update_day_night_blend(dt);
+            }
+            case .POST_ROUND: {
+                // Post round state: cleanup, score display, and reset hooks.
+            }
+        }
+    }
+
+    ao_end :: method() {
+        if g_game_manager == this {
+            g_game_manager = null;
+        }
+    }
+
+    start_game :: method() {
+        transition_to_phase(.IN_ROUND);
+        game_time_seconds = 0.0;
+    }
+
+    stop_game :: method() {
+        transition_to_phase(.POST_ROUND);
+    }
+
+    reset_game_state :: method() {
+        game_time_seconds = 0.0;
+        phase_time_seconds = 0.0;
+        current_phase = .LOBBY;
+        on_enter_phase(current_phase);
+    }
+
+    transition_to_phase :: method(next_phase: Game_Phase) {
+        if current_phase == next_phase return;
+
+        on_exit_phase(current_phase);
+        current_phase = next_phase;
+        phase_time_seconds = 0.0;
+        on_enter_phase(current_phase);
+    }
+
+    on_enter_phase :: method(phase: Game_Phase) {
+        switch phase {
+            case .LOBBY: {
+                log_info("GameManager phase -> LOBBY", {});
+            }
+            case .IN_ROUND: {
+                log_info("GameManager phase -> IN_ROUND", {});
+                reset_day_night_cycle();
+            }
+            case .POST_ROUND: {
+                log_info("GameManager phase -> POST_ROUND", {});
+            }
+        }
+    }
+
+    on_exit_phase :: method(phase: Game_Phase) {
+        switch phase {
+            case .LOBBY: {
+                // Exit lobby hooks go here.
+            }
+            case .IN_ROUND: {
+                // Exit round hooks go here.
+                day_night_phase = .DAY;
+                day_night_phase_time_seconds = 0.0;
+                day_night_blend = 0.0;
+                day_night_blend_from = 0.0;
+                day_night_blend_to = 0.0;
+                day_night_blend_transition_time_seconds = 0.0;
+            }
+            case .POST_ROUND: {
+                // Exit post-round hooks go here.
+            }
+        }
+    }
+
+    start_round :: method() {
+        transition_to_phase(.IN_ROUND);
+    }
+
+    end_round :: method() {
+        transition_to_phase(.POST_ROUND);
+    }
+
+    go_to_lobby :: method() {
+        transition_to_phase(.LOBBY);
+    }
+
+    is_round_active :: method() -> bool {
+        return current_phase == .IN_ROUND;
+    }
+
+    get_phase :: method() -> Game_Phase {
+        return current_phase;
+    }
+
+    get_phase_time_seconds :: method() -> float {
+        return phase_time_seconds;
+    }
+
+    get_game_time_seconds :: method() -> float {
+        return game_time_seconds;
+    }
+
+    get_player_count :: method() -> s64 {
+        player_count: s64 = 0;
+        foreach p: component_iterator(Player) {
+            player_count += 1;
+        }
+        return player_count;
+    }
+
+    get_required_players_to_start :: method() -> s64 {
+        return PLAYERS_REQUIRED_TO_START;
+    }
+
+    reset_day_night_cycle :: method() {
+        day_night_phase = .DAY;
+        day_night_phase_time_seconds = 0.0;
+        day_night_blend = 0.0;
+        day_night_blend_from = 0.0;
+        day_night_blend_to = 0.0;
+        day_night_blend_transition_time_seconds = 0.0;
+        log_info("Day/Night -> DAY", {});
+    }
+
+    update_day_night_cycle :: method(dt: float) {
+        day_night_phase_time_seconds += dt;
+
+        if day_night_phase == .DAY {
+            if day_night_phase_time_seconds >= DAY_DURATION_SECONDS {
+                day_night_phase = .NIGHT;
+                day_night_phase_time_seconds = 0.0;
+                begin_day_night_blend_transition();
+                log_info("Day/Night -> NIGHT", {});
+            }
+            return;
+        }
+
+        if day_night_phase_time_seconds >= NIGHT_DURATION_SECONDS {
+            day_night_phase = .DAY;
+            day_night_phase_time_seconds = 0.0;
+            begin_day_night_blend_transition();
+            log_info("Day/Night -> DAY", {});
+        }
+    }
+
+    begin_day_night_blend_transition :: method() {
+        day_night_blend_from = day_night_blend;
+        day_night_blend_to = get_target_night_blend();
+        day_night_blend_transition_time_seconds = 0.0;
+    }
+
+    update_day_night_blend :: method(dt: float) {
+        day_night_blend_transition_time_seconds += dt;
+        t := clamp(day_night_blend_transition_time_seconds / DAY_NIGHT_BLEND_TRANSITION_SECONDS, 0.0, 1.0);
+        day_night_blend = lerp(day_night_blend_from, day_night_blend_to, t);
+    }
+
+    get_target_night_blend :: method() -> float {
+        if day_night_phase == .NIGHT return 1.0;
+        return 0.0;
+    }
+
+    is_night_time :: method() -> bool {
+        return day_night_phase == .NIGHT;
+    }
+
+    get_night_blend :: method() -> float {
+        return day_night_blend;
+    }
+
+    get_day_alpha_target :: method() -> float {
+        if current_phase != .IN_ROUND return 1.0;
+        return 1.0 - day_night_blend;
+    }
+
+    get_day_night_clock_hours :: method() -> float {
+        if current_phase != .IN_ROUND {
+            return 0.0;
+        }
+
+        if day_night_phase == .DAY {
+            t := clamp(day_night_phase_time_seconds / DAY_DURATION_SECONDS, 0.0, 1.0);
+            return t * 12.0;
+        }
+
+        t := clamp(day_night_phase_time_seconds / NIGHT_DURATION_SECONDS, 0.0, 1.0);
+        return 12.0 + t * 12.0;
+    }
+
+    try_auto_start_from_lobby :: method() {
+        if current_phase != .LOBBY return;
+
+        player_count := get_player_count();
+        if player_count < PLAYERS_REQUIRED_TO_START return;
+
+        log_info("Auto-starting game at %/% players.", {player_count, PLAYERS_REQUIRED_TO_START});
+        start_game();
+    }
+}

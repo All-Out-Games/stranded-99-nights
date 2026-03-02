@@ -1,0 +1,560 @@
+playercharacter.png
+	size: 4096, 1404
+	filter: Linear, Linear
+012MIM/Skins/bronze/helmet
+	bounds: 1879, 636, 294, 165
+	offsets: 1, 1, 296, 167
+012MIM/Skins/bronze/leg_L
+	bounds: 2865, 13, 65, 83
+	offsets: 36, 30, 137, 142
+	rotate: 90
+012MIM/Skins/bronze/leg_R
+	bounds: 1296, 18, 72, 89
+	offsets: 36, 31, 137, 142
+	rotate: 90
+012MIM/Skins/bronze/top
+	bounds: 3468, 490, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/Skins/copper/helmet
+	bounds: 3912, 674, 294, 165
+	offsets: 1, 1, 296, 167
+	rotate: 90
+012MIM/Skins/copper/leg_L
+	bounds: 2779, 13, 65, 83
+	offsets: 36, 30, 137, 142
+	rotate: 90
+012MIM/Skins/copper/leg_R
+	bounds: 1206, 18, 72, 89
+	offsets: 36, 31, 137, 142
+	rotate: 90
+012MIM/Skins/copper/top
+	bounds: 3209, 492, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/Skins/diamond/helmet
+	bounds: 1582, 707, 294, 165
+	offsets: 1, 1, 296, 167
+012MIM/Skins/diamond/leg_L
+	bounds: 88, 14, 65, 83
+	offsets: 36, 30, 137, 142
+	rotate: 90
+012MIM/Skins/diamond/leg_R
+	bounds: 1116, 18, 72, 89
+	offsets: 36, 31, 137, 142
+	rotate: 90
+012MIM/Skins/diamond/top
+	bounds: 262, 493, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/Skins/gold/helmet
+	bounds: 3011, 731, 294, 165
+	offsets: 1, 1, 296, 167
+012MIM/Skins/gold/leg_L
+	bounds: 3, 14, 65, 83
+	offsets: 36, 30, 137, 142
+	rotate: 90
+012MIM/Skins/gold/leg_R
+	bounds: 2315, 23, 72, 89
+	offsets: 36, 31, 137, 142
+012MIM/Skins/gold/top
+	bounds: 3, 493, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/Skins/iron/helmet
+	bounds: 2714, 732, 294, 165
+	offsets: 1, 1, 296, 167
+012MIM/Skins/iron/leg_L
+	bounds: 362, 16, 65, 83
+	offsets: 36, 30, 137, 142
+	rotate: 90
+012MIM/Skins/iron/leg_R
+	bounds: 1527, 24, 72, 89
+	offsets: 36, 31, 137, 142
+	rotate: 90
+012MIM/Skins/iron/top
+	bounds: 2950, 511, 258, 217
+	offsets: 50, 61, 358, 358
+player_skins/008BED_Armour/iron/top
+	bounds: 2950, 511, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/Skins/mimicer/hat
+	bounds: 2278, 240, 191, 151
+	offsets: 1, 1, 193, 153
+012MIM/Skins/mimicer/leg_L
+	bounds: 3366, 29, 74, 88
+	offsets: 34, 27, 137, 142
+	rotate: 90
+012MIM/Skins/mimicer/leg_R
+	bounds: 3283, 320, 76, 91
+	offsets: 37, 29, 137, 142
+012MIM/Skins/mimicer/top
+	bounds: 3878, 291, 212, 215
+	offsets: 73, 66, 358, 358
+	rotate: 90
+012MIM/Skins/obsidian/helmet
+	bounds: 3615, 803, 294, 165
+	offsets: 1, 1, 296, 167
+012MIM/Skins/obsidian/leg_L
+	bounds: 276, 16, 65, 83
+	offsets: 36, 30, 137, 142
+	rotate: 90
+012MIM/Skins/obsidian/leg_R
+	bounds: 3635, 26, 72, 89
+	offsets: 36, 31, 137, 142
+	rotate: 90
+012MIM/Skins/obsidian/top
+	bounds: 2690, 512, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/Skins/platinum/helmet
+	bounds: 3318, 803, 294, 165
+	offsets: 1, 1, 296, 167
+012MIM/Skins/platinum/leg_L
+	bounds: 684, 18, 65, 83
+	offsets: 36, 30, 137, 142
+	rotate: 90
+012MIM/Skins/platinum/leg_R
+	bounds: 3546, 27, 72, 89
+	offsets: 36, 31, 137, 142
+	rotate: 90
+012MIM/Skins/platinum/top
+	bounds: 2434, 560, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/Skins/silver/helmet
+	bounds: 2038, 804, 294, 165
+	offsets: 1, 1, 296, 167
+012MIM/Skins/silver/leg_L
+	bounds: 599, 18, 65, 83
+	offsets: 36, 30, 137, 142
+	rotate: 90
+012MIM/Skins/silver/leg_R
+	bounds: 3456, 31, 72, 89
+	offsets: 36, 31, 137, 142
+	rotate: 90
+012MIM/Skins/silver/top
+	bounds: 953, 574, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/Skins/steel/helmet
+	bounds: 1285, 813, 294, 165
+	offsets: 1, 1, 296, 167
+012MIM/Skins/steel/leg_L
+	bounds: 2470, 19, 65, 83
+	offsets: 36, 30, 137, 142
+	rotate: 90
+012MIM/Skins/steel/leg_R
+	bounds: 1980, 369, 72, 89
+	offsets: 36, 31, 137, 142
+	rotate: 90
+012MIM/Skins/steel/top
+	bounds: 694, 574, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/Skins/stone/helmet
+	bounds: 3021, 899, 294, 165
+	offsets: 1, 1, 296, 167
+012MIM/Skins/stone/leg_L
+	bounds: 455, 461, 65, 83
+	offsets: 36, 30, 137, 142
+012MIM/Skins/stone/leg_R
+	bounds: 3411, 494, 72, 89
+	offsets: 36, 31, 137, 142
+	rotate: 90
+012MIM/Skins/stone/top
+	bounds: 2176, 584, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/armors/yeti_belly
+	bounds: 1245, 593, 258, 217
+	offsets: 50, 61, 358, 358
+012MIM/armors/yeti_leg_L
+	bounds: 1502, 720, 76, 90
+	offsets: 31, 24, 137, 142
+012MIM/armors/yeti_leg_R
+	bounds: 2216, 32, 80, 98
+	offsets: 36, 22, 137, 142
+	rotate: 90
+012MIM/axes/iron_axe
+	bounds: 566, 306, 151, 211
+	offsets: 1, 1, 153, 213
+	rotate: 90
+012MIM/axes/stone_axe
+	bounds: 352, 306, 151, 211
+	offsets: 1, 1, 153, 213
+	rotate: 90
+012MIM/axes/wooden_axe
+	bounds: 3332, 975, 151, 211
+	offsets: 1, 1, 153, 213
+	rotate: 90
+012MIM/blood_spatter
+	bounds: 1705, 875, 526, 330
+	rotate: 90
+012MIM/corpse
+	bounds: 2733, 900, 285, 175
+	offsets: 1, 1, 287, 177
+012MIM/corpseface
+	bounds: 3598, 1148, 253, 241
+	offsets: 1, 1, 255, 243
+	rotate: 90
+012MIM/tools/bronze_axe
+	bounds: 1329, 93, 122, 206
+	offsets: 1, 1, 124, 208
+	rotate: 90
+012MIM/tools/bronze_pickaxe
+	bounds: 2829, 322, 207, 189
+	offsets: 1, 1, 209, 191
+012MIM/tools/bronze_sword
+	bounds: 1724, 158, 102, 253
+	offsets: 1, 1, 104, 254
+	rotate: 90
+012MIM/tools/copper_axe
+	bounds: 1120, 93, 122, 206
+	offsets: 1, 1, 124, 208
+	rotate: 90
+012MIM/tools/copper_pickaxe
+	bounds: 1348, 323, 207, 189
+	offsets: 1, 1, 209, 191
+012MIM/tools/copper_sword
+	bounds: 864, 162, 102, 253
+	offsets: 1, 1, 104, 254
+	rotate: 90
+012MIM/tools/diamond_axe
+	bounds: 3582, 101, 122, 206
+	offsets: 1, 1, 124, 208
+	rotate: 90
+012MIM/tools/diamond_pickaxe
+	bounds: 2499, 369, 207, 189
+	offsets: 1, 1, 209, 191
+012MIM/tools/diamond_sword
+	bounds: 608, 162, 102, 253
+	offsets: 1, 1, 104, 254
+	rotate: 90
+012MIM/tools/gold_axe
+	bounds: 2189, 115, 122, 206
+	offsets: 1, 1, 124, 208
+	rotate: 90
+012MIM/tools/gold_pickaxe
+	bounds: 833, 384, 207, 189
+	offsets: 1, 1, 209, 191
+012MIM/tools/gold_sword
+	bounds: 3326, 186, 102, 253
+	offsets: 1, 1, 104, 254
+	rotate: 90
+012MIM/tools/iron_pickaxe
+	bounds: 2289, 394, 207, 189
+	offsets: 1, 1, 209, 191
+012MIM/tools/iron_sword
+	bounds: 3, 198, 102, 253
+	offsets: 1, 1, 104, 254
+	rotate: 90
+012MIM/tools/obsidian_axe
+	bounds: 1980, 123, 122, 206
+	offsets: 1, 1, 124, 208
+	rotate: 90
+012MIM/tools/obsidian_pickaxe
+	bounds: 1138, 402, 207, 189
+	offsets: 1, 1, 209, 191
+012MIM/tools/obsidian_sword
+	bounds: 352, 201, 102, 253
+	offsets: 1, 1, 104, 254
+	rotate: 90
+012MIM/tools/platinum_axe
+	bounds: 2597, 132, 122, 206
+	offsets: 1, 1, 124, 208
+	rotate: 90
+012MIM/tools/platinum_pickaxe
+	bounds: 1909, 444, 207, 189
+	offsets: 1, 1, 209, 191
+012MIM/tools/platinum_sword
+	bounds: 3070, 207, 102, 253
+	offsets: 1, 1, 104, 254
+	rotate: 90
+012MIM/tools/silver_axe
+	bounds: 3859, 166, 122, 206
+	offsets: 1, 1, 124, 208
+	rotate: 90
+012MIM/tools/silver_pickaxe
+	bounds: 1699, 444, 207, 189
+	offsets: 1, 1, 209, 191
+012MIM/tools/silver_sword
+	bounds: 2814, 217, 102, 253
+	offsets: 1, 1, 104, 254
+	rotate: 90
+012MIM/tools/steel_axe
+	bounds: 2472, 160, 122, 206
+	offsets: 1, 1, 124, 208
+012MIM/tools/steel_pickaxe
+	bounds: 522, 460, 207, 189
+	offsets: 1, 1, 209, 191
+	rotate: 90
+012MIM/tools/steel_sword
+	bounds: 1281, 218, 102, 253
+	offsets: 1, 1, 104, 254
+	rotate: 90
+012MIM/tools/stone_pickaxe
+	bounds: 3728, 482, 207, 189
+	offsets: 1, 1, 209, 191
+012MIM/tools/stone_sword
+	bounds: 3754, 226, 102, 253
+	offsets: 1, 1, 104, 254
+012MIM/tools/wood_pickaxe
+	bounds: 1489, 515, 207, 189
+	offsets: 1, 1, 209, 191
+012MIM/tools/wood_sword
+	bounds: 2709, 257, 102, 253
+	offsets: 1, 1, 104, 254
+012MIM/weapons/Scythe
+	bounds: 2119, 370, 156, 212
+	offsets: 1, 1, 158, 214
+012MIM/weapons/YetiFist
+	bounds: 2991, 70, 134, 170
+	offsets: 2, 1, 139, 172
+	rotate: 90
+012MIM/weapons/YetiFist2
+	bounds: 3, 303, 143, 188
+	offsets: 1, 2, 145, 193
+012MIM/weapons/sand_spear
+	bounds: 3308, 710, 90, 480
+	offsets: 5, 1, 96, 482
+	rotate: 90
+012MIM/weapons/spear
+	bounds: 3598, 971, 330, 174
+	offsets: 1, 1, 332, 176
+100_buttons/vfx/blue_button
+	bounds: 3558, 291, 193, 188
+100_buttons/vfx/electrocute/electricity_sparks1
+	bounds: 2335, 812, 123, 157
+100_buttons/vfx/electrocute/electricity_sparks2
+	bounds: 1361, 522, 125, 70
+100_buttons/vfx/electrocute/electricity_sparks3
+	bounds: 969, 67, 147, 92
+100_buttons/vfx/electrocute/electrocute_aura1
+	bounds: 2038, 972, 389, 429
+	offsets: 2, 2, 393, 433
+100_buttons/vfx/electrocute/electrocute_aura2
+	bounds: 1285, 981, 420, 417
+	offsets: 2, 2, 424, 421
+	rotate: 90
+100_buttons/vfx/feathers1
+	bounds: 2668, 1340, 58, 61
+100_buttons/vfx/feathers2
+	bounds: 3171, 530, 49, 69
+100_buttons/vfx/feathers3
+	bounds: 3960, 18, 80, 53
+100_buttons/vfx/red_button
+	bounds: 3362, 302, 193, 188
+100_buttons/vfx/smoke_particle
+	bounds: 714, 481, 93, 91
+	offsets: 2, 2, 97, 97
+100_buttons/vfx/smoke_particle2
+	bounds: 1043, 402, 78, 72
+	offsets: 3, 3, 84, 78
+100_buttons/vfx/smoke_particle3
+	bounds: 2644, 563, 55, 62
+	offsets: 2, 2, 62, 66
+100_buttons/vfx/weapon_swings/swipe333
+	bounds: 2430, 780, 300, 621
+100_buttons/vfx/yellow_button
+	bounds: 156, 304, 193, 188
+2.0.1_additions/eyes/crying/lid_watery_L
+	bounds: 1699, 60, 122, 95
+	offsets: 1, 1, 124, 97
+2.0.1_additions/eyes/crying/lid_watery_R
+	bounds: 1879, 805, 136, 67
+	offsets: 1, 0, 138, 68
+2.0.1_additions/eyes/crying/lighteye_watery_L
+	bounds: 3791, 678, 122, 78
+	offsets: 1, 1, 124, 80
+	rotate: 90
+2.0.1_additions/eyes/crying/lighteye_watery_R
+	bounds: 3791, 678, 122, 78
+	offsets: 1, 1, 124, 80
+	rotate: 90
+2.0.1_additions/eyes/crying/tear_watery_L
+	bounds: 3800, 15, 79, 56
+	offsets: 1, 1, 81, 58
+2.0.1_additions/eyes/crying/tear_watery_R
+	bounds: 3686, 237, 64, 51
+	offsets: 1, 1, 66, 53
+2.0.1_additions/eyes/lid_rage_L
+	bounds: 3931, 982, 161, 160
+	offsets: 1, 1, 163, 162
+2.0.1_additions/eyes/lid_rage_R
+	bounds: 1538, 99, 158, 159
+	offsets: 1, 1, 160, 161
+2.0.1_additions/mouths/mouth_cheesy_grin
+	bounds: 1043, 271, 235, 128
+	offsets: 1, 1, 237, 130
+2.0.1_additions/mouths/mouth_closed_teeth_pain
+	bounds: 1699, 648, 127, 56
+2.0.1_additions/mouths/mouth_concentration
+	bounds: 2398, 87, 188, 70
+	offsets: 1, 1, 190, 72
+2.0.1_additions/mouths/mouth_grimace
+	bounds: 3366, 106, 201, 77
+	offsets: 1, 1, 203, 79
+2.0.1_additions/mouths/mouth_open_scream1
+	bounds: 1558, 453, 119, 59
+2.0.1_additions/mouths/mouth_open_scream2
+	bounds: 2597, 290, 108, 76
+2.0.1_additions/mouths/mouth_rage
+	bounds: 3791, 74, 249, 89
+	offsets: 1, 1, 251, 91
+2.0.1_additions/mouths/mouth_slack_jawed
+	bounds: 820, 53, 146, 106
+	offsets: 1, 1, 148, 108
+2.0.1_additions/mouths/mouth_smug
+	bounds: 599, 86, 218, 73
+	offsets: 1, 2, 220, 76
+2.0.1_additions/mouths/mouth_starstruck
+	bounds: 2806, 81, 182, 133
+	offsets: 1, 1, 184, 135
+2.0.1_additions/mouths/punched_mouth
+	bounds: 780, 267, 243, 114
+	offsets: 1, 1, 245, 116
+2.0.1_additions/puffy_cheek
+	bounds: 461, 64, 134, 135
+	offsets: 1, 1, 136, 137
+	rotate: 90
+2.0.1_additions/puffy_cheek_sick
+	bounds: 3938, 536, 134, 135
+	offsets: 1, 1, 136, 137
+2.0.1_additions/revolver spin
+	bounds: 1582, 887, 100, 91
+	offsets: 1, 1, 102, 93
+EMOTE_VFX/money/wallet_closed
+	bounds: 259, 213, 86, 88
+	offsets: 1, 1, 88, 90
+EMOTE_VFX/money/wallet_open
+	bounds: 1824, 72, 124, 83
+	offsets: 1, 1, 126, 85
+base_colours/crewchsia/body_base
+	bounds: 1558, 258, 184, 221
+	offsets: 84, 62, 358, 359
+	rotate: 90
+base_colours/crewchsia/eyeball_L
+	bounds: 2131, 31, 82, 81
+	offsets: 1, 1, 84, 83
+base_colours/crewchsia/eyeball_R
+	bounds: 1187, 596, 80, 80
+	offsets: 1, 1, 82, 82
+base_colours/crewchsia/eyelids/lid_angry
+	bounds: 3882, 14, 75, 57
+	offsets: 1, 1, 77, 59
+base_colours/crewchsia/eyelids/lid_blink
+	bounds: 2046, 39, 82, 81
+	offsets: 1, 1, 84, 83
+base_colours/crewchsia/eyelids/lid_happy
+	bounds: 1120, 224, 79, 44
+	offsets: 2, 1, 82, 46
+base_colours/crewchsia/eyelids/lid_sad
+	bounds: 1054, 477, 81, 95
+	offsets: 1, 1, 84, 97
+base_colours/crewchsia/finger_L
+	bounds: 3842, 1364, 38, 37
+base_colours/crewchsia/hand_L_fist
+	bounds: 2398, 165, 72, 70
+	offsets: 1, 1, 74, 72
+	rotate: 90
+base_colours/crewchsia/hand_L_palm
+	bounds: 1617, 26, 72, 70
+	offsets: 1, 1, 74, 72
+base_colours/crewchsia/hand_R_fist
+	bounds: 3726, 3, 71, 68
+	offsets: 1, 1, 73, 70
+base_colours/crewchsia/leg_L
+	bounds: 2383, 20, 64, 86
+	offsets: 37, 28, 138, 143
+	rotate: 90
+base_colours/crewchsia/leg_R
+	bounds: 2430, 970, 66, 92
+	offsets: 37, 29, 138, 143
+base_colours/crewchsia/mouth_flat
+	bounds: 3842, 1174, 59, 20
+	offsets: 1, 1, 61, 22
+base_colours/crewchsia/mouth_sleep_closed
+	bounds: 2695, 1308, 34, 29
+	offsets: 1, 1, 36, 31
+base_colours/crewchsia/mouth_sleep_open
+	bounds: 3582, 241, 101, 47
+	offsets: 1, 1, 103, 49
+base_colours/crewchsia/mouth_teethygrin
+	bounds: 2119, 588, 95, 42
+	offsets: 1, 1, 97, 44
+base_colours/crewchsia/pupil_L
+	bounds: 4041, 1366, 35, 35
+	offsets: 1, 1, 37, 37
+base_colours/crewchsia/pupil_R
+	bounds: 2430, 1324, 34, 34
+	offsets: 1, 1, 36, 36
+base_colours/crewchsia/thumb_L
+	bounds: 2430, 1361, 37, 40
+	offsets: 1, 1, 39, 42
+hand_pointing
+	bounds: 1782, 286, 195, 155
+	offsets: 1, 1, 197, 157
+player_skins/008BED_Armour/diamond/hat
+	bounds: 3164, 70, 199, 113
+	offsets: 1, 1, 201, 115
+player_skins/008BED_Armour/diamond/hat_back
+	bounds: 1951, 41, 92, 79
+	offsets: 1, 1, 94, 81
+player_skins/008BED_Armour/diamond/leg_L
+	bounds: 1386, 20, 70, 85
+	offsets: 33, 28, 137, 142
+	rotate: 90
+player_skins/008BED_Armour/diamond/leg_R
+	bounds: 215, 498, 75, 91
+	offsets: 34, 29, 137, 142
+player_skins/008BED_Armour/diamond/top
+	bounds: 3842, 1143, 258, 217
+	offsets: 50, 61, 358, 358
+	rotate: 90
+player_skins/008BED_Armour/iron/hat
+	bounds: 3, 82, 199, 113
+	offsets: 1, 1, 201, 115
+player_skins/008BED_Armour/iron/hat_back
+	bounds: 2684, 50, 92, 79
+	offsets: 1, 1, 94, 81
+player_skins/008BED_Armour/iron/leg_L
+	bounds: 2386, 585, 70, 85
+	offsets: 33, 28, 137, 142
+player_skins/008BED_Armour/iron/leg_R
+	bounds: 2902, 517, 75, 91
+	offsets: 34, 29, 137, 142
+player_skins/012MIM_leather_armor/hat
+	bounds: 259, 84, 199, 114
+	offsets: 1, 1, 201, 116
+player_skins/012MIM_leather_armor/hat_back
+	bounds: 2589, 50, 92, 79
+	offsets: 1, 1, 94, 81
+player_skins/012MIM_leather_armor/leg_L
+	bounds: 189, 15, 70, 85
+	offsets: 33, 28, 137, 142
+	rotate: 90
+player_skins/012MIM_leather_armor/leg_R
+	bounds: 904, 581, 77, 91
+	offsets: 33, 29, 137, 142
+player_skins/012MIM_leather_armor/top
+	bounds: 3076, 311, 248, 215
+	offsets: 60, 60, 358, 358
+revolver
+	bounds: 3049, 1067, 334, 280
+	offsets: 1, 1, 336, 282
+	rotate: 90
+shadow
+	bounds: 1980, 248, 232, 119
+	offsets: 6, 5, 244, 128
+sparkles/flashbang_sparkle
+	bounds: 3673, 486, 52, 60
+	offsets: 2, 0, 56, 60
+sparkles/goldpickup_sparkle
+	bounds: 2733, 1078, 313, 323
+	offsets: 18, 18, 348, 358
+sparkles/goldpickup_sparkle2
+	bounds: 694, 794, 607, 588
+	offsets: 1, 2, 609, 591
+	rotate: 90
+sparkles/goldpickup_sparkle_circle
+	bounds: 3, 713, 688, 688
+sparkles/idlegold_sparkle
+	bounds: 3332, 1129, 272, 263
+	offsets: 0, 1, 273, 265
+	rotate: 90
+sparkles/medal_sparkle
+	bounds: 3332, 1129, 272, 263
+	offsets: 0, 1, 273, 265
+	rotate: 90

@@ -1,0 +1,169 @@
+import "core:ao"
+
+Resource_Type :: enum {
+    NONE;
+    WOOD;
+}
+
+ResourceNode :: class : Interactable {
+    resource_type: Resource_Type @ao_serialize;
+    respawn_time_seconds: float @ao_serialize;
+    drop_count: s64 @ao_serialize;
+    drop_spawn_radius: float @ao_serialize;
+    visual_target: Entity @ao_serialize;
+    animation_target: Entity @ao_serialize;
+
+    is_depleted: bool;
+    depleted_until_time: float;
+    last_harvest_time: float;
+    cached_active_radius: float;
+
+    anim_base_scale: v2;
+    anim_base_scale_initialized: bool;
+
+    HARVEST_ANIM_DURATION :: 0.22;
+
+    ao_start :: method() {
+        this->set_listener(this);
+
+        if respawn_time_seconds <= 0.0 {
+            respawn_time_seconds = 10.0;
+        }
+        if drop_count <= 0 {
+            drop_count = 1;
+        }
+        if drop_spawn_radius < 0.0 {
+            drop_spawn_radius = 0.0;
+        }
+
+        if radius <= 0.0 {
+            radius = 1.6;
+        }
+        cached_active_radius = radius;
+
+        this->set_text("Gather");
+        this->set_hold_text("Gathering...");
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if player == null return false;
+        if is_depleted return false;
+        if resource_type == .NONE return false;
+        return get_resource_item_definition() != null;
+    }
+
+    on_interact :: method(player: Player) {
+        if is_depleted return;
+
+        last_harvest_time = get_time();
+
+        if Game.is_server() {
+            spawn_drop();
+            set_depleted_state(true);
+        }
+    }
+
+    ao_update :: method(dt: float) {
+        update_harvest_animation();
+
+        if !Game.is_server() return;
+        if !is_depleted return;
+
+        if get_time() >= depleted_until_time {
+            set_depleted_state(false);
+        }
+    }
+
+    get_animation_target :: method() -> Entity {
+        if animation_target != null {
+            return animation_target;
+        }
+        if visual_target != null {
+            return visual_target;
+        }
+        return entity;
+    }
+
+    ensure_anim_base_scale :: method() {
+        if anim_base_scale_initialized return;
+
+        target := get_animation_target();
+        if target == null return;
+
+        anim_base_scale = target.local_scale;
+        if anim_base_scale.x == 0.0 || anim_base_scale.y == 0.0 {
+            anim_base_scale = {1, 1};
+        }
+        anim_base_scale_initialized = true;
+    }
+
+    update_harvest_animation :: method() {
+        ensure_anim_base_scale();
+        if !anim_base_scale_initialized return;
+
+        target := get_animation_target();
+        if target == null return;
+
+        elapsed := get_time() - last_harvest_time;
+        if elapsed < 0.0 || elapsed > HARVEST_ANIM_DURATION {
+            target->set_local_scale(anim_base_scale);
+            return;
+        }
+
+        // Quick "hit" pulse: compress then bounce back.
+        t := clamp(elapsed / HARVEST_ANIM_DURATION, 0.0, 1.0);
+        pulse := sin(t * PI);
+        sx := lerp(1.0, 0.78, pulse);
+        sy := lerp(1.0, 1.12, pulse);
+        target->set_local_scale({anim_base_scale.x * sx, anim_base_scale.y * sy});
+    }
+
+    set_depleted_state :: method(depleted: bool) {
+        is_depleted = depleted;
+
+        if depleted {
+            depleted_until_time = get_time() + max(respawn_time_seconds, 0.0);
+            this->set_text("Depleted");
+            radius = 0.0;
+
+            if visual_target != null {
+                visual_target->set_local_enabled(false);
+            }
+        }
+        else {
+            this->set_text("Gather");
+            radius = max(cached_active_radius, 0.0);
+
+            if visual_target != null {
+                visual_target->set_local_enabled(true);
+            }
+        }
+    }
+
+    get_resource_item_id :: method() -> string {
+        switch resource_type {
+            case .WOOD: return "wood";
+            case .NONE: return "";
+        }
+        return "";
+    }
+
+    get_resource_item_definition :: method() -> Item_Definition {
+        item_id := get_resource_item_id();
+        if item_id.count <= 0 return null;
+        return ItemManager.TryFindItem(item_id);
+    }
+
+    spawn_drop :: method() {
+        defn := get_resource_item_definition();
+        if defn == null return;
+
+        spawn_position := entity.world_position;
+        if drop_spawn_radius > 0.0 {
+            rng := rng_seed_time();
+            spawn_position = ItemDrops.random_point_on_circle_edge(spawn_position, drop_spawn_radius, ref rng);
+        }
+
+        ItemDrops.spawn_from_definition(spawn_position, defn, drop_count);
+    }
+}
