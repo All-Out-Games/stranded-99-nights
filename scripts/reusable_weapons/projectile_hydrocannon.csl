@@ -85,36 +85,29 @@ Hydro_Cannon_Geyser :: class : Component {
             return;
         }
 
-        // Damage nearby players
+        // Damage nearby mobs
         pos := entity.world_position;
-        nearby: [..]Player;
-        Scene.get_all_components_in_range(pos, GEYSER_HIT_RADIUS, ref nearby);
+        nearby_mobs: [..]Mob;
+        Scene.get_all_components_in_range(pos, GEYSER_HIT_RADIUS, ref nearby_mobs);
+        for target_mob: nearby_mobs {
+            if !target_mob->is_alive() continue;
 
-        for target: nearby {
-            if target.entity.id == owner_id continue;
-            if target.health <= 0 continue;
-
-            // Check if already hit by this geyser
             already_hit := false;
             j := 0;
             while j < hit_count {
-                if hit_ids[j] == target.entity.id {
+                if hit_ids[j] == target_mob.entity.id {
                     already_hit = true;
                 }
                 j += 1;
             }
             if already_hit continue;
 
-            // Record hit and apply damage
             if hit_count < 32 {
-                hit_ids[hit_count] = target.entity.id;
+                hit_ids[hit_count] = target_mob.entity.id;
                 hit_count += 1;
             }
 
-            target.health -= GEYSER_DAMAGE;
-            if target.health < 0 {
-                target.health = 0;
-            }
+            mob_apply_damage(target_mob, GEYSER_DAMAGE);
         }
     }
 }

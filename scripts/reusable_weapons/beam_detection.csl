@@ -1,15 +1,14 @@
-// Line beam: damage players along a line from origin in direction
-beam_line_damage :: proc(player: Player, origin: v2, direction: v2, range: float, width: float, damage: float) {
-    nearby: [..]Player;
-    Scene.get_all_components_in_range(origin, range, ref nearby);
+// Line beam: damage mobs along a line from origin in direction
+beam_line_damage :: proc(origin: v2, direction: v2, range: float, width: float, damage: float) {
+    nearby_mobs: [..]Mob;
+    Scene.get_all_components_in_range(origin, range, ref nearby_mobs);
 
     dir := normalize(direction);
 
-    for target: nearby {
-        if target.entity.id == player.entity.id continue;
-        if target.health <= 0 continue;
+    for target_mob: nearby_mobs {
+        if !target_mob->is_alive() continue;
 
-        target_pos := target.entity.world_position;
+        target_pos := target_mob.entity.world_position;
         to_target := v2{target_pos.x - origin.x, target_pos.y - origin.y};
 
         // Project onto beam direction
@@ -22,27 +21,23 @@ beam_line_damage :: proc(player: Player, origin: v2, direction: v2, range: float
         perp_dist := length(perp);
 
         if perp_dist <= width {
-            target.health -= damage;
-            if target.health < 0 {
-                target.health = 0;
-            }
+            mob_apply_damage(target_mob, damage);
         }
     }
 }
 
-// Cone beam: damage players within a cone from origin
-beam_cone_damage :: proc(player: Player, origin: v2, direction: v2, range: float, cone_angle_deg: float, damage: float) {
-    nearby: [..]Player;
-    Scene.get_all_components_in_range(origin, range, ref nearby);
+// Cone beam: damage mobs within a cone from origin
+beam_cone_damage :: proc(origin: v2, direction: v2, range: float, cone_angle_deg: float, damage: float) {
+    nearby_mobs: [..]Mob;
+    Scene.get_all_components_in_range(origin, range, ref nearby_mobs);
 
     dir := normalize(direction);
     half_angle := cone_angle_deg * 0.5 * 3.14159 / 180.0;
 
-    for target: nearby {
-        if target.entity.id == player.entity.id continue;
-        if target.health <= 0 continue;
+    for target_mob: nearby_mobs {
+        if !target_mob->is_alive() continue;
 
-        target_pos := target.entity.world_position;
+        target_pos := target_mob.entity.world_position;
         to_target := v2{target_pos.x - origin.x, target_pos.y - origin.y};
         dist := length(to_target);
         if dist < 0.1 || dist > range continue;
@@ -56,27 +51,14 @@ beam_cone_damage :: proc(player: Player, origin: v2, direction: v2, range: float
         cos_half := cos(half_angle);
 
         if dot >= cos_half {
-            target.health -= damage;
-            if target.health < 0 {
-                target.health = 0;
-            }
+            mob_apply_damage(target_mob, damage);
         }
     }
 }
 
-// Radius-based damage: damages all players within range (Octo Siphoner)
-beam_radius_damage :: proc(player: Player, origin: v2, range: float, damage: float) -> s64 {
-    nearby: [..]Player;
-    Scene.get_all_components_in_range(origin, range, ref nearby);
-    hit_count: s64 = 0;
-    for target: nearby {
-        if target.entity.id == player.entity.id continue;
-        if target.health <= 0 continue;
-        target.health -= damage;
-        if target.health < 0 { target.health = 0; }
-        hit_count += 1;
-    }
-    return hit_count;
+// Radius-based damage: damages all mobs within range (Octo Siphoner)
+beam_radius_damage :: proc(origin: v2, range: float, damage: float) -> s64 {
+    return mob_damage_all_in_range(origin, range, damage);
 }
 
 // Beam visual entity - positions spine beam between source and target each frame
@@ -111,15 +93,15 @@ Beam_Visual :: class : Component {
 
         end_pos: v2;
         if target_id != 0 {
-            // Targeted beam (Octo Siphoner) - aim at specific player
-            target: Player;
-            foreach p: component_iterator(Player) {
-                if p.entity.id == target_id {
-                    target = p;
+            // Targeted beam (Octo Siphoner) - aim at specific mob
+            target: Mob;
+            foreach mob: component_iterator(Mob) {
+                if mob.entity.id == target_id {
+                    target = mob;
                     break;
                 }
             }
-            if target == null || target.health <= 0 {
+            if target == null || !target->is_alive() {
                 if Game.is_server() { entity->destroy(); }
                 return;
             }

@@ -1,0 +1,457 @@
+MOB_DAMAGE_PULSE_DURATION_SECONDS :: 0.65;
+MOB_DAMAGE_PULSE_OSCILLATIONS :: 7.0;
+MOB_NIGHT_ACQUIRE_RANGE_MIN :: 100.0;
+
+Mob :: class : Component {
+    max_health: float @ao_serialize;
+    move_speed: float @ao_serialize;
+    attack_damage: float @ao_serialize;
+    attack_speed: float @ao_serialize;
+    attack_range: float @ao_serialize;
+    acquire_range: float @ao_serialize;
+    despawn_delay_seconds: float @ao_serialize;
+    destination_spread_radius: float @ao_serialize;
+    separation_radius: float @ao_serialize;
+    separation_strength: float @ao_serialize;
+    spine_animator: Spine_Animator @ao_serialize;
+    idle_animation_name: string @ao_serialize;
+    move_animation_name: string @ao_serialize;
+    attack_animation_name: string @ao_serialize;
+    death_animation_name: string @ao_serialize;
+
+    health: float;
+    is_dead: bool;
+    death_time_seconds: float;
+    next_attack_time_seconds: float;
+    target_player_id: u64;
+    movement_agent: Movement_Agent;
+    animation_state_machine: State_Machine;
+    base_local_scale: v2;
+    damage_pulse_elapsed_seconds: float;
+
+    ao_start :: method() {
+        if max_health <= 0.0 { max_health = 100.0; }
+        if move_speed <= 0.0 { move_speed = 3.0; }
+        if attack_damage <= 0.0 { attack_damage = 10.0; }
+        if attack_speed <= 0.0 { attack_speed = 1.0; }
+        if attack_range <= 0.0 { attack_range = 1.2; }
+        if acquire_range <= 0.0 { acquire_range = 100.0; }
+        if despawn_delay_seconds < 0.0 { despawn_delay_seconds = 0.75; }
+        if destination_spread_radius <= 0.0 {
+            destination_spread_radius = max(attack_range * 0.75, 0.8);
+        }
+        if separation_radius <= 0.0 { separation_radius = 1.0; }
+        if separation_strength <= 0.0 { separation_strength = 0.75; }
+
+        health = max_health;
+        target_player_id = 0;
+        damage_pulse_elapsed_seconds = MOB_DAMAGE_PULSE_DURATION_SECONDS;
+        base_local_scale = entity.local_scale;
+        if base_local_scale.x == 0.0 { base_local_scale.x = 1.0; }
+        if base_local_scale.y == 0.0 { base_local_scale.y = 1.0; }
+
+        movement_agent = entity->get_component(Movement_Agent);
+        if movement_agent == null {
+            movement_agent = entity->add_component(Movement_Agent);
+        }
+
+        if spine_animator == null {
+            spine_animator = entity->get_component(Spine_Animator);
+        }
+
+        if idle_animation_name == "" { idle_animation_name = "idle"; }
+        if move_animation_name == "" { move_animation_name = "move"; }
+        if attack_animation_name == "" { attack_animation_name = "attack"; }
+        if death_animation_name == "" { death_animation_name = "death"; }
+
+        setup_animation_state_machine();
+        lock_to_game_navmesh();
+    }
+
+    ao_update :: method(dt: float) {
+        update_is_moving_animation_state();
+        update_damage_pulse(dt);
+
+        //if !Game.is_server() return;
+
+        if is_dead {
+            update_is_moving_animation_state();
+            if get_time() >= death_time_seconds + despawn_delay_seconds {
+                entity->destroy();
+            }
+            return;
+        }
+
+        if movement_agent == null {
+            movement_agent = entity->get_component(Movement_Agent);
+            if movement_agent == null {
+                movement_agent = entity->add_component(Movement_Agent);
+            }
+        }
+
+        lock_to_game_navmesh();
+        movement_agent.movement_speed = move_speed;
+
+        target := resolve_or_find_target_player();
+        if target == null {
+            return;
+        }
+
+        target_pos := target.entity.world_position;
+        destination := get_spread_destination(target_pos, target.entity.id);
+        self_pos := entity.world_position;
+        destination = BeaconSystem.clamp_position_outside_safety_zones(destination, self_pos);
+        to_target := v2{target_pos.x - self_pos.x, target_pos.y - self_pos.y};
+        dist_sq := length_squared(to_target);
+        attack_range_sq := attack_range * attack_range;
+
+        now := get_time();
+        if dist_sq <= attack_range_sq {
+            if now >= next_attack_time_seconds {
+                target->apply_mob_damage(attack_damage);
+                trigger_attack_animation();
+                next_attack_time_seconds = now + attack_speed;
+            }
+            return;
+        }
+
+        path_result := movement_agent->set_path_target(destination, move_speed);
+        if path_result.success {
+            face_from_movement_direction(path_result.move_direction);
+        } else {
+            // Fallback while waiting for path result on the first frame.
+            fallback_dir := v2{destination.x - self_pos.x, destination.y - self_pos.y};
+            face_from_movement_direction(normalize(fallback_dir));
+        }
+    }
+
+    ao_late_update :: method(dt: float) {
+        if Game.is_server() return;
+        if !is_alive() return;
+
+        material_player := resolve_material_player_for_ui();
+        draw_mob_health_bar(this, material_player);
+    }
+
+    take_damage :: method(amount: float) -> bool {
+        if is_dead return false;
+        if amount <= 0.0 return false;
+
+        health -= amount;
+        if health < 0.0 {
+            health = 0.0;
+        }
+        trigger_damage_feedback(amount);
+
+        if health <= 0.0 {
+            is_dead = true;
+            death_time_seconds = get_time();
+            target_player_id = 0;
+            trigger_death_animation();
+            update_is_moving_animation_state();
+            return true;
+        }
+
+        return false;
+    }
+
+    is_alive :: method() -> bool {
+        return !is_dead && health > 0.0;
+    }
+
+    resolve_or_find_target_player :: method() -> Player {
+        effective_acquire_range := get_effective_acquire_range();
+        effective_acquire_range_sq := effective_acquire_range * effective_acquire_range;
+
+        if target_player_id != 0 {
+            foreach p: component_iterator(Player) {
+                if p.entity.id != target_player_id continue;
+                if p.health <= 0.0 break;
+
+                dist_sq := length_squared(p.entity.world_position - entity.world_position);
+                if dist_sq <= effective_acquire_range_sq {
+                    return p;
+                }
+                break;
+            }
+            target_player_id = 0;
+        }
+
+        closest: Player;
+        closest_dist_sq := effective_acquire_range_sq;
+        foreach p: component_iterator(Player) {
+            if p.health <= 0.0 continue;
+            diff := p.entity.world_position - entity.world_position;
+            dist_sq := length_squared(diff);
+            if dist_sq <= closest_dist_sq {
+                closest_dist_sq = dist_sq;
+                closest = p;
+            }
+        }
+
+        if closest != null {
+            target_player_id = closest.entity.id;
+            return closest;
+        }
+
+        return null;
+    }
+
+    get_effective_acquire_range :: method() -> float {
+        effective_range := acquire_range;
+
+        manager := get_game_manager();
+        if manager != null && manager->is_night_time() {
+            effective_range = max(effective_range, MOB_NIGHT_ACQUIRE_RANGE_MIN);
+        }
+
+        return effective_range;
+    }
+
+    lock_to_game_navmesh :: method() {
+        manager := get_game_manager();
+        if manager == null return;
+        if movement_agent == null return;
+        movement_agent->set_navmesh_to_lock_to(manager.player_navmesh);
+    }
+
+    face_from_movement_direction :: method(dir: v2) {
+        if abs(dir.x) <= 0.01 return;
+
+        scale := entity.local_scale;
+        abs_x := abs(base_local_scale.x);
+        if abs_x <= 0.0 { abs_x = 1.0; }
+
+        if dir.x > 0.0 {
+            scale.x = abs_x;
+        } else {
+            scale.x = -abs_x;
+        }
+        scale.y = base_local_scale.y;
+        entity->set_local_scale(scale);
+    }
+
+    get_spread_destination :: method(target_pos: v2, target_id: u64) -> v2 {
+        slot_count := 12.0;
+        slot_index := ((entity.id + target_id) % 12).(float);
+        angle := (slot_index / slot_count) * 6.2831853;
+
+        ring_jitter := ((entity.id % 5).(float) - 2.0) * 0.12;
+        ring_dist := max(0.25, destination_spread_radius + ring_jitter);
+        dir := v2{cos(angle), sin(angle)};
+        base_destination := v2{target_pos.x + dir.x * ring_dist, target_pos.y + dir.y * ring_dist};
+
+        separation := get_mob_separation_vector();
+        return v2{
+            base_destination.x + separation.x,
+            base_destination.y + separation.y
+        };
+    }
+
+    get_mob_separation_vector :: method() -> v2 {
+        if separation_radius <= 0.0 || separation_strength <= 0.0 {
+            return {0.0, 0.0};
+        }
+
+        self_pos := entity.world_position;
+        nearby_mobs: [..]Mob;
+        Scene.get_all_components_in_range(self_pos, separation_radius, ref nearby_mobs);
+
+        push := v2{0.0, 0.0};
+        for other: nearby_mobs {
+            if other == null continue;
+            if other == this continue;
+            if !other->is_alive() continue;
+
+            delta := v2{self_pos.x - other.entity.world_position.x, self_pos.y - other.entity.world_position.y};
+            dist_sq := length_squared(delta);
+            if dist_sq <= 0.0001 continue;
+
+            dist := sqrt(dist_sq);
+            if dist >= separation_radius continue;
+
+            strength := (separation_radius - dist) / separation_radius;
+            away := normalize(delta);
+            push.x += away.x * strength;
+            push.y += away.y * strength;
+        }
+
+        return v2{push.x * separation_strength, push.y * separation_strength};
+    }
+
+    setup_animation_state_machine :: method() {
+        if spine_animator == null return;
+
+        spine_animator->awaken();
+        if spine_animator.instance == null return;
+
+        animation_state_machine = State_Machine.create();
+
+        moving_var := animation_state_machine->create_variable("mob_is_moving", .BOOL);
+        attack_var := animation_state_machine->create_variable("mob_attack", .TRIGGER);
+        death_var := animation_state_machine->create_variable("mob_death", .TRIGGER);
+
+        layer := animation_state_machine->create_layer("main", 0);
+        idle_state := layer->create_state(idle_animation_name, true);
+        move_state := layer->create_state(move_animation_name, true);
+        attack_state := layer->create_state(attack_animation_name, false);
+        death_state := layer->create_state(death_animation_name, false);
+        layer->set_initial_state(idle_state);
+
+        idle_to_move := layer->create_transition(idle_state, move_state, false);
+        idle_to_move->create_bool_condition(moving_var, true);
+
+        move_to_idle := layer->create_transition(move_state, idle_state, false);
+        move_to_idle->create_bool_condition(moving_var, false);
+
+        any_to_attack := layer->create_global_transition(attack_state, true);
+        any_to_attack->create_trigger_condition(attack_var);
+
+        attack_to_move := layer->create_transition(attack_state, move_state, true);
+        attack_to_move->create_bool_condition(moving_var, true);
+
+        attack_to_idle := layer->create_transition(attack_state, idle_state, true);
+        attack_to_idle->create_bool_condition(moving_var, false);
+
+        any_to_death := layer->create_global_transition(death_state, false);
+        any_to_death->create_trigger_condition(death_var);
+
+        spine_animator.instance->set_state_machine(animation_state_machine, true);
+    }
+
+    update_is_moving_animation_state :: method() {
+        if animation_state_machine == null return;
+        if is_dead {
+            animation_state_machine->set_bool("mob_is_moving", false);
+            return;
+        }
+
+        if movement_agent == null {
+            animation_state_machine->set_bool("mob_is_moving", false);
+            return;
+        }
+
+        moving := length_squared(movement_agent.velocity) > 0.01;
+        animation_state_machine->set_bool("mob_is_moving", moving);
+    }
+
+    trigger_attack_animation :: method() {
+        if animation_state_machine == null return;
+        if is_dead return;
+        animation_state_machine->set_trigger("mob_attack");
+    }
+
+    trigger_death_animation :: method() {
+        if animation_state_machine == null return;
+        animation_state_machine->set_trigger("mob_death");
+    }
+
+    resolve_material_player_for_ui :: method() -> Player {
+        local_player: Player;
+        fallback_player: Player;
+        foreach p: component_iterator(Player) {
+            if fallback_player == null {
+                fallback_player = p;
+            }
+            if p->is_local() {
+                local_player = p;
+                break;
+            }
+        }
+
+        if local_player != null return local_player;
+        return fallback_player;
+    }
+
+    trigger_damage_feedback :: method(amount: float) {
+        damage_pulse_elapsed_seconds = 0.0;
+
+        if !Game.is_server() return;
+
+        manager := get_game_manager();
+        if manager == null return;
+
+        damage_text: string;
+        whole_damage := amount.(int);
+        whole_damage_as_float := whole_damage.(float);
+        if abs(amount - whole_damage_as_float) <= 0.01 {
+            damage_text = format_string("%", {whole_damage});
+        } else {
+            damage_text = format_string("%", {format_float(amount, decimals=1)});
+        }
+
+        dn := new(DamageNumbers);
+        dn.Text = damage_text;
+        dn.Position = entity.world_position + v2{0, 1.85};
+        dn.LastPosition = dn.Position;
+        dn.Color = {1.0, 0.2, 0.2, 1.0};
+        dn.T = 0.0;
+        dn.SpaceText = false;
+        dn.DoingFading = true;
+
+        ts := UI.default_text_settings();
+        ts.size = 0.30;
+        ts.halign = .CENTER;
+        ts.valign = .CENTER;
+        ts.do_outline = true;
+        ts.outline_thickness = 2;
+        ts.outline_color = {0, 0, 0, 1};
+        ts.color = {1, 1, 1, 1};
+        dn.TextSettings = ts;
+
+        manager.damage_numbers->append(dn);
+    }
+
+    update_damage_pulse :: method(dt: float) {
+        if spine_animator == null return;
+        if spine_animator.instance == null return;
+
+        if damage_pulse_elapsed_seconds >= MOB_DAMAGE_PULSE_DURATION_SECONDS {
+            spine_animator.instance.color_multiplier = {1, 1, 1, 1};
+            return;
+        }
+
+        damage_pulse_elapsed_seconds += dt;
+        if damage_pulse_elapsed_seconds >= MOB_DAMAGE_PULSE_DURATION_SECONDS {
+            spine_animator.instance.color_multiplier = {1, 1, 1, 1};
+            return;
+        }
+
+        t := clamp(damage_pulse_elapsed_seconds / MOB_DAMAGE_PULSE_DURATION_SECONDS, 0.0, 1.0);
+        phase := t * MOB_DAMAGE_PULSE_OSCILLATIONS * 6.2831853;
+        white_mix := 0.5 + 0.5 * sin(phase - 1.5707963);
+        white_mix = clamp(white_mix, 0.0, 1.0);
+        spine_animator.instance.color_multiplier = {1.0, white_mix, white_mix, 1.0};
+    }
+}
+
+mob_apply_damage :: proc(mob: Mob, damage: float) -> bool {
+    if mob == null return false;
+    return mob->take_damage(damage);
+}
+
+mob_damage_all_in_range :: proc(pos: v2, range: float, damage: float) -> s64 {
+    if !Game.is_server() return 0;
+
+    nearby: [..]Mob;
+    Scene.get_all_components_in_range(pos, range, ref nearby);
+    hit_count: s64 = 0;
+    for mob: nearby {
+        if mob == null continue;
+        if !mob->is_alive() continue;
+        mob->take_damage(damage);
+        hit_count += 1;
+    }
+    return hit_count;
+}
+
+mob_damage_closest_in_range :: proc(pos: v2, range: float, damage: float) -> Mob, bool {
+    if !Game.is_server() return null, false;
+
+    mob, found := Scene.get_closest_component_in_range(pos, range, Mob);
+    if !found || mob == null return null, false;
+    if !mob->is_alive() return null, false;
+
+    mob->take_damage(damage);
+    return mob, true;
+}

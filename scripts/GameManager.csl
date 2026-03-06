@@ -22,6 +22,14 @@ Day_Night_Phase :: enum {
     NIGHT;
 }
 
+Music_Track :: enum {
+    NONE;
+    DAY;
+    NIGHT;
+}
+
+g_start_music_sound_id: u64;
+
 get_game_manager :: proc() -> GameManager {
     return g_game_manager;
 }
@@ -60,9 +68,62 @@ start :: proc(player: Player) {
     log_info("% forced start_game via /start", {player->get_username()});
 } @chat_command @youtuber
 
+g :: proc(player: Player, item_id: string, quantity: s64 = 1) {
+    if player == null return;
+
+    if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
+        Notifier.notify(player, "Inventory is unavailable.");
+        return;
+    }
+
+    defn := ItemManager.TryFindItem(item_id);
+    if defn == null {
+        defn = try_find_reusable_weapon_item_def_by_id(item_id);
+    }
+    if defn == null {
+        Notifier.notify(player, "Unknown item id: %", {item_id});
+        return;
+    }
+
+    if quantity <= 0 {
+        Notifier.notify(player, "Quantity must be greater than 0.");
+        return;
+    }
+
+    room := Items.calculate_room_in_inventory_for_item(defn, player.default_inventory);
+    if room <= 0 {
+        Notifier.notify(player, "No room for %", {defn->get_name()});
+        return;
+    }
+
+    give_count := quantity;
+    if give_count > room {
+        give_count = room;
+    }
+
+    item := Items.create_item_instance(defn, give_count);
+    if item == null || item.self == null {
+        Notifier.notify(player, "Failed to create item.");
+        return;
+    }
+
+    Items.move_item_to_inventory(item, player.default_inventory);
+    if give_count < quantity {
+        Notifier.notify(player, "Given % x% (requested: %, limited by room)", {defn->get_name(), give_count, quantity});
+        return;
+    }
+
+    Notifier.notify(player, "Given % x%", {defn->get_name(), give_count});
+} @chat_command @youtuber
+
 GameManager :: class : Component {
 
     damage_numbers: [..]DamageNumbers;
+    player_navmesh: Navmesh @ao_serialize;
+    lobby_spawn: Entity @ao_serialize;
+    island1_spawn: Entity @ao_serialize;
+    damage_number_lifetime_seconds: float @ao_serialize;
+    damage_number_rise_speed: float @ao_serialize;
     
     current_phase: Game_Phase;
     game_time_seconds: float;
@@ -73,11 +134,23 @@ GameManager :: class : Component {
     day_night_blend_from: float;
     day_night_blend_to: float;
     day_night_blend_transition_time_seconds: float;
+    nights: s64;
 
-    DAY_DURATION_SECONDS :: 15.0;
-    NIGHT_DURATION_SECONDS :: 8.0;
-    DAY_NIGHT_BLEND_TRANSITION_SECONDS :: 3.0;
+    DAY_DURATION_SECONDS :: 90.0;
+    NIGHT_DURATION_SECONDS :: 60.0;
+    DAY_NIGHT_BLEND_TRANSITION_SECONDS :: 15.0;
+    NIGHT_WARNING_LEAD_TIME_SECONDS :: 10.0;
     PLAYERS_REQUIRED_TO_START :: 6;
+    NIGHT_WARNING_NOTIFICATION_TEXT :: "Night is almost here! Get back to the Beacon!";
+    SURVIVED_NIGHT_NOTIFICATION_TEXT :: "You Survived the Night! % more to go!";
+    ROUND_START_FADE_OUT_SECONDS :: 1.0;
+    ROUND_START_BLACK_HOLD_SECONDS :: 1.0;
+    ROUND_START_FADE_IN_SECONDS :: 1.0;
+    ROUND_START_TEXT_DURATION_SECONDS :: 5.0;
+    DAY_MUSIC_ASSET_PATH :: "Music/WoP.wav";
+    NIGHT_MUSIC_ASSET_PATH :: "Music/FtI.wav";
+    warned_player_user_ids_for_current_day: [..]string;
+    round_start_teleport_done: bool;
 
     ao_start :: method() {
         if g_game_manager != null && g_game_manager != this {
@@ -87,12 +160,36 @@ GameManager :: class : Component {
         }
 
         g_game_manager = this;
+        if damage_number_lifetime_seconds <= 0.0 { damage_number_lifetime_seconds = 0.65; }
+        if damage_number_rise_speed <= 0.0 { damage_number_rise_speed = 1.4; }
         reset_game_state();
+        apply_navmesh_lock_to_all_players();
+        if !Game.is_server() {
+            if g_start_music_sound_id == 0 {
+                music_asset := get_asset(SFX_Asset, DAY_MUSIC_ASSET_PATH);
+                if music_asset != null {
+                    desc := SFX.default_sfx_desc();
+                    desc.loop = true;
+                    desc.channel = .MUSIC;
+                    desc.volume = 0.35;
+                    g_start_music_sound_id = SFX.play(music_asset, desc);
+                } else {
+                    log_info("Startup music asset missing: %", {DAY_MUSIC_ASSET_PATH});
+                }
+            }
+        }
     }
 
     ao_update :: method(dt: float) {
+        //if Game.is_server() {
+            update_damage_numbers(dt);
+       // }
+
         // Keep core game state authoritative on the server.
-        if !Game.is_server() return;
+        // Music playback is client-side so each player always hears it.
+        if !Game.is_server() {
+            return;
+        }
 
         game_time_seconds += dt;
         phase_time_seconds += dt;
@@ -104,6 +201,7 @@ GameManager :: class : Component {
             }
             case .IN_ROUND: {
                 // Round state: active gameplay should run here.
+                update_round_start_sequence();
                 update_day_night_cycle(dt);
                 update_day_night_blend(dt);
             }
@@ -111,9 +209,21 @@ GameManager :: class : Component {
                 // Post round state: cleanup, score display, and reset hooks.
             }
         }
+
+    }
+
+    ao_late_update :: method(dt: float) {
+        if Game.is_server() return;
+        draw_damage_numbers();
     }
 
     ao_end :: method() {
+        if !Game.is_server() {
+            if g_start_music_sound_id != 0 {
+                SFX.stop(g_start_music_sound_id);
+                g_start_music_sound_id = 0;
+            }
+        }
         if g_game_manager == this {
             g_game_manager = null;
         }
@@ -131,6 +241,7 @@ GameManager :: class : Component {
     reset_game_state :: method() {
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;
+        nights = 0;
         current_phase = .LOBBY;
         on_enter_phase(current_phase);
     }
@@ -151,7 +262,10 @@ GameManager :: class : Component {
             }
             case .IN_ROUND: {
                 log_info("GameManager phase -> IN_ROUND", {});
+                nights = 0;
                 reset_day_night_cycle();
+                reset_beacons_for_round();
+                round_start_teleport_done = false;
             }
             case .POST_ROUND: {
                 log_info("GameManager phase -> POST_ROUND", {});
@@ -207,6 +321,10 @@ GameManager :: class : Component {
         return game_time_seconds;
     }
 
+    get_nights :: method() -> s64 {
+        return nights;
+    }
+
     get_player_count :: method() -> s64 {
         player_count: s64 = 0;
         foreach p: component_iterator(Player) {
@@ -219,6 +337,70 @@ GameManager :: class : Component {
         return PLAYERS_REQUIRED_TO_START;
     }
 
+    on_player_joined :: method(player: Player) {
+        lock_player_to_navmesh(player);
+        teleport_player_to_phase_spawn(player);
+    }
+
+    teleport_player_to_phase_spawn :: method(player: Player) {
+        if player == null return;
+        if player.entity == null return;
+
+        if current_phase == .IN_ROUND {
+            teleport_player_to_island1_spawn(player);
+            return;
+        }
+
+        teleport_player_to_lobby_spawn(player);
+    }
+
+    teleport_player_to_lobby_spawn :: method(player: Player) {
+        if player == null || player.entity == null return;
+        if lobby_spawn == null return;
+
+        player.entity->set_local_position(lobby_spawn.world_position);
+    }
+
+    teleport_player_to_island1_spawn :: method(player: Player) {
+        if player == null || player.entity == null return;
+        if island1_spawn == null return;
+
+        player.entity->set_local_position(island1_spawn.world_position);
+    }
+
+    teleport_all_players_to_island1_spawn :: method() {
+        if island1_spawn == null return;
+
+        foreach player: component_iterator(Player) {
+            teleport_player_to_island1_spawn(player);
+        }
+    }
+
+    reset_beacons_for_round :: method() {
+        if !Game.is_server() return;
+
+        foreach beacon: component_iterator(Beacon) {
+            if beacon == null continue;
+            beacon->set_fuel_for_round(Beacon.DEFAULT_STARTING_FUEL);
+        }
+    }
+
+    lock_player_to_navmesh :: method(player: Player) {
+        if player == null return;
+
+        agent := player.entity->get_component(Movement_Agent);
+        if agent == null return;
+
+        // Null clears navmesh lock, so editor assignment controls behavior.
+        agent->set_navmesh_to_lock_to(player_navmesh);
+    }
+
+    apply_navmesh_lock_to_all_players :: method() {
+        foreach player: component_iterator(Player) {
+            lock_player_to_navmesh(player);
+        }
+    }
+
     reset_day_night_cycle :: method() {
         day_night_phase = .DAY;
         day_night_phase_time_seconds = 0.0;
@@ -226,6 +408,7 @@ GameManager :: class : Component {
         day_night_blend_from = 0.0;
         day_night_blend_to = 0.0;
         day_night_blend_transition_time_seconds = 0.0;
+        warned_player_user_ids_for_current_day->clear();
         log_info("Day/Night -> DAY", {});
     }
 
@@ -233,6 +416,7 @@ GameManager :: class : Component {
         day_night_phase_time_seconds += dt;
 
         if day_night_phase == .DAY {
+            maybe_send_night_warning();
             if day_night_phase_time_seconds >= DAY_DURATION_SECONDS {
                 day_night_phase = .NIGHT;
                 day_night_phase_time_seconds = 0.0;
@@ -245,9 +429,60 @@ GameManager :: class : Component {
         if day_night_phase_time_seconds >= NIGHT_DURATION_SECONDS {
             day_night_phase = .DAY;
             day_night_phase_time_seconds = 0.0;
+            warned_player_user_ids_for_current_day->clear();
+            nights += 1;
             begin_day_night_blend_transition();
-            log_info("Day/Night -> DAY", {});
+            notify_all_players_survived_night();
+            log_info("Day/Night -> DAY (Nights: %)", {nights});
         }
+    }
+
+    maybe_send_night_warning :: method() {
+        if !is_night_warning_window_active() return;
+        notify_all_players_night_warning();
+    }
+
+    notify_all_players_night_warning :: method() {
+        notified_count: s64 = 0;
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            user_id := p->get_user_id();
+            if user_id == "" continue;
+            if was_player_warned_this_day(user_id) continue;
+
+            Notifier.notify(p, NIGHT_WARNING_NOTIFICATION_TEXT);
+            warned_player_user_ids_for_current_day->append(user_id);
+            notified_count += 1;
+        }
+
+        if notified_count > 0 {
+            log_info("Sent pre-night warning to % player(s) this day.", {notified_count});
+        }
+    }
+
+    was_player_warned_this_day :: method(user_id: string) -> bool {
+        for warned_id: warned_player_user_ids_for_current_day {
+            if warned_id == user_id {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    notify_all_players_survived_night :: method() {
+        remaining_nights := max(99 - nights, 0);
+        foreach p: component_iterator(Player) {
+            Notifier.notify(p, SURVIVED_NIGHT_NOTIFICATION_TEXT, {remaining_nights});
+        }
+        log_info("Broadcasted survived-night notification (remaining: %).", {remaining_nights});
+    }
+
+    is_night_warning_window_active :: method() -> bool {
+        if current_phase != .IN_ROUND return false;
+        if day_night_phase != .DAY return false;
+
+        time_until_night := DAY_DURATION_SECONDS - day_night_phase_time_seconds;
+        return time_until_night > 0.0 && time_until_night <= NIGHT_WARNING_LEAD_TIME_SECONDS;
     }
 
     begin_day_night_blend_transition :: method() {
@@ -294,6 +529,46 @@ GameManager :: class : Component {
         return 12.0 + t * 12.0;
     }
 
+    update_round_start_sequence :: method() {
+        if current_phase != .IN_ROUND return;
+        if round_start_teleport_done return;
+        if phase_time_seconds < ROUND_START_FADE_OUT_SECONDS return;
+
+        round_start_teleport_done = true;
+        teleport_all_players_to_island1_spawn();
+    }
+
+    get_round_start_overlay_alpha :: method() -> float {
+        if current_phase != .IN_ROUND return 0.0;
+
+        fade_out_end := ROUND_START_FADE_OUT_SECONDS;
+        black_hold_end := fade_out_end + ROUND_START_BLACK_HOLD_SECONDS;
+        fade_in_end := black_hold_end + ROUND_START_FADE_IN_SECONDS;
+
+        if phase_time_seconds <= fade_out_end {
+            return clamp(phase_time_seconds / ROUND_START_FADE_OUT_SECONDS, 0.0, 1.0);
+        }
+
+        if phase_time_seconds <= black_hold_end {
+            return 1.0;
+        }
+
+        if phase_time_seconds <= fade_in_end {
+            fade_in_t := clamp((phase_time_seconds - black_hold_end) / ROUND_START_FADE_IN_SECONDS, 0.0, 1.0);
+            return 1.0 - fade_in_t;
+        }
+
+        return 0.0;
+    }
+
+    should_draw_round_start_text :: method() -> bool {
+        if current_phase != .IN_ROUND return false;
+        if !round_start_teleport_done return false;
+        text_start_time := ROUND_START_FADE_OUT_SECONDS;
+        text_end_time := text_start_time + ROUND_START_TEXT_DURATION_SECONDS;
+        return phase_time_seconds >= text_start_time && phase_time_seconds <= text_end_time;
+    }
+
     try_auto_start_from_lobby :: method() {
         if current_phase != .LOBBY return;
 
@@ -302,5 +577,63 @@ GameManager :: class : Component {
 
         log_info("Auto-starting game at %/% players.", {player_count, PLAYERS_REQUIRED_TO_START});
         start_game();
+    }
+
+    update_damage_numbers :: method(dt: float) {
+        i: s64 = 0;
+        while i < damage_numbers.count {
+            dn := damage_numbers[i];
+            if dn == null {
+                damage_numbers->ordered_remove_by_index(i);
+                continue;
+            }
+
+            dn.T += dt;
+            if dn.T >= damage_number_lifetime_seconds {
+                damage_numbers->ordered_remove_by_index(i);
+                continue;
+            }
+
+            dn.Position.y += damage_number_rise_speed * dt;
+            if dn.DoingFading {
+                fade_t := clamp(dn.T / damage_number_lifetime_seconds, 0.0, 1.0);
+                dn.Color.w = 1.0 - fade_t;
+            }
+
+            damage_numbers[i] = dn;
+            i += 1;
+        }
+    }
+
+    draw_damage_numbers :: method() {
+        if damage_numbers.count <= 0 return;
+
+        UI.push_world_draw_context();
+        defer UI.pop_draw_context();
+
+        for dn: damage_numbers {
+            if dn == null continue;
+
+            ts := dn.TextSettings;
+            if ts.size <= 0.0 {
+                ts = UI.default_text_settings();
+                ts.size = 0.30;
+                ts.halign = .CENTER;
+                ts.valign = .CENTER;
+                ts.do_outline = true;
+                ts.outline_thickness = 2;
+                ts.outline_color = {0, 0, 0, 1};
+            }
+            ts.color = dn.Color;
+            if dn.SpaceText {
+                ts.spacing_multiplier = 1.1;
+            }
+
+            text_pos := dn.Position;
+            text_rect := Rect{text_pos, text_pos}->grow(0.12, 0.42, 0.12, 0.42);
+            UI.push_z(text_pos.y - 0.0002);
+            UI.text(text_rect, ts, dn.Text);
+            UI.pop_z();
+        }
     }
 }

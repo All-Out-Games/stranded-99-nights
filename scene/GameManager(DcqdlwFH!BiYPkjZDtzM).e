@@ -20,6 +20,8 @@
   "component_type": "Internal_Component",
   "internal_component_type": "GameManager",
   "data": {
-
+    "player_navmesh": "96515647068167:1772619357074747800",
+    "lobby_spawn": "17117361272975:1772235860915432700",
+    "island1_spawn": "6275564276236:1772666114361071800"
   }
 }

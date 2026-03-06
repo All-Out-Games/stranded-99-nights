@@ -79,15 +79,14 @@ Beam_Ability :: class : Ability_Base {
                 if wt == .OCTO_SIPHONER {
                     // Radius-based damage, heal scales with targets hit
                     destroy_player_beams(p.entity.id);
-                    hit_count := beam_radius_damage(p, origin, config.beam_range, config.base_damage);
+                    hit_count := beam_radius_damage(origin, config.beam_range, config.base_damage);
 
-                    // Spawn beam entities for each target in range
-                    nearby: [..]Player;
+                    // Spawn beam entities for each mob in range
+                    nearby: [..]Mob;
                     Scene.get_all_components_in_range(origin, config.beam_range, ref nearby);
                     beam_count := 0;
                     for target: nearby {
-                        if target.entity.id == p.entity.id continue;
-                        if target.health <= 0 continue;
+                        if !target->is_alive() continue;
                         if beam_count >= 5 break;
                         spawn_beam_entity(p.entity.id, target.entity.id, "pink", "pink_beam_loop_AL_mIK", config.beam_range);
                         beam_count += 1;
@@ -103,7 +102,7 @@ Beam_Ability :: class : Ability_Base {
                     }
                 } else if wt == .VOID_SPLITTER {
                     // Line beam damage + single directional beam entity
-                    beam_line_damage(p, origin, aiming.aim_direction, config.beam_range, config.beam_width, config.base_damage);
+                    beam_line_damage(origin, aiming.aim_direction, config.beam_range, config.beam_width, config.base_damage);
 
                     if !self.beams_spawned {
                         spawn_beam_entity(p.entity.id, 0, "blue", "lightning_beam_loop_AL_mIK", config.beam_range);
@@ -113,9 +112,9 @@ Beam_Ability :: class : Ability_Base {
                     // Fire Ray, Ice Launcher, Glaciator, Solar Siphoner
                     // Beam visual is part of weapon animation (animation-based beams)
                     if config.beam_cone_angle > 0 {
-                        beam_cone_damage(p, origin, aiming.aim_direction, config.beam_range, config.beam_cone_angle, config.base_damage);
+                        beam_cone_damage(origin, aiming.aim_direction, config.beam_range, config.beam_cone_angle, config.base_damage);
                     } else {
-                        beam_line_damage(p, origin, aiming.aim_direction, config.beam_range, config.beam_width, config.base_damage);
+                        beam_line_damage(origin, aiming.aim_direction, config.beam_range, config.beam_width, config.base_damage);
                     }
 
                     if config.heals_self {

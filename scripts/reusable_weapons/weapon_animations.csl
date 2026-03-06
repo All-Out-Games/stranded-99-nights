@@ -6,6 +6,11 @@ setup_reusable_weapons_player_state_machine :: proc(player: Player) {
     ao_idle := base_layer->try_get_state("Idle");
     ao_run := base_layer->try_get_state("Run_Fast");
     moving_var := sm->try_get_variable("moving");
+    death_trigger := sm->create_variable("death_no_hp", .TRIGGER);
+    death_reset_trigger := sm->create_variable("death_reset", .TRIGGER);
+    death_state := base_layer->create_state("Death_No_HP", false);
+    base_layer->create_global_transition(death_state, false)->create_trigger_condition(death_trigger);
+    base_layer->create_transition(death_state, ao_idle, false)->create_trigger_condition(death_reset_trigger);
 
     //--- Base Layer: IK variables ---//
     use_2h_ik := sm->create_variable("use_2h_ik", .BOOL);
@@ -37,7 +42,7 @@ setup_reusable_weapons_player_state_machine :: proc(player: Player) {
     idle_state := additive_layer->create_state("__CLEAR_TRACK__", true);
     additive_layer->set_initial_state(idle_state);
 
-    // Rapid fire 2h: continuous weapons (AR, SMG, BeamMachine, WaterGun, MissileBarrage, HydroCannon)
+    // Rapid fire 2h: continuous weapons (AR, SMG, BeamMachine, WaterGun, MissileBarrage)
     shoot_fast_state := additive_layer->create_state("redsun/Shoot_Gun_mIK_AL_twohands_rapid", true);
     additive_layer->create_transition(idle_state, shoot_fast_state, false)->create_trigger_condition(sm->create_variable("shoot_fast_start", .TRIGGER));
     additive_layer->create_transition(shoot_fast_state, idle_state, false)->create_trigger_condition(sm->create_variable("shoot_fast_end", .TRIGGER));
@@ -51,6 +56,10 @@ setup_reusable_weapons_player_state_machine :: proc(player: Player) {
     shoot_1h_state := additive_layer->create_state("redsun/Shoot_Gun_mIK_AL", false);
     additive_layer->create_transition(idle_state, shoot_1h_state, false)->create_trigger_condition(sm->create_variable("shoot_1h_weapon", .TRIGGER));
     additive_layer->create_transition(shoot_1h_state, idle_state, true);
+
+    crossbow_1h_state := additive_layer->create_state("Shoot_Gun_mIK_AL", false);
+    additive_layer->create_transition(idle_state, crossbow_1h_state, false)->create_trigger_condition(sm->create_variable("shoot_crossbow", .TRIGGER));
+    additive_layer->create_transition(crossbow_1h_state, idle_state, true);
 
     // Throw (PoisonGrenade)
     throw_state := additive_layer->create_state("redsun/Throw_mIK", false);
@@ -107,10 +116,15 @@ setup_reusable_weapons_player_state_machine :: proc(player: Player) {
     additive_layer->create_transition(idle_state, hands_out_state, false)->create_trigger_condition(sm->create_variable("hands_out_start", .TRIGGER));
     additive_layer->create_transition(hands_out_state, idle_state, false)->create_trigger_condition(sm->create_variable("hands_out_end", .TRIGGER));
 
-    // Melee (katana slash)
+    // Melee (default punch stab)
     melee_state := additive_layer->create_state("Attack_Melee_1_mIK_AL2", false);
     additive_layer->create_transition(idle_state, melee_state, false)->create_trigger_condition(sm->create_variable("melee_AL", .TRIGGER));
     additive_layer->create_transition(melee_state, idle_state, true);
+
+    // Spear melee (sword stab)
+    melee_spear_state := additive_layer->create_state("021MIM/Stab_Sword_AL", false);
+    additive_layer->create_transition(idle_state, melee_spear_state, false)->create_trigger_condition(sm->create_variable("melee_spear_AL", .TRIGGER));
+    additive_layer->create_transition(melee_spear_state, idle_state, true);
 
     // Resource gather (pickaxe swing)
     gather_state := additive_layer->create_state("008BED/swing_pickaxe_AL", false);

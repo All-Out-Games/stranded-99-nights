@@ -1,0 +1,221 @@
+MobSpawner :: class : Component {
+    mob_prefab_path: string @ao_serialize;
+    spawn_navmesh: Navmesh @ao_serialize;
+    spawn_radius: float @ao_serialize;
+    max_mobs: s64 @ao_serialize;
+    spawn_rate_seconds: float @ao_serialize;
+    log_spawn_warnings: bool @ao_serialize;
+
+    spawned_mobs: [..]Entity;
+    rng: u64;
+    navmesh_triangle_hint: s64;
+    respawn_timer_remaining_seconds: float;
+    respawn_timer_active: bool;
+    was_night_last_frame: bool;
+    missing_prefab_warning_logged: bool;
+    missing_navmesh_warning_logged: bool;
+
+    ao_start :: method() {
+        if spawn_radius <= 0.0 { spawn_radius = 6.0; }
+        if max_mobs < 0 { max_mobs = 0; }
+        if spawn_rate_seconds < 0.0 { spawn_rate_seconds = 0.0; }
+
+        rng = rng_seed(entity.id);
+        navmesh_triangle_hint = 0;
+        respawn_timer_remaining_seconds = 0.0;
+        respawn_timer_active = false;
+        missing_prefab_warning_logged = false;
+        missing_navmesh_warning_logged = false;
+
+        was_night_last_frame = false;
+        manager := get_game_manager();
+        if manager != null {
+            was_night_last_frame = manager->is_night_time();
+        }
+
+        if !Game.is_server() return;
+
+        spawn_to_target_immediately(get_target_count_for_phase(was_night_last_frame));
+    }
+
+    ao_update :: method(dt: float) {
+        if !Game.is_server() return;
+
+        prune_spawned_mobs();
+
+        manager := get_game_manager();
+        is_night := false;
+        if manager != null {
+            is_night = manager->is_night_time();
+        }
+
+        if is_night != was_night_last_frame {
+            if is_night {
+                on_night_started();
+            } else {
+                on_night_ended();
+            }
+            was_night_last_frame = is_night;
+        }
+
+        target_count := get_target_count_for_phase(is_night);
+        if spawned_mobs.count >= target_count {
+            respawn_timer_active = false;
+            respawn_timer_remaining_seconds = 0.0;
+            return;
+        }
+
+        if !respawn_timer_active {
+            respawn_timer_active = true;
+            respawn_timer_remaining_seconds = spawn_rate_seconds;
+        }
+
+        if respawn_timer_remaining_seconds > 0.0 {
+            respawn_timer_remaining_seconds -= dt;
+        }
+
+        if respawn_timer_remaining_seconds > 0.0 return;
+
+        if try_spawn_one_mob() {
+            if spawned_mobs.count < target_count {
+                respawn_timer_remaining_seconds = spawn_rate_seconds;
+                respawn_timer_active = true;
+            } else {
+                respawn_timer_remaining_seconds = 0.0;
+                respawn_timer_active = false;
+            }
+            return;
+        }
+
+        // Keep retrying at spawn rate when a spawn attempt fails (for example: no valid navmesh).
+        respawn_timer_remaining_seconds = spawn_rate_seconds;
+        respawn_timer_active = true;
+    }
+
+    ao_end :: method() {
+        if !Game.is_server() return;
+        destroy_all_spawned_mobs();
+    }
+
+    get_target_count_for_phase :: method(is_night: bool) -> s64 {
+        if !is_night return max_mobs;
+        return max_mobs * 2;
+    }
+
+    on_night_started :: method() {
+        spawn_to_target_immediately(get_target_count_for_phase(true));
+        respawn_timer_active = false;
+        respawn_timer_remaining_seconds = 0.0;
+    }
+
+    on_night_ended :: method() {
+        destroy_all_spawned_mobs();
+        spawn_to_target_immediately(get_target_count_for_phase(false));
+        respawn_timer_active = false;
+        respawn_timer_remaining_seconds = 0.0;
+    }
+
+    spawn_to_target_immediately :: method(target_count: s64) {
+        if target_count <= 0 return;
+
+        attempts: s64 = 0;
+        max_attempts := max(target_count * 4, 4);
+        while spawned_mobs.count < target_count && attempts < max_attempts {
+            if !try_spawn_one_mob() {
+                attempts += 1;
+                continue;
+            }
+            attempts += 1;
+        }
+    }
+
+    prune_spawned_mobs :: method() {
+        i: s64 = 0;
+        while i < spawned_mobs.count {
+            mob_entity := spawned_mobs[i];
+            if mob_entity == null || !#alive(mob_entity) {
+                spawned_mobs->unordered_remove_by_index(i);
+                continue;
+            }
+            i += 1;
+        }
+    }
+
+    destroy_all_spawned_mobs :: method() {
+        for mob_entity: spawned_mobs {
+            if mob_entity == null continue;
+            if !#alive(mob_entity) continue;
+            mob_entity->destroy();
+        }
+        spawned_mobs->clear();
+    }
+
+    try_spawn_one_mob :: method() -> bool {
+        prefab_path := mob_prefab_path;
+        if prefab_path == "" {
+            if log_spawn_warnings && !missing_prefab_warning_logged {
+                missing_prefab_warning_logged = true;
+                log_info("MobSpawner missing mob_prefab_path on entity %.", {entity.id});
+            }
+            return false;
+        }
+
+        prefab := get_asset(Prefab_Asset, prefab_path);
+        if prefab == null {
+            if log_spawn_warnings && !missing_prefab_warning_logged {
+                missing_prefab_warning_logged = true;
+                log_info("MobSpawner could not load prefab at path '%'.", {prefab_path});
+            }
+            return false;
+        }
+        missing_prefab_warning_logged = false;
+
+        navmesh := resolve_spawn_navmesh();
+        if navmesh == null {
+            if log_spawn_warnings && !missing_navmesh_warning_logged {
+                missing_navmesh_warning_logged = true;
+                log_info("MobSpawner has no navmesh assigned/fallback on entity %.", {entity.id});
+            }
+            return false;
+        }
+        missing_navmesh_warning_logged = false;
+
+        desired_pos := sample_spawn_position_in_radius();
+        spawn_pos: v2;
+        hint_as_int := navmesh_triangle_hint.(int);
+        if !navmesh->try_find_closest_point_on_navmesh(desired_pos, ref spawn_pos, ref hint_as_int) {
+            return false;
+        }
+        navmesh_triangle_hint = hint_as_int.(s64);
+
+        spawned_entity := Scene.instantiate(prefab);
+        if spawned_entity == null return false;
+
+        spawned_entity->set_local_position(spawn_pos);
+        spawned_mobs->append(spawned_entity);
+        return true;
+    }
+
+    resolve_spawn_navmesh :: method() -> Navmesh {
+        if spawn_navmesh != null return spawn_navmesh;
+
+        manager := get_game_manager();
+        if manager != null {
+            return manager.player_navmesh;
+        }
+
+        return null;
+    }
+
+    sample_spawn_position_in_radius :: method() -> v2 {
+        center := entity.world_position;
+        angle := rng_range_float(ref rng, 0.0, 6.2831853);
+        radius_t := sqrt(rng_range_float(ref rng, 0.0, 1.0));
+        dist := radius_t * spawn_radius;
+
+        return v2{
+            center.x + cos(angle) * dist,
+            center.y + sin(angle) * dist
+        };
+    }
+}

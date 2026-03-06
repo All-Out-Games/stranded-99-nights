@@ -1,0 +1,110 @@
+RAN114_Tentacle.png
+	size: 2048, 2048
+	filter: Linear, Linear
+VFX/hit_effect1
+	bounds: 1031, 721, 118, 123
+	offsets: 1, 1, 120, 124
+VFX/hit_effect2
+	bounds: 463, 1307, 157, 162
+	offsets: 1, 1, 159, 163
+	rotate: 90
+VFX/hit_effect3
+	bounds: 990, 850, 173, 181
+	offsets: 1, 1, 175, 182
+blood/circular_blood_spurt_1
+	bounds: 815, 249, 274, 251
+	offsets: 1, 1, 276, 253
+	rotate: 90
+blood/circular_blood_spurt_2
+	bounds: 891, 1735, 306, 281
+	offsets: 1, 1, 308, 283
+	rotate: 90
+blood/circular_blood_spurt_3
+	bounds: 836, 1316, 317, 292
+	offsets: 1, 1, 319, 294
+	rotate: 90
+blood/directional_blood_spurt_1
+	bounds: 637, 1470, 189, 163
+	offsets: 1, 1, 191, 165
+blood/directional_blood_spurt_2
+	bounds: 260, 1303, 197, 157
+	offsets: 1, 1, 199, 159
+blood/directional_blood_spurt_3
+	bounds: 631, 1311, 199, 153
+	offsets: 1, 1, 201, 155
+blood/upwards_blood_spurt_1
+	bounds: 990, 1037, 273, 200
+	offsets: 1, 1, 275, 202
+	rotate: 90
+blood/upwards_blood_spurt_2
+	bounds: 815, 529, 304, 210
+	offsets: 1, 1, 306, 212
+	rotate: 90
+blood/upwards_blood_spurt_3
+	bounds: 567, 20, 317, 213
+	offsets: 1, 1, 319, 215
+eye_stalk_1
+	bounds: 177, 690, 248, 603
+eye_stalk_2
+	bounds: 6, 1299, 248, 742
+	offsets: 0, 13, 248, 755
+eye_stalk_closed_skin
+	bounds: 418, 8, 126, 94
+	offsets: 1, 1, 128, 96
+seawge_frames/1
+	bounds: 260, 1466, 575, 141
+	offsets: 1, 1, 577, 143
+	rotate: 90
+seawge_frames/2
+	bounds: 412, 108, 576, 149
+	offsets: 1, 1, 578, 151
+	rotate: 90
+seawge_frames/3
+	bounds: 431, 730, 567, 147
+	offsets: 1, 1, 569, 149
+	rotate: 90
+seawge_frames/water_drop_1
+	bounds: 213, 24, 27, 60
+	offsets: 1, 1, 29, 62
+seawge_frames/water_drop_2
+	bounds: 279, 36, 28, 48
+	offsets: 1, 1, 30, 49
+seawge_frames/water_drop_3
+	bounds: 313, 49, 35, 99
+	offsets: 1, 1, 37, 100
+	rotate: 90
+seawge_frames/water_splash0000
+	bounds: 890, 7, 232, 236
+	offsets: 1, 1, 234, 238
+seawge_frames/water_splash0001
+	bounds: 637, 1639, 248, 402
+	offsets: 1, 1, 250, 403
+seawge_frames/water_splash0002
+	bounds: 567, 239, 485, 242
+	offsets: 1, 1, 487, 244
+	rotate: 90
+seawge_frames/water_splash0003
+	bounds: 407, 1470, 571, 224
+	offsets: 1, 1, 573, 226
+	rotate: 90
+seawge_frames/water_splash0004
+	bounds: 6, 666, 627, 165
+	offsets: 1, 1, 629, 167
+	rotate: 90
+seawge_frames/water_splash0005
+	bounds: 213, 90, 594, 193
+	offsets: 1, 1, 596, 195
+	rotate: 90
+seawge_frames/water_splash_2a
+	bounds: 246, 32, 27, 52
+	offsets: 1, 1, 29, 54
+seawge_frames/water_splash_2b
+	bounds: 6, 6, 22, 21
+	offsets: 1, 1, 24, 23
+	rotate: 90
+tentacle_1
+	bounds: 6, 34, 201, 626
+	offsets: 0, 12, 201, 638
+tentacle_2
+	bounds: 584, 839, 400, 462
+	offsets: 0, 15, 400, 477

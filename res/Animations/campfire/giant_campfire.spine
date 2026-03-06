@@ -1,0 +1,254 @@
+{
+"skeleton": { "hash": "sj5HonitjuM", "spine": "4.0.63", "x": -264.47, "y": -150.64, "width": 524, "height": 285 },
+"bones": [
+	{ "name": "root" },
+	{ "name": "position", "parent": "root" },
+	{ "name": "fire", "parent": "position" },
+	{ "name": "fire2", "parent": "position" },
+	{ "name": "fire3", "parent": "position" }
+],
+"slots": [
+	{ "name": "misc/giant_campfire/giant_campfire", "bone": "position", "attachment": "misc/giant_campfire/giant_campfire" },
+	{ "name": "misc/giant_campfire/fire1", "bone": "fire" },
+	{ "name": "misc/giant_campfire/fire2", "bone": "fire2" },
+	{ "name": "misc/giant_campfire/fire3", "bone": "fire3" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"misc/giant_campfire/fire1": {
+				"misc/giant_campfire/fire1": { "x": 4.62, "y": 193.21, "width": 299, "height": 393 },
+				"misc/giant_campfire/fire2": { "x": 4.62, "y": 182.46, "width": 273, "height": 389 },
+				"misc/giant_campfire/fire3": { "x": 4.62, "y": 199.18, "width": 320, "height": 420 }
+			},
+			"misc/giant_campfire/fire2": {
+				"misc/giant_campfire/fire1": { "x": 4.62, "y": 193.21, "width": 299, "height": 393 },
+				"misc/giant_campfire/fire2": { "x": 4.62, "y": 182.46, "width": 273, "height": 389 },
+				"misc/giant_campfire/fire3": { "x": 4.62, "y": 199.18, "width": 320, "height": 420 }
+			},
+			"misc/giant_campfire/fire3": {
+				"misc/giant_campfire/fire1": { "x": 4.62, "y": 193.21, "width": 299, "height": 393 },
+				"misc/giant_campfire/fire2": { "x": 4.62, "y": 182.46, "width": 273, "height": 389 },
+				"misc/giant_campfire/fire3": { "x": 4.62, "y": 199.18, "width": 320, "height": 420 }
+			},
+			"misc/giant_campfire/giant_campfire": {
+				"misc/giant_campfire/giant_campfire": { "x": -2.47, "y": -8.14, "width": 524, "height": 285 }
+			}
+		}
+	}
+],
+"animations": {
+	"1": {
+		"slots": {
+			"misc/giant_campfire/fire1": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire1" },
+					{ "time": 0.1, "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.2, "name": "misc/giant_campfire/fire3" }
+				]
+			},
+			"misc/giant_campfire/fire2": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.1, "name": "misc/giant_campfire/fire3" },
+					{ "time": 0.2, "name": "misc/giant_campfire/fire1" }
+				]
+			},
+			"misc/giant_campfire/fire3": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire3" },
+					{ "time": 0.0667, "name": "misc/giant_campfire/fire1" },
+					{ "time": 0.1667, "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.2667, "name": "misc/giant_campfire/fire2" }
+				]
+			}
+		},
+		"bones": {
+			"fire": {
+				"translate": [
+					{ "x": 105.81, "y": 62.64 }
+				],
+				"scale": [
+					{ "x": 0.15, "y": 0.15 }
+				]
+			},
+			"fire2": {
+				"translate": [
+					{ "x": -75.12, "y": 53.25 }
+				],
+				"scale": [
+					{ "x": 0.25, "y": 0.25 }
+				]
+			},
+			"fire3": {
+				"translate": [
+					{ "x": 22.75, "y": -12.26 }
+				],
+				"scale": [
+					{ "x": 0.3, "y": 0.3 }
+				]
+			}
+		}
+	},
+	"2": {
+		"slots": {
+			"misc/giant_campfire/fire1": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire1" },
+					{ "time": 0.1, "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.2, "name": "misc/giant_campfire/fire3" }
+				]
+			},
+			"misc/giant_campfire/fire2": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.1, "name": "misc/giant_campfire/fire3" },
+					{ "time": 0.2, "name": "misc/giant_campfire/fire1" }
+				]
+			},
+			"misc/giant_campfire/fire3": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire3" },
+					{ "time": 0.0667, "name": "misc/giant_campfire/fire1" },
+					{ "time": 0.1667, "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.2667, "name": "misc/giant_campfire/fire2" }
+				]
+			}
+		},
+		"bones": {
+			"fire": {
+				"translate": [
+					{ "x": 102.44, "y": 40.97 }
+				],
+				"scale": [
+					{ "x": 0.3, "y": 0.3 }
+				]
+			},
+			"fire2": {
+				"translate": [
+					{ "x": -66.46, "y": 27.84 }
+				],
+				"scale": [
+					{ "x": 0.35, "y": 0.35 }
+				]
+			},
+			"fire3": {
+				"translate": [
+					{ "x": 8.33, "y": -26.95 }
+				],
+				"scale": [
+					{ "x": 0.5, "y": 0.5 }
+				]
+			}
+		}
+	},
+	"3": {
+		"slots": {
+			"misc/giant_campfire/fire1": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire1" },
+					{ "time": 0.1, "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.2, "name": "misc/giant_campfire/fire3" },
+					{ "time": 0.2667, "name": "misc/giant_campfire/fire3" }
+				]
+			}
+		}
+	},
+	"4": {
+		"slots": {
+			"misc/giant_campfire/fire1": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire1" },
+					{ "time": 0.1, "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.2, "name": "misc/giant_campfire/fire3" }
+				]
+			},
+			"misc/giant_campfire/fire2": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.1, "name": "misc/giant_campfire/fire3" },
+					{ "time": 0.2, "name": "misc/giant_campfire/fire1" },
+					{ "time": 0.2667, "name": "misc/giant_campfire/fire1" }
+				]
+			}
+		},
+		"bones": {
+			"fire": {
+				"translate": [
+					{ "time": 0.2, "x": 6.67 }
+				],
+				"scale": [
+					{ "x": 1.2, "y": 1.2 }
+				]
+			},
+			"fire2": {
+				"translate": [
+					{ "x": 33.34, "y": -8.33 }
+				]
+			}
+		}
+	},
+	"5": {
+		"slots": {
+			"misc/giant_campfire/fire1": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire1" },
+					{ "time": 0.1, "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.2, "name": "misc/giant_campfire/fire3" }
+				]
+			},
+			"misc/giant_campfire/fire2": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.1, "name": "misc/giant_campfire/fire3" },
+					{ "time": 0.2, "name": "misc/giant_campfire/fire1" }
+				]
+			},
+			"misc/giant_campfire/fire3": {
+				"attachment": [
+					{ "name": "misc/giant_campfire/fire3" },
+					{ "time": 0.1, "name": "misc/giant_campfire/fire1" },
+					{ "time": 0.2, "name": "misc/giant_campfire/fire2" },
+					{ "time": 0.2667, "name": "misc/giant_campfire/fire1" }
+				]
+			}
+		},
+		"bones": {
+			"fire": {
+				"translate": [
+					{ "x": -67.68, "y": -3.08 }
+				],
+				"scale": [
+					{ "x": 1.4, "y": 1.4 }
+				]
+			},
+			"fire2": {
+				"translate": [
+					{ "x": 70.26, "y": 7.05 }
+				],
+				"scale": [
+					{ "x": 1.6, "y": 1.4 }
+				]
+			},
+			"fire3": {
+				"translate": [
+					{ "y": -58.46 }
+				],
+				"scale": [
+					{ "x": 1.4, "y": 1.4 }
+				]
+			}
+		}
+	},
+	"off": {
+		"bones": {
+			"fire3": {
+				"translate": [
+					{ "time": 0.0333 }
+				]
+			}
+		}
+	}
+}
+}

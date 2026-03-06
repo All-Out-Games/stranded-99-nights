@@ -32,35 +32,28 @@ Growing_Projectile :: class : Component {
             }
 
             pos := entity.world_position + v2{0, -0.5};
-            nearby: [..]Player;
-            Scene.get_all_components_in_range(pos, radius, ref nearby);
+            nearby_mobs: [..]Mob;
+            Scene.get_all_components_in_range(pos, radius, ref nearby_mobs);
+            for hit_mob: nearby_mobs {
+                if !hit_mob->is_alive() continue;
 
-            for hit_player: nearby {
-                if hit_player.entity.id == owner_id continue;
-
-                // Check if already hit
                 already_hit := false;
                 j := 0;
                 while j < hit_id_count {
-                    if hit_ids[j] == hit_player.entity.id {
+                    if hit_ids[j] == hit_mob.entity.id {
                         already_hit = true;
                     }
                     j += 1;
                 }
                 if already_hit continue;
 
-                // Record hit
                 if hit_id_count < 32 {
-                    hit_ids[hit_id_count] = hit_player.entity.id;
+                    hit_ids[hit_id_count] = hit_mob.entity.id;
                     hit_id_count += 1;
                 }
 
-                hit_player.health -= damage;
-                if hit_player.health < 0 {
-                    hit_player.health = 0;
-                }
+                mob_apply_damage(hit_mob, damage);
 
-                // Grow on hit
                 hit_count += 1;
                 damage = damage * 1.25;
                 cur_scale := entity.local_scale;

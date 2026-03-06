@@ -1,0 +1,34 @@
+import "core:ao"
+
+CraftingStationInteractable :: class : Interactable {
+    prompt_text: string @ao_serialize;
+
+    ao_start :: method() {
+        this->set_listener(this);
+
+        if radius <= 0.0 {
+            radius = 1.8;
+        }
+
+        if prompt_text.count <= 0 {
+            prompt_text = "Craft";
+        }
+
+        this->set_text(prompt_text);
+        this->set_hold_text("Opening...");
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if player == null return false;
+        return !player.crafting_ui_open;
+    }
+
+    on_interact :: method(player: Player) {
+        if player == null return;
+
+        player.beacon_ui_open = false;
+        player.active_beacon = null;
+        player.crafting_ui_open = true;
+        player.selected_crafting_recipe_index = CraftingSystem.clamp_recipe_index(player.selected_crafting_recipe_index);
+    }
+}

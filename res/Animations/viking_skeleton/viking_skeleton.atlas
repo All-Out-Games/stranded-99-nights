@@ -1,0 +1,140 @@
+viking_skeleton.png
+	size: 604, 604
+	filter: Linear, Linear
+stunned_stars/stunned_ring
+	bounds: 202, 27, 151, 36
+	offsets: 1, 1, 153, 38
+	rotate: 90
+stunned_stars/stunned_star
+	bounds: 517, 280, 41, 38
+	offsets: 1, 1, 43, 40
+viking skeleton/run/leg_L_run1
+	bounds: 442, 135, 71, 59
+	offsets: 1, 1, 73, 61
+	rotate: 90
+viking skeleton/run/leg_L_run2
+	bounds: 302, 26, 75, 48
+	offsets: 1, 1, 77, 50
+viking skeleton/run/leg_L_run3
+	bounds: 442, 76, 57, 70
+	offsets: 1, 1, 59, 72
+	rotate: 90
+viking skeleton/run/leg_L_run4
+	bounds: 240, 68, 60, 56
+	offsets: 1, 1, 62, 58
+viking skeleton/run/leg_R_run1
+	bounds: 503, 149, 57, 67
+	offsets: 1, 1, 59, 69
+	rotate: 90
+viking skeleton/run/leg_R_run2
+	bounds: 302, 76, 78, 48
+	offsets: 1, 1, 80, 50
+viking skeleton/run/leg_R_run3
+	bounds: 519, 229, 79, 49
+	offsets: 1, 1, 81, 51
+viking skeleton/run/leg_R_run4
+	bounds: 432, 29, 45, 74
+	offsets: 1, 1, 47, 75
+	rotate: 90
+viking skeleton/stand/helmet
+	bounds: 157, 300, 197, 99
+	offsets: 1, 1, 199, 101
+viking skeleton/stand/hip
+	bounds: 2, 78, 88, 55
+	offsets: 1, 1, 90, 57
+	rotate: 90
+viking skeleton/stand/left arm
+	bounds: 330, 405, 119, 137
+	offsets: 1, 1, 121, 139
+	rotate: 90
+viking skeleton/stand/leg_L_stand_M
+	bounds: 529, 526, 48, 76
+viking skeleton/stand/leg_R_stand_M
+	bounds: 100, 3, 48, 70
+viking skeleton/stand/ribcage
+	bounds: 264, 203, 95, 82
+	rotate: 90
+viking skeleton/stand/shadow
+	bounds: 483, 277, 128, 32
+	offsets: 1, 1, 130, 34
+	rotate: 90
+viking skeleton/stand/skull
+	bounds: 469, 407, 127, 117
+	offsets: 1, 1, 129, 119
+viking skeleton/stand/swordhand
+	bounds: 162, 477, 166, 125
+	offsets: 1, 1, 168, 127
+viking skeleton/stand/visor
+	bounds: 382, 47, 77, 48
+	offsets: 1, 1, 79, 50
+	rotate: 90
+viking skeleton/supporting assets/earth
+	bounds: 264, 126, 176, 75
+	offsets: 1, 1, 178, 77
+viking skeleton/supporting assets/earth back
+	bounds: 348, 208, 169, 65
+	offsets: 1, 4, 171, 70
+viking skeleton/supporting assets/earth front
+	bounds: 156, 2, 176, 44
+	offsets: 1, 1, 178, 46
+	rotate: 90
+viking skeleton/supporting assets/eye round
+	bounds: 514, 70, 77, 56
+	offsets: 1, 1, 79, 58
+	rotate: 90
+viking skeleton/supporting assets/hand crawling left
+	bounds: 92, 75, 96, 57
+	offsets: 1, 1, 98, 59
+	rotate: 90
+viking skeleton/supporting assets/hand crawling right
+	bounds: 2, 16, 96, 57
+	offsets: 1, 1, 98, 59
+viking skeleton/supporting assets/hand emerging
+	bounds: 517, 320, 85, 79
+	offsets: 1, 1, 87, 81
+	rotate: 90
+viking skeleton/supporting assets/hand pile of bones
+	bounds: 242, 404, 71, 79
+	offsets: 1, 1, 73, 81
+	rotate: 90
+viking skeleton/supporting assets/hit 1
+	bounds: 92, 173, 62, 98
+	offsets: 1, 1, 64, 100
+viking skeleton/supporting assets/hit 2
+	bounds: 579, 542, 20, 26
+	offsets: 1, 1, 22, 28
+viking skeleton/supporting assets/left arm hit
+	bounds: 2, 273, 153, 126
+	offsets: 1, 1, 155, 128
+viking skeleton/supporting assets/left arm stunned
+	bounds: 157, 180, 105, 118
+	offsets: 1, 1, 107, 120
+viking skeleton/supporting assets/pile of bones single bone
+	bounds: 2, 168, 103, 88
+	offsets: 1, 1, 105, 90
+	rotate: 90
+viking skeleton/supporting assets/skelli fading eye
+	bounds: 579, 529, 12, 11
+	offsets: 1, 1, 14, 13
+viking skeleton/supporting assets/skull no eye
+	bounds: 356, 275, 128, 125
+	offsets: 1, 1, 130, 127
+	rotate: 90
+viking skeleton/supporting assets/spirit
+	bounds: 162, 401, 74, 78
+	offsets: 1, 1, 76, 80
+	rotate: 90
+viking skeleton/supporting assets/stunned eye
+	bounds: 59, 134, 32, 28
+	offsets: 1, 1, 34, 30
+	rotate: 90
+viking skeleton/supporting assets/sword
+	bounds: 330, 526, 76, 197
+	offsets: 1, 1, 78, 199
+	rotate: 90
+viking skeleton/supporting assets/sword swing
+	bounds: 2, 401, 158, 201
+	offsets: 6, 1, 165, 213
+viking skeleton/supporting assets/tear
+	bounds: 579, 570, 22, 32
+	offsets: 1, 2, 24, 35

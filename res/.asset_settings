@@ -1,5 +1,11 @@
 [
   {
+    "id": "UI/BeaconImage.png",
+    "texture": {
+      "pixels_per_unit": 250
+    }
+  },
+  {
     "id": "palm_tree_a9dcc5b27d6c0f09.png"
   }
 ]

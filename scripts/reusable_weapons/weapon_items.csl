@@ -1,4 +1,4 @@
-WEAPON_COUNT :: 27;
+WEAPON_COUNT :: 30;
 AMMO_TYPE_COUNT :: 10;
 
 g_weapon_item_defs: [WEAPON_COUNT]Item_Definition;
@@ -40,6 +40,9 @@ weapon_type_to_index :: proc(wt: Weapon_Type) -> s64 {
         case .WIND_BLASTER:           return 24;
         case .STORMS_EYE:             return 25;
         case .HYDRO_CANNON:           return 26;
+        case .CROSSBOW:               return 27;
+        case .SPEAR:                  return 28;
+        case .SWORD:                  return 29;
     }
     return -1;
 }
@@ -167,6 +170,9 @@ init_weapon_items :: proc() {
     register_weapon(.WIND_BLASTER);
     register_weapon(.STORMS_EYE);
     register_weapon(.HYDRO_CANNON);
+    register_weapon(.CROSSBOW);
+    register_weapon(.SPEAR);
+    register_weapon(.SWORD);
 
     // Load fire sounds for each weapon
     load_fire_sounds();
@@ -269,6 +275,9 @@ load_fire_sounds :: proc() {
 
     // Hydro Cannon (1 sound)
     load_single_sound(.HYDRO_CANNON, "reusable_weapons/sounds/reusable-weapons/waterballoon_rpg_shoot.wav");
+
+    // Crossbow: match Ray Gun fire audio
+    load_single_sound(.CROSSBOW, "reusable_weapons/sounds/reusable-weapons/buzzshot_shoot.wav");
 }
 
 load_sound_range :: proc(wt: Weapon_Type, prefix: string, count: s64) {
@@ -322,6 +331,9 @@ get_weapon_type_for_item :: proc(item_def: Item_Definition) -> Weapon_Type {
                 case 24: return .WIND_BLASTER;
                 case 25: return .STORMS_EYE;
                 case 26: return .HYDRO_CANNON;
+                case 27: return .CROSSBOW;
+                case 28: return .SPEAR;
+                case 29: return .SWORD;
             }
         }
         i += 1;
@@ -337,6 +349,39 @@ get_weapon_item_def :: proc(wt: Weapon_Type) -> Item_Definition {
 
 get_ammo_def_for_weapon :: proc(wt: Weapon_Type) -> Item_Definition {
     config := get_weapon_config(wt);
+
+    if config.ammo_item_id != "" {
+        defn := ItemManager.TryFindItem(config.ammo_item_id);
+        if defn != null return defn;
+        return try_find_reusable_weapon_item_def_by_id(config.ammo_item_id);
+    }
+
     if config.ammo_type_index < 0 return null;
     return g_ammo_item_defs[config.ammo_type_index];
+}
+
+try_find_reusable_weapon_item_def_by_id :: proc(item_id: string) -> Item_Definition {
+    if item_id.count <= 0 return null;
+
+    init_weapon_items();
+
+    i := 0;
+    while i < WEAPON_COUNT {
+        defn := g_weapon_item_defs[i];
+        if defn != null && defn->get_id() == item_id {
+            return defn;
+        }
+        i += 1;
+    }
+
+    i = 0;
+    while i < AMMO_TYPE_COUNT {
+        defn := g_ammo_item_defs[i];
+        if defn != null && defn->get_id() == item_id {
+            return defn;
+        }
+        i += 1;
+    }
+
+    return null;
 }

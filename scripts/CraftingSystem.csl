@@ -12,18 +12,36 @@ Crafting_Recipe :: class {
 }
 
 CraftingSystem :: struct {
+    resolve_item_def :: proc(item_id: string) -> Item_Definition {
+        defn := ItemManager.TryFindItem(item_id);
+        if defn != null return defn;
+
+        // Weapon item definitions come from reusable_weapons.
+        if item_id == "spear" {
+            return get_weapon_item_def(.SPEAR);
+        }
+        if item_id == "sword" {
+            return get_weapon_item_def(.SWORD);
+        }
+        if item_id == "crossbow" {
+            return get_weapon_item_def(.CROSSBOW);
+        }
+
+        return null;
+    }
+
     get_primary_recipe_icon :: proc(recipe: Crafting_Recipe) -> Texture_Asset {
         if recipe == null return null;
 
         if recipe.outputs.count > 0 {
-            out_def := ItemManager.TryFindItem(recipe.outputs[0].item_id);
+            out_def := CraftingSystem.resolve_item_def(recipe.outputs[0].item_id);
             if out_def != null {
                 return out_def->get_icon();
             }
         }
 
         if recipe.inputs.count > 0 {
-            in_def := ItemManager.TryFindItem(recipe.inputs[0].item_id);
+            in_def := CraftingSystem.resolve_item_def(recipe.inputs[0].item_id);
             if in_def != null {
                 return in_def->get_icon();
             }
@@ -69,34 +87,49 @@ CraftingSystem :: struct {
             initted = true;
             recipes->clear();
 
-            // Starter progression recipes for gathered wood.
-            r1 := CraftingSystem.make_recipe(
-                "saw_planks",
-                "Saw Planks",
-                "Turn raw logs into usable planks."
-            );
-            CraftingSystem.add_input(r1, "wood", 3);
-            CraftingSystem.add_output(r1, "plank", 2);
-            recipes->append(r1);
+            
 
-            r2 := CraftingSystem.make_recipe(
-                "whittle_sticks",
-                "Whittle Sticks",
-                "Carve sticks from planks."
+            r4 := CraftingSystem.make_recipe(
+                "craft_spear",
+                "Spear",
+                "A simple melee weapon with stronger close-range damage."
             );
-            CraftingSystem.add_input(r2, "plank", 1);
-            CraftingSystem.add_output(r2, "stick", 2);
-            recipes->append(r2);
+            CraftingSystem.add_input(r4, "wood", 7);
+            CraftingSystem.add_input(r4, "scrap", 3);
+            CraftingSystem.add_output(r4, "spear", 1);
+            recipes->append(r4);
 
-            r3 := CraftingSystem.make_recipe(
-                "bundle_kindling",
-                "Bundle Kindling",
-                "Pack sticks into quick-to-use fuel."
+            r5 := CraftingSystem.make_recipe(
+                "craft_sword",
+                "Sword",
+                "A heavier melee weapon with stronger strikes."
             );
-            CraftingSystem.add_input(r3, "wood", 1);
-            CraftingSystem.add_input(r3, "stick", 2);
-            CraftingSystem.add_output(r3, "plank", 1);
-            recipes->append(r3);
+            CraftingSystem.add_input(r5, "wood", 10);
+            CraftingSystem.add_input(r5, "scrap", 10);
+            CraftingSystem.add_output(r5, "sword", 1);
+            recipes->append(r5);
+
+            r6 := CraftingSystem.make_recipe(
+                "craft_crossbow",
+                "Crossbow",
+                "A ranged weapon that fires arrows."
+            );
+            CraftingSystem.add_input(r6, "wood", 10);
+            CraftingSystem.add_input(r6, "fiber", 4);
+            CraftingSystem.add_input(r6, "scrap", 6);
+            CraftingSystem.add_output(r6, "crossbow", 1);
+            recipes->append(r6);
+
+            r7 := CraftingSystem.make_recipe(
+                "craft_arrow_bundle",
+                "Arrow x10",
+                "Craft 10 arrows for crossbow ammo."
+            );
+            CraftingSystem.add_input(r7, "wood", 2);
+            CraftingSystem.add_input(r7, "scrap", 1);
+            CraftingSystem.add_input(r7, "fiber", 1);
+            CraftingSystem.add_output(r7, "arrow", 10);
+            recipes->append(r7);
         }
 
         return recipes;
@@ -171,7 +204,7 @@ CraftingSystem :: struct {
         inv := player.default_inventory;
 
         for input: recipe.inputs {
-            input_def := ItemManager.TryFindItem(input.item_id);
+            input_def := CraftingSystem.resolve_item_def(input.item_id);
             if input_def == null return false;
 
             have := CraftingSystem.get_item_count_in_inventory(inv, input_def);
@@ -181,7 +214,7 @@ CraftingSystem :: struct {
         }
 
         for output: recipe.outputs {
-            output_def := ItemManager.TryFindItem(output.item_id);
+            output_def := CraftingSystem.resolve_item_def(output.item_id);
             if output_def == null return false;
 
             room := Items.calculate_room_in_inventory_for_item(output_def, inv);
@@ -204,7 +237,7 @@ CraftingSystem :: struct {
         inv := player.default_inventory;
 
         for input: recipe.inputs {
-            input_def := ItemManager.TryFindItem(input.item_id);
+            input_def := CraftingSystem.resolve_item_def(input.item_id);
             if input_def == null {
                 Notifier.notify(player, "Recipe item is missing: %", {input.item_id});
                 return false;
@@ -218,7 +251,7 @@ CraftingSystem :: struct {
         }
 
         for output: recipe.outputs {
-            output_def := ItemManager.TryFindItem(output.item_id);
+            output_def := CraftingSystem.resolve_item_def(output.item_id);
             if output_def == null {
                 Notifier.notify(player, "Recipe output is missing: %", {output.item_id});
                 return false;
@@ -232,7 +265,7 @@ CraftingSystem :: struct {
         }
 
         for input: recipe.inputs {
-            input_def := ItemManager.TryFindItem(input.item_id);
+            input_def := CraftingSystem.resolve_item_def(input.item_id);
             ok := CraftingSystem.consume_item_from_inventory(inv, input_def, input.count);
             if !ok {
                 Notifier.notify(player, "Craft failed while consuming materials.", {});
@@ -241,7 +274,7 @@ CraftingSystem :: struct {
         }
 
         for output: recipe.outputs {
-            output_def := ItemManager.TryFindItem(output.item_id);
+            output_def := CraftingSystem.resolve_item_def(output.item_id);
             new_item := Items.create_item_instance(output_def, output.count);
             if new_item == null {
                 Notifier.notify(player, "Craft failed while creating output item.", {});
@@ -265,11 +298,6 @@ CraftingSystem :: struct {
         bs := UI.default_button_settings();
         bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_5.png");
         bs.press_scaling = 0.35;
-
-        toggle_rect := UI.get_safe_screen_rect()->top_right_rect()->grow(34, 130, 34, 130)->offset(-20, -130);
-        if UI.button(toggle_rect, bs, ts, "Crafting").clicked {
-            player.crafting_ui_open = !player.crafting_ui_open;
-        }
 
         if !player.crafting_ui_open return;
 
@@ -416,7 +444,7 @@ CraftingSystem :: struct {
 
         for input: selected_recipe.inputs {
             line_rect := details_bg->cut_top(46)->inset(2);
-            input_def := ItemManager.TryFindItem(input.item_id);
+            input_def := CraftingSystem.resolve_item_def(input.item_id);
             have: s64 = 0;
             display_name := input.item_id;
             input_icon: Texture_Asset;
@@ -451,7 +479,7 @@ CraftingSystem :: struct {
 
         for output: selected_recipe.outputs {
             out_line := details_bg->cut_top(46)->inset(2);
-            output_def := ItemManager.TryFindItem(output.item_id);
+            output_def := CraftingSystem.resolve_item_def(output.item_id);
             output_name := output.item_id;
             output_icon: Texture_Asset;
             if output_def != null {

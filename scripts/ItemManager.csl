@@ -18,6 +18,10 @@ ItemManager :: struct {
 
 
             wood_icon := get_asset(Texture_Asset, "Items/Wood.png");
+            scrap_icon := get_asset(Texture_Asset, "Items/Scrap.png");
+            fiber_icon := get_asset(Texture_Asset, "Items/Fiber.png");
+            fish_icon := get_asset(Texture_Asset, "Items/Fish.png");
+            arrow_icon := get_asset(Texture_Asset, "Items/Arrow.png");
 
             // Wood
             wood := Items.register_item_definition(
@@ -26,6 +30,39 @@ ItemManager :: struct {
                 Item_Instance
             );
             defs->append(wood);
+
+            // Scrap
+            scrap := Items.register_item_definition(
+                {"scrap", "Scrap", scrap_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(scrap);
+
+            // Fiber
+            fiber := Items.register_item_definition(
+                {"fiber", "Fiber", fiber_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(fiber);
+
+            // Fish
+            fish := Items.register_item_definition(
+                {"fish", "Fish", fish_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(fish);
+
+            // Arrow
+            arrow := Items.register_item_definition(
+                {"arrow", "Arrow", arrow_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(arrow);
+
 
             // Crafting progression items (temporary icons until dedicated art is added).
             plank := Items.register_item_definition(

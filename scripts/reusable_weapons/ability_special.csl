@@ -1,9 +1,33 @@
-// Melee ability - universal, always available at slot 1
+BASE_MELEE_DAMAGE :: 3.0;
+BASE_MELEE_RANGE :: 2.0;
+SPEAR_MELEE_RANGE :: 3.0;
+SWORD_MELEE_RANGE :: 2.5;
+
+get_melee_damage :: proc(player: Player) -> float {
+    if player.equipped_weapon_type == .SPEAR {
+        return get_weapon_config(.SPEAR).base_damage;
+    }
+    if player.equipped_weapon_type == .SWORD {
+        return get_weapon_config(.SWORD).base_damage;
+    }
+    return BASE_MELEE_DAMAGE;
+}
+
+get_melee_range :: proc(player: Player) -> float {
+    if player.equipped_weapon_type == .SPEAR {
+        return SPEAR_MELEE_RANGE;
+    }
+    if player.equipped_weapon_type == .SWORD {
+        return SWORD_MELEE_RANGE;
+    }
+    return BASE_MELEE_RANGE;
+}
+
+// Melee ability - default primary ability when no weapon is equipped.
 Melee_Ability :: class : Ability_Base {
     on_init :: proc(ability: Ability_Base) {
         ability.name = "Melee";
         ability.icon = get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/katana.png");
-        ability.disable_keybind = true;
         ability.is_aimed_ability = false;
     }
 
@@ -14,34 +38,38 @@ Melee_Ability :: class : Ability_Base {
     on_update :: proc(ability: Ability_Base, params: ref Ability_Update_Params) {
         p := ability.player.(Player);
 
-        if params.pressed && params.can_use && ability.current_cooldown <= 0 {
+        did_activate := params.just_pressed || params.clicked;
+        if did_activate && params.can_use && ability.current_cooldown <= 0 {
+            pos := p.entity.world_position;
+            melee_range := get_melee_range(p);
+            p.melee_attack_aim_lock_until_time = get_time() + MELEE_ATTACK_AIM_LOCK_SECONDS;
+            nearest_mob, found_mob := Scene.get_closest_component_in_range(pos, melee_range, Mob);
+            if found_mob && nearest_mob != null && nearest_mob->is_alive() {
+                p->set_aim_target(nearest_mob.entity.world_position);
+            }
+
             // Trigger melee animation
-            p.animator.instance.state_machine->set_trigger("melee_AL");
-
-            // Enable katana skin briefly
-            p.animator.instance->enable_skin("weapons/katana");
-            p.animator.instance->refresh_skins();
-
-            // Play katana sound
-            sfx_desc := SFX.default_sfx_desc();
-            sfx_desc->set_position(p.entity.world_position);
-            sfx_desc.range_multiplier = 2.0;
-            SFX.play(get_asset(SFX_Asset, "reusable_weapons/sounds/reusable-weapons/katana_slash.wav"), sfx_desc);
-
-            // Damage nearby players
-            if Game.is_server() {
-                nearby: [..]Player;
-                pos := p.entity.world_position;
-                Scene.get_all_components_in_range(pos, 1.5, ref nearby);
-                for hit: nearby {
-                    if hit != null {
-                        if hit.entity.id != p.entity.id {
-                            hit.health -= 25.0;
-                            if hit.health < 0 {
-                                hit.health = 0;
-                            }
-                        }
+            if p.animator != null && p.animator.instance != null && p.animator.instance.state_machine != null {
+                melee_trigger := "melee_AL";
+                if p.equipped_weapon_type != .NONE {
+                    config := get_weapon_config(p.equipped_weapon_type);
+                    if config.fire_mode == .MELEE && config.shoot_trigger != "" {
+                        melee_trigger = config.shoot_trigger;
                     }
+                }
+                p.animator.instance.state_machine->set_trigger(melee_trigger);
+            }
+
+            // Damage nearby mobs only (co-op friendly fire disabled)
+            if Game.is_server() {
+                melee_damage := get_melee_damage(p);
+
+                nearby_mobs: [..]Mob;
+                Scene.get_all_components_in_range(pos, melee_range, ref nearby_mobs);
+                for hit_mob: nearby_mobs {
+                    if hit_mob == null continue;
+                    if !hit_mob->is_alive() continue;
+                    mob_apply_damage(hit_mob, melee_damage);
                 }
             }
 

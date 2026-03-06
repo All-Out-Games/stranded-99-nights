@@ -3,6 +3,10 @@ import "core:ao"
 Resource_Type :: enum {
     NONE;
     WOOD;
+    SCRAP;
+    FIBER;
+    FISH;
+    DRIFTRESIN;
 }
 
 ResourceNode :: class : Interactable {
@@ -55,12 +59,17 @@ ResourceNode :: class : Interactable {
     on_interact :: method(player: Player) {
         if is_depleted return;
 
-        last_harvest_time = get_time();
+        trigger_harvest_visual_pulse();
 
         if Game.is_server() {
             spawn_drop();
             set_depleted_state(true);
         }
+    }
+
+    trigger_harvest_visual_pulse :: method() {
+        if is_depleted return;
+        last_harvest_time = get_time();
     }
 
     ao_update :: method(dt: float) {
@@ -143,6 +152,9 @@ ResourceNode :: class : Interactable {
     get_resource_item_id :: method() -> string {
         switch resource_type {
             case .WOOD: return "wood";
+            case .SCRAP: return "scrap";
+            case .FIBER: return "fiber";
+            case .FISH: return "fish";
             case .NONE: return "";
         }
         return "";
@@ -158,10 +170,25 @@ ResourceNode :: class : Interactable {
         defn := get_resource_item_definition();
         if defn == null return;
 
-        spawn_position := entity.world_position;
-        if drop_spawn_radius > 0.0 {
+        spawn_center := entity.world_position;
+        spawn_radius := drop_spawn_radius;
+        use_fish_scatter := resource_type == .FISH;
+        if use_fish_scatter {
+            // Fish drops should spawn around the interactable offset anchor.
+            spawn_center += offset;
+            spawn_radius = 1.0;
+        }
+
+        spawn_position := spawn_center;
+        if spawn_radius > 0.0 {
             rng := rng_seed_time();
-            spawn_position = ItemDrops.random_point_on_circle_edge(spawn_position, drop_spawn_radius, ref rng);
+            if use_fish_scatter {
+                angle := rng_range_float(ref rng, 0.0, 1.0) * (PI * 2.0);
+                dist := sqrt(rng_range_float(ref rng, 0.0, 1.0)) * spawn_radius;
+                spawn_position = spawn_center + v2{cos(angle) * dist, sin(angle) * dist};
+            } else {
+                spawn_position = ItemDrops.random_point_on_circle_edge(spawn_center, spawn_radius, ref rng);
+            }
         }
 
         ItemDrops.spawn_from_definition(spawn_position, defn, drop_count);

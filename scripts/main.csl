@@ -1,4 +1,5 @@
 import "core:ao"
+import "core:dropped_items"
 import "reusable_weapons"
 
 ao_before_scene_load :: proc() {
@@ -21,16 +22,35 @@ ao_late_update :: proc(dt: float) {
 }
 
 
-PLAYER_LIGHT_BASE_INNER_RADIUS :: 9;
-PLAYER_LIGHT_BASE_OUTER_RADIUS :: 12;
-PLAYER_LIGHT_MIN_INNER_RADIUS :: 4;
-PLAYER_LIGHT_MIN_OUTER_RADIUS :: 6;
+PLAYER_LIGHT_BASE_INNER_RADIUS :: 12;
+PLAYER_LIGHT_BASE_OUTER_RADIUS :: 15;
+PLAYER_LIGHT_MIN_INNER_RADIUS :: 5;
+PLAYER_LIGHT_MIN_OUTER_RADIUS :: 7;
+PLAYER_LIGHT_FIXED_RADIUS :: 40.0;
 PLAYER_LIGHT_INTENSITY :: 1.0;
 PLAYER_LIGHT_COLOR := v4.{1.0, 1.0, 1.0, 1.0};
+PLAYER_CAMERA_ZOOM_OUT_MULTIPLIER :: 1.35;
+PLAYER_DAMAGE_PULSE_DURATION_SECONDS :: 0.65;
+PLAYER_DAMAGE_PULSE_OSCILLATIONS :: 7.0;
 
 CLOCK_ROTATION_LERP_STEP :: 0.35;
 CLOCK_ALPHA_LERP_STEP :: 0.03;
 RESOURCE_GATHER_SWING_INTERVAL :: 0.5;
+MELEE_IDLE_AIM_DISTANCE :: 3.0;
+MELEE_ATTACK_AIM_LOCK_SECONDS :: 0.45;
+PLAYER_DEATH_FADE_SECONDS :: 2.0;
+PLAYER_DEATH_BLACK_HOLD_SECONDS :: 2.0;
+PLAYER_DEATH_FADE_IN_SECONDS :: 2.0;
+PLAYER_DEATH_DROP_SELF_PICKUP_BLOCK_SECONDS :: 5.0;
+PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS :: 2.5;
+ISLAND1_RESPAWN_ENTITY_NAME :: "Island1Spawn";
+DEFAULT_RESPAWN_POSITION := v2.{0.0, 0.0};
+PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE :: 10.0;
+
+Death_Drop_Pickup_Block :: struct {
+    dropped_entity_id: u64;
+    expires_time: float;
+}
 
 lerp_towards :: proc(current: float, target: float, max_step: float) -> float {
     delta := target - current;
@@ -42,6 +62,83 @@ lerp_towards :: proc(current: float, target: float, max_step: float) -> float {
     return current + (delta / abs(delta)) * step;
 }
 
+get_respawn_position :: proc() -> v2 {
+    manager := get_game_manager();
+    if manager != null && manager.island1_spawn != null {
+        return manager.island1_spawn.world_position;
+    }
+
+    spawn_entity := Scene.get_entity_by_name(ISLAND1_RESPAWN_ENTITY_NAME);
+    if spawn_entity != null {
+        return spawn_entity.world_position;
+    }
+
+    return DEFAULT_RESPAWN_POSITION;
+}
+
+Player_Death_Effect :: class : Effect_Base {
+    did_respawn: bool;
+
+    effect_start :: method() {
+        player_specific.freeze_player = true;
+        did_respawn = false;
+        if player != null {
+            player->trigger_death_animation();
+        }
+    }
+
+    effect_update :: method(dt: float) {
+        elapsed := get_elapsed_time();
+        respawn_time := PLAYER_DEATH_FADE_SECONDS + PLAYER_DEATH_BLACK_HOLD_SECONDS;
+        total_time := respawn_time + PLAYER_DEATH_FADE_IN_SECONDS;
+
+        if !did_respawn && elapsed >= respawn_time {
+            did_respawn = true;
+            if Game.is_server() && player != null {
+                player.health = player.max_health;
+                player.entity->set_local_position(get_respawn_position());
+            }
+        }
+
+        if elapsed >= total_time {
+            remove_effect(false);
+            return;
+        }
+    }
+
+    effect_late_update :: method(dt: float) {
+        if player == null return;
+        if !player->is_local() return;
+
+        elapsed := get_elapsed_time();
+        fade_out_t := clamp(elapsed / PLAYER_DEATH_FADE_SECONDS, 0.0, 1.0);
+        fade_in_start := PLAYER_DEATH_FADE_SECONDS + PLAYER_DEATH_BLACK_HOLD_SECONDS;
+
+        alpha: float;
+        if elapsed < PLAYER_DEATH_FADE_SECONDS {
+            alpha = fade_out_t;
+        } else if elapsed < fade_in_start {
+            alpha = 1.0;
+        } else {
+            fade_in_t := clamp((elapsed - fade_in_start) / PLAYER_DEATH_FADE_IN_SECONDS, 0.0, 1.0);
+            alpha = 1.0 - fade_in_t;
+        }
+
+        if alpha <= 0.0 return;
+
+        UI.push_screen_draw_context();
+        defer UI.pop_draw_context();
+        screen := UI.get_screen_rect();
+        UI.quad(screen, core_globals.white_sprite, {0, 0, 0, alpha});
+    }
+
+    effect_end :: method(interrupt: bool) {
+        if player != null {
+            player->reset_death_animation();
+        }
+    }
+}
+
 Player :: class : Player_Base {
     health: float;
     max_health: float;
@@ -50,8 +147,12 @@ Player :: class : Player_Base {
     last_selected_index: s64;
     boomwheel_cannon: Boomwheel_Cannon; // only needed if using Boomwheel
     next_resource_gather_swing_time: float;
+    melee_attack_aim_lock_until_time: float;
     crafting_ui_open: bool;
     selected_crafting_recipe_index: s64;
+    beacon_ui_open: bool;
+    active_beacon: Beacon;
+    death_drop_pickup_blocks: [..]Death_Drop_Pickup_Block;
 
     // Local-only LOS light (viewer-specific).
 	local_light_entity: Entity;
@@ -59,6 +160,7 @@ Player :: class : Player_Base {
 	local_light_caster: LOS_Caster;
 	clock_cur_alpha: float;
 	clock_cur_rotation: float;
+    damage_pulse_elapsed_seconds: float;
 
     ao_start :: method() {
         health = 100.0;
@@ -67,27 +169,55 @@ Player :: class : Player_Base {
         clock_cur_alpha = 1.0;
         clock_cur_rotation = -90.0;
         next_resource_gather_swing_time = 0.0;
+        melee_attack_aim_lock_until_time = 0.0;
         crafting_ui_open = false;
         selected_crafting_recipe_index = 0;
+        beacon_ui_open = false;
+        active_beacon = null;
+        damage_pulse_elapsed_seconds = PLAYER_DAMAGE_PULSE_DURATION_SECONDS;
+        camera.size = max(camera.size * PLAYER_CAMERA_ZOOM_OUT_MULTIPLIER, 1.0);
 
         if Game.is_server() {
             init_weapon_items();
+            manager := ensure_game_manager_exists();
+            if manager != null {
+                manager->on_player_joined(this);
+            }
         }
         setup_reusable_weapons_player_state_machine(this);
     }
 
     ao_update :: method(dt: float) {
         // Called once per frame
+        this->update_damage_pulse(dt);
         if this->is_local_or_server() {
 			if this->is_local() {
 				this->update_local_vision_light();
 			}
+            this->update_melee_weapon_idle_aim();
         }
+    }
+
+    update_melee_weapon_idle_aim :: method() {
+        if equipped_weapon_type == .NONE return;
+
+        config := get_weapon_config(equipped_weapon_type);
+        if config.fire_mode != .MELEE return;
+
+        if get_time() < melee_attack_aim_lock_until_time return;
+
+        // Match the player's current facing when holding melee weapons.
+        scale_x := entity.local_scale.x;
+        forward := v2{1.0, 0.0};
+        if scale_x < 0.0 {
+            forward.x = -1.0;
+        }
+        this->set_aim_target(entity.world_position + forward * MELEE_IDLE_AIM_DISTANCE);
     }
 
    ao_late_update :: method(dt: float) {
     if is_local_or_server() {
-        // Draw fire ability button based on equipped weapon
+        // Primary ability: default melee unless a weapon overrides it.
         if equipped_weapon_type != .NONE {
             config := get_weapon_config(equipped_weapon_type);
             switch config.fire_mode {
@@ -97,8 +227,10 @@ Player :: class : Player_Base {
                 case .LOBBED:      { draw_ability_button(this, Lobbed_Shot_Ability, 0); }
                 case .BEAM:        { draw_ability_button(this, Beam_Ability, 0); }
                 case .SPECIAL:     { draw_ability_button(this, Special_Ability, 0); }
+                case .MELEE:       { draw_ability_button(this, Melee_Ability, 0); }
             }
-            draw_ability_button(this, Melee_Ability, 1); // optional melee
+        } else {
+            draw_ability_button(this, Melee_Ability, 0);
         }
 
         // Draw hotbar and handle equip/unequip
@@ -106,20 +238,39 @@ Player :: class : Player_Base {
         hotbar := Items.draw_hotbar(this, default_inventory, options);
         handle_equipped_item_changing(hotbar.selected_item_index);
 
+        dropped_item: Dropped_Item;
+        if Dropped_Item.handle_dropped_item(hotbar, entity.world_position, ref dropped_item) {
+            manager := get_game_manager();
+            drop_navmesh: Navmesh;
+            if manager != null {
+                drop_navmesh = manager.player_navmesh;
+            }
+
+            drop_rng := rng_seed_time();
+            dropped_item->do_spawn_animation(ref drop_rng, drop_navmesh);
+            this->register_pickup_block(dropped_item, PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS);
+        }
+
         // Crafting UI and actions are player-scoped state.
         CraftingSystem.draw_ui(this);
+        BeaconSystem.draw_ui(this);
     }
 
     if !Game.is_server() {
         draw_health_bar(this); // from weapons_ui_helpers.csl
     }
 
-    if this->is_local_or_server() && !crafting_ui_open {
+    if this->is_local_or_server() && !crafting_ui_open && !beacon_ui_open {
         this->draw_day_night_clock();
     }
 
-    if this->is_local() {
+    if this->is_local_or_server() {
+        this->draw_pre_night_beacon_arrow();
+    }
+
+    if this->is_local_or_server() {
         this->draw_lobby_waiting_text();
+        this->draw_round_start_intro();
     }
    }
 
@@ -138,11 +289,14 @@ Player :: class : Player_Base {
 
     ao_can_use_ability :: method(ability: Ability_Base) -> bool {
         // Called to determine if the player is allowed to use the given ability
+        if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect return false;
         return true;
     }
 
     ao_can_use_interactable :: method(interactable: Interactable) -> bool {
         // Called to determine if the player is allowed to use the given interactable
+        if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect return false;
+        if this->is_death_drop_pickup_blocked(interactable) return false;
         return true;
     }
 
@@ -178,8 +332,208 @@ Player :: class : Player_Base {
         now := get_time();
         if now < next_resource_gather_swing_time return;
 
-        animator.instance.state_machine->set_trigger("resource_gather_swing");
+        node->trigger_harvest_visual_pulse();
         next_resource_gather_swing_time = now + RESOURCE_GATHER_SWING_INTERVAL;
+
+        if animator == null return;
+        if animator.instance == null return;
+        if animator.instance.state_machine == null return;
+
+        animator.instance.state_machine->set_trigger("resource_gather_swing");
+    }
+
+    apply_mob_damage :: method(amount: float) {
+        if amount <= 0.0 return;
+        if health <= 0.0 return;
+
+        health -= amount;
+        if health < 0.0 {
+            health = 0.0;
+        }
+
+        this->trigger_damage_feedback(amount);
+        if health <= 0.0 {
+            this->drop_all_inventory_items_on_death();
+            this->begin_death_effect();
+        }
+    }
+
+    prune_expired_death_drop_pickup_blocks :: method() {
+        now := get_time();
+        i: s64 = 0;
+        while i < death_drop_pickup_blocks.count {
+            entry := death_drop_pickup_blocks[i];
+            if now >= entry.expires_time {
+                death_drop_pickup_blocks->ordered_remove_by_index(i);
+                continue;
+            }
+            i += 1;
+        }
+    }
+
+    is_death_drop_pickup_blocked :: method(interactable: Interactable) -> bool {
+        if interactable == null return false;
+        if interactable.entity == null return false;
+        if death_drop_pickup_blocks.count <= 0 return false;
+
+        this->prune_expired_death_drop_pickup_blocks();
+        interactable_id := interactable.entity.id;
+        for entry: death_drop_pickup_blocks {
+            if entry.dropped_entity_id == interactable_id {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    register_death_drop_pickup_block :: method(dropped: Dropped_Item) {
+        this->register_pickup_block(dropped, PLAYER_DEATH_DROP_SELF_PICKUP_BLOCK_SECONDS);
+    }
+
+    register_pickup_block :: method(dropped: Dropped_Item, block_seconds: float) {
+        if dropped == null return;
+        if dropped.entity == null return;
+
+        if block_seconds < 0.0 {
+            block_seconds = 0.0;
+        }
+
+        block: Death_Drop_Pickup_Block;
+        block.dropped_entity_id = dropped.entity.id;
+        block.expires_time = get_time() + block_seconds;
+        death_drop_pickup_blocks->append(block);
+    }
+
+    drop_all_inventory_items_on_death :: method() {
+        if !Game.is_server() return;
+        if default_inventory == null return;
+        if default_inventory.self == null return;
+        if default_inventory.capacity <= 0 return;
+
+        manager := get_game_manager();
+        drop_navmesh: Navmesh;
+        if manager != null {
+            drop_navmesh = manager.player_navmesh;
+        }
+
+        // Keep exactly one equipped weapon item in inventory on death.
+        keep_equipped_weapon_item: Item_Instance;
+        if equipped_weapon_type != .NONE {
+            if last_selected_index >= 0 && last_selected_index < default_inventory.capacity {
+                selected_item := default_inventory->get_item(last_selected_index);
+                if selected_item != null {
+                    selected_def := selected_item->get_definition();
+                    if selected_def != null && get_weapon_type_for_item(selected_def) == equipped_weapon_type {
+                        keep_equipped_weapon_item = selected_item;
+                    }
+                }
+            }
+
+            if keep_equipped_weapon_item == null && equipped_item_def != null {
+                for i: 0..default_inventory.capacity-1 {
+                    item := default_inventory->get_item(i);
+                    if item == null continue;
+                    if item->get_definition() != equipped_item_def continue;
+                    keep_equipped_weapon_item = item;
+                    break;
+                }
+            }
+        }
+
+        drop_origin := entity.world_position;
+        drop_rng := rng_seed_time();
+        for i: 0..default_inventory.capacity-1 {
+            item := default_inventory->get_item(i);
+            if item == null continue;
+            if item == keep_equipped_weapon_item continue;
+
+            Items.remove_item_from_inventory(item, default_inventory);
+
+            dropped := Dropped_Item.spawn(drop_origin, item);
+            if dropped == null continue;
+
+            dropped->do_spawn_animation(ref drop_rng, drop_navmesh);
+            this->register_death_drop_pickup_block(dropped);
+        }
+    }
+
+    trigger_damage_feedback :: method(amount: float) {
+        damage_pulse_elapsed_seconds = 0.0;
+
+        manager := get_game_manager();
+        if manager == null return;
+
+        damage_text: string;
+        whole_damage := amount.(int);
+        whole_damage_as_float := whole_damage.(float);
+        if abs(amount - whole_damage_as_float) <= 0.01 {
+            damage_text = format_string("%", {whole_damage});
+        } else {
+            damage_text = format_string("%", {format_float(amount, decimals=1)});
+        }
+
+        dn := new(DamageNumbers);
+        dn.Text = damage_text;
+        dn.Position = entity.world_position + v2{0, 1.85};
+        dn.LastPosition = dn.Position;
+        dn.Color = {1.0, 0.2, 0.2, 1.0};
+        dn.T = 0.0;
+        dn.SpaceText = false;
+        dn.DoingFading = true;
+
+        ts := UI.default_text_settings();
+        ts.size = 0.30;
+        ts.halign = .CENTER;
+        ts.valign = .CENTER;
+        ts.do_outline = true;
+        ts.outline_thickness = 2;
+        ts.outline_color = {0, 0, 0, 1};
+        ts.color = {1, 1, 1, 1};
+        dn.TextSettings = ts;
+
+        manager.damage_numbers->append(dn);
+    }
+
+    begin_death_effect :: method() {
+        if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect return;
+        effect := new(Player_Death_Effect);
+        entity->set_active_effect(effect);
+    }
+
+    trigger_death_animation :: method() {
+        if animator == null return;
+        if animator.instance == null return;
+        if animator.instance.state_machine == null return;
+        animator.instance.state_machine->set_trigger("death_no_hp");
+    }
+
+    reset_death_animation :: method() {
+        if animator == null return;
+        if animator.instance == null return;
+        if animator.instance.state_machine == null return;
+        animator.instance.state_machine->set_trigger("death_reset");
+    }
+
+    update_damage_pulse :: method(dt: float) {
+        if animator == null return;
+        if animator.instance == null return;
+
+        if damage_pulse_elapsed_seconds >= PLAYER_DAMAGE_PULSE_DURATION_SECONDS {
+            animator.instance.color_multiplier = {1, 1, 1, 1};
+            return;
+        }
+
+        damage_pulse_elapsed_seconds += dt;
+        if damage_pulse_elapsed_seconds >= PLAYER_DAMAGE_PULSE_DURATION_SECONDS {
+            animator.instance.color_multiplier = {1, 1, 1, 1};
+            return;
+        }
+
+        t := clamp(damage_pulse_elapsed_seconds / PLAYER_DAMAGE_PULSE_DURATION_SECONDS, 0.0, 1.0);
+        phase := t * PLAYER_DAMAGE_PULSE_OSCILLATIONS * 6.2831853;
+        white_mix := 0.5 + 0.5 * sin(phase - 1.5707963);
+        white_mix = clamp(white_mix, 0.0, 1.0);
+        animator.instance.color_multiplier = {1.0, white_mix, white_mix, 1.0};
     }
 
     ao_on_state_sync :: method() {
@@ -226,7 +580,7 @@ Player :: class : Player_Base {
 		local_light = local_light_entity->add_component(Light);
 		local_light.color = PLAYER_LIGHT_COLOR;
 		local_light.intensity = PLAYER_LIGHT_INTENSITY;
-		local_light.radii = v2.{PLAYER_LIGHT_BASE_INNER_RADIUS, PLAYER_LIGHT_BASE_OUTER_RADIUS};
+		local_light.radii = v2.{PLAYER_LIGHT_FIXED_RADIUS, PLAYER_LIGHT_FIXED_RADIUS};
 
 		local_light_caster = local_light_entity->add_component(LOS_Caster);
 		local_light_caster.radii = local_light.radii;
@@ -247,18 +601,21 @@ Player :: class : Player_Base {
 		if local_light == null || local_light_caster == null return;
 
 		radii := this->get_local_light_radii();
-		local_light.radii = radii;
+		local_light.radii = v2.{PLAYER_LIGHT_FIXED_RADIUS, PLAYER_LIGHT_FIXED_RADIUS};
 		local_light_caster.radii = radii;
 	}
 
     draw_day_night_clock :: method() {
         manager := get_game_manager();
         if manager == null return;
+        if manager->get_phase() != .IN_ROUND return;
 
         clock_rect := UI.get_safe_screen_rect()->top_center_rect()->grow(75)->offset(0, -140);
+        moon_rect := clock_rect->right_center_rect()->grow(68)->offset(120, 0);
         night := get_asset(Texture_Asset, "UI/Clock_Night.png");
         day := get_asset(Texture_Asset, "UI/Clock_Day.png");
         overlay := get_asset(Texture_Asset, "UI/Clock_OL.png");
+        moon := get_asset(Texture_Asset, "UI/Moon.png");
 
         target_rotation := -90.0 + (360.0 * (manager->get_day_night_clock_hours() / 24.0));
         // Keep the target on a forward-only unwrapped timeline so the hand never rotates backward.
@@ -286,6 +643,42 @@ Player :: class : Player_Base {
         }
 
         UI.quad(clock_rect->fit_aspect(overlay->get_aspect()), overlay);
+
+        if moon != null {
+            moon_draw_rect := moon_rect->fit_aspect(moon->get_aspect());
+            UI.quad(moon_draw_rect, moon);
+
+            ts := UI.default_text_settings();
+            ts.size = 60;
+            ts.halign = .CENTER;
+            ts.valign = .CENTER;
+            ts.color = {0.07, 0.07, 0.07, 1.0};
+            ts.do_outline = true;
+            ts.outline_thickness = 2;
+            ts.outline_color = {1, 1, 1, 0.85};
+            UI.text(moon_draw_rect, ts, "%", {manager->get_nights()});
+        }
+    }
+
+    draw_pre_night_beacon_arrow :: method() {
+        manager := get_game_manager();
+        if manager == null return;
+        if !manager->is_night_warning_window_active() return;
+        if manager.island1_spawn == null return;
+        if entity == null return;
+
+        to_spawn := manager.island1_spawn.world_position - entity.world_position;
+        hide_dist_sq := PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE * PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE;
+        if length_squared(to_spawn) <= hide_dist_sq return;
+
+        options := Tutorial_Arrow.default_options();
+        options.alpha = 1.0;
+        options.far = true;
+        options.near = true;
+        options.bob_scale = 0.5;
+        options.bob_bias = 1.5;
+
+        Tutorial_Arrow.draw(this, manager.island1_spawn.world_position, options);
     }
 
     draw_lobby_waiting_text :: method() {
@@ -296,9 +689,10 @@ Player :: class : Player_Base {
         player_count := manager->get_player_count();
         required_players := manager->get_required_players_to_start();
 
-        text_rect := UI.get_safe_screen_rect()->top_center_rect()->grow(35, 450, 35, 450)->offset(0, -65);
+        storm_rect := UI.get_safe_screen_rect()->bottom_center_rect()->grow(30, 450, 30, 450)->offset(0, 235);
+        text_rect := UI.get_safe_screen_rect()->bottom_center_rect()->grow(35, 450, 35, 450)->offset(0, 180);
         ts := UI.default_text_settings();
-        ts.size = 36;
+        ts.size = 32;
         ts.halign = .CENTER;
         ts.valign = .CENTER;
         ts.color = {1, 1, 1, 1};
@@ -306,10 +700,48 @@ Player :: class : Player_Base {
         ts.outline_thickness = 2;
         ts.outline_color = {0, 0, 0, 1};
 
+        UI.text(storm_rect, ts, "There's a storm coming...");
+        ts.size = 36;
         UI.text(text_rect, ts, "Waiting for Players to Start: %/%", {player_count, required_players});
     }
 
+    draw_round_start_intro :: method() {
+        manager := get_game_manager();
+        if manager == null return;
+
+        overlay_alpha := manager->get_round_start_overlay_alpha();
+        should_draw_text := manager->should_draw_round_start_text();
+        if overlay_alpha <= 0.0 && !should_draw_text return;
+
+        UI.push_screen_draw_context();
+        defer UI.pop_draw_context();
+        UI.push_layer(5000);
+        defer UI.pop_layer();
+
+        if overlay_alpha > 0.0 {
+            UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {0, 0, 0, overlay_alpha});
+        }
+
+        if should_draw_text {
+            text_rect := UI.get_safe_screen_rect()->center_rect()->grow(120, 550, 120, 550);
+            ts := UI.default_text_settings();
+            ts.size = 96;
+            ts.halign = .CENTER;
+            ts.valign = .CENTER;
+            ts.color = {1, 1, 1, 1};
+            ts.do_outline = true;
+            ts.outline_thickness = 3;
+            ts.outline_color = {0, 0, 0, 1};
+            UI.text(text_rect, ts, "Survive!");
+        }
+    }
+
     handle_equipped_item_changing :: method(selected_index: s64) {
+        // Ensure no-weapon state never leaves mouse IK active.
+        if equipped_weapon_type == .NONE {
+            this->set_mouse_ik_enabled(false);
+        }
+
         // Resolve item from hotbar index
         selected_item: Item_Instance;
         if selected_index >= 0 && selected_index < default_inventory.capacity {

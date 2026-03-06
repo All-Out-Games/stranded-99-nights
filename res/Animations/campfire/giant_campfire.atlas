@@ -1,0 +1,17 @@
+giant_campfire.png
+	size: 828, 828
+	filter: Linear, Linear
+misc/giant_campfire/fire1
+	bounds: 526, 432, 297, 391
+	offsets: 1, 1, 299, 393
+misc/giant_campfire/fire2
+	bounds: 421, 159, 271, 387
+	offsets: 1, 1, 273, 389
+	rotate: 90
+misc/giant_campfire/fire3
+	bounds: 2, 220, 318, 417
+	offsets: 1, 2, 320, 420
+	rotate: 90
+misc/giant_campfire/giant_campfire
+	bounds: 2, 540, 522, 283
+	offsets: 1, 1, 524, 285

@@ -24,33 +24,27 @@ Piercing_Projectile :: class : Component {
 
         if Game.is_server() {
             pos := entity.world_position + v2{0, -0.5};
-            nearby: [..]Player;
-            Scene.get_all_components_in_range(pos, 0.8, ref nearby);
+            nearby_mobs: [..]Mob;
+            Scene.get_all_components_in_range(pos, 0.8, ref nearby_mobs);
+            for hit_mob: nearby_mobs {
+                if !hit_mob->is_alive() continue;
 
-            for hit_player: nearby {
-                if hit_player.entity.id == owner_id continue;
-
-                // Check if already hit
                 already_hit := false;
                 j := 0;
                 while j < hit_count {
-                    if hit_ids[j] == hit_player.entity.id {
+                    if hit_ids[j] == hit_mob.entity.id {
                         already_hit = true;
                     }
                     j += 1;
                 }
                 if already_hit continue;
 
-                // Record hit
                 if hit_count < 32 {
-                    hit_ids[hit_count] = hit_player.entity.id;
+                    hit_ids[hit_count] = hit_mob.entity.id;
                     hit_count += 1;
                 }
 
-                hit_player.health -= damage;
-                if hit_player.health < 0 {
-                    hit_player.health = 0;
-                }
+                mob_apply_damage(hit_mob, damage);
 
                 if !mute_hit_sound {
                     hit_sfx := get_asset(SFX_Asset, "reusable_weapons/sounds/reusable-weapons/bullet_hit.wav");

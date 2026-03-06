@@ -1,0 +1,39 @@
+13
+665719930882
+190278058037953 1772753236258518100
+{
+  "name": "MobSpawner",
+  "local_enabled": true,
+  "local_position": {
+    "X": -69.7994308471679688,
+    "Y": -11.1259794235229492
+  },
+  "local_rotation": 0,
+  "local_scale": {
+    "X": 1,
+    "Y": 1
+  },
+  "previous_sibling": "189307011333948:1772752776482508300"
+},
+{
+  "cid": 1,
+  "aoid": "190278058158562:1772753236258574800",
+  "component_type": "Internal_Component",
+  "internal_component_type": "MobSpawner",
+  "data": {
+    "mob_prefab_path": "SandSoldier.prefab",
+    "spawn_radius": 15,
+    "max_mobs": 2,
+    "spawn_rate_seconds": 8
+  }
+},
+{
+  "cid": 2,
+  "aoid": "190278058194522:1772753236258591800",
+  "component_type": "Internal_Component",
+  "internal_component_type": "Circle_Collider",
+  "data": {
+    "is_trigger": true,
+    "size": 15
+  }
+}

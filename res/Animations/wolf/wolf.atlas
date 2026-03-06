@@ -1,0 +1,54 @@
+wolf.png
+	size: 724, 532
+	filter: Linear, Linear
+Stunned/stunned_ring
+	bounds: 456, 17, 151, 36
+	offsets: 1, 1, 153, 38
+	rotate: 90
+Stunned/stunned_star
+	bounds: 670, 136, 41, 38
+	offsets: 1, 1, 43, 40
+Wolf/backlegB
+	bounds: 612, 329, 98, 195
+Wolf/backlegf
+	bounds: 307, 262, 108, 212
+	rotate: 90
+Wolf/body
+	bounds: 307, 376, 299, 148
+Wolf/forelegF
+	bounds: 307, 174, 82, 189
+	rotate: 90
+Wolf/forelegb
+	bounds: 525, 185, 68, 185
+Wolf/head
+	bounds: 6, 6, 144, 157
+	offsets: 1, 1, 146, 158
+Wolf/headDead  copy
+	bounds: 306, 13, 144, 155
+	offsets: 1, 1, 146, 157
+Wolf/headFlinch
+	bounds: 156, 6, 144, 157
+	offsets: 1, 1, 146, 158
+Wolf/jaw
+	bounds: 498, 42, 126, 82
+	offsets: 1, 1, 128, 84
+	rotate: 90
+Wolf/shadow
+	bounds: 6, 169, 282, 86
+Wolf/tail
+	bounds: 599, 180, 143, 114
+	offsets: 1, 1, 145, 116
+	rotate: 90
+smoke 1/big_smoke_puff
+	bounds: 6, 261, 295, 263
+	offsets: 1, 1, 297, 265
+smoke 1/small_smokepuff1
+	bounds: 586, 45, 74, 58
+	offsets: 1, 1, 76, 60
+smoke 1/small_smokepuff2
+	bounds: 586, 109, 78, 65
+	offsets: 1, 1, 80, 67
+smoke 1/small_smokepuff3
+	bounds: 666, 46, 57, 51
+	offsets: 1, 1, 59, 53
+	rotate: 90

@@ -36,6 +36,7 @@ Weapon_Config :: struct {
     item_name: string;
 
     ammo_type_index: s64;
+    ammo_item_id: string;
     ammo_first_pickup: s64;
 
     equip_sound_path: string;
@@ -170,6 +171,24 @@ get_weapon_config :: proc(wt: Weapon_Type) -> Weapon_Config {
             config.ammo_first_pickup = 30;
             config.shoot_trigger = "shoot_2h_weapon";
             config.use_ik_var = "use_2h_ik";
+        }
+        case .CROSSBOW: {
+            config.fire_mode = .SINGLE_SHOT;
+            config.hand_type = .ONE_HAND;
+            config.fire_rate = 1.6;
+            config.base_damage = 12.0;
+            config.projectile_speed = 17.0;
+            config.projectile_lifetime = 3.0;
+            // Use a valid existing player-rig weapon skin.
+            config.weapon_skin = "weapons/crossbow";
+            config.weapon_icon_path = "Items/Crossbow.png";
+            config.item_id = "crossbow";
+            config.item_name = "Crossbow";
+            config.ammo_type_index = -1;
+            config.ammo_item_id = "arrow";
+            config.ammo_first_pickup = 30;
+            config.shoot_trigger = "shoot_crossbow";
+            config.use_ik_var = "use_1h_ik";
         }
         case .BLUNDERBUSS: {
             config.fire_mode = .SINGLE_SHOT;
@@ -509,6 +528,36 @@ get_weapon_config :: proc(wt: Weapon_Type) -> Weapon_Config {
             config.ammo_first_pickup = 24;
             config.shoot_trigger = "storms_eye_start";
             config.use_ik_var = "use_2h_ik";
+        }
+        case .SPEAR: {
+            config.fire_mode = .MELEE;
+            config.hand_type = .ONE_HAND;
+            config.fire_rate = 1.0;
+            config.base_damage = 8.0;
+            config.ammo_per_shot = 0;
+            config.weapon_skin = "012MIM/weapons/spear";
+            config.weapon_icon_path = "reusable_weapons/sprites/reusable-weapons/katana.png";
+            config.item_id = "spear";
+            config.item_name = "Spear";
+            config.ammo_type_index = -1;
+            config.ammo_first_pickup = -1;
+            config.shoot_trigger = "melee_spear_AL";
+            config.use_ik_var = "use_1h_ik";
+        }
+        case .SWORD: {
+            config.fire_mode = .MELEE;
+            config.hand_type = .ONE_HAND;
+            config.fire_rate = 1.0;
+            config.base_damage = 15.0;
+            config.ammo_per_shot = 0;
+            config.weapon_skin = "012MIM/weapons/sword_stone";
+            config.weapon_icon_path = "reusable_weapons/sprites/reusable-weapons/katana.png";
+            config.item_id = "sword";
+            config.item_name = "Sword";
+            config.ammo_type_index = -1;
+            config.ammo_first_pickup = -1;
+            config.shoot_trigger = "melee_AL";
+            config.use_ik_var = "use_1h_ik";
         }
     }
 

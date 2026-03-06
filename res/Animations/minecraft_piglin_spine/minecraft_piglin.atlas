@@ -1,0 +1,61 @@
+8d9d7d443b39f942.png
+	size: 1516, 1516
+	filter: Linear, Linear
+MC_Held_Items/golden_sword
+	bounds: 1139, 1347, 160, 160
+	offsets: 1, 1, 162, 162
+lightning_strike/electrocute_1
+	bounds: 769, 1132, 375, 364
+	offsets: 10, 48, 400, 460
+	rotate: 90
+lightning_strike/electrocute_2
+	bounds: 769, 408, 324, 434
+	offsets: 0, 39, 355, 500
+	rotate: 90
+lightning_strike/electrocute_3
+	bounds: 769, 738, 338, 388
+	offsets: 19, 17, 357, 450
+lightning_strike/strike_1
+	bounds: 467, 31, 296, 1476
+	offsets: 1, 1, 298, 1478
+lightning_strike/strike_2
+	bounds: 228, 7, 233, 1500
+	offsets: 1, 1, 235, 1502
+lightning_strike/strike_3
+	bounds: 6, 6, 216, 1501
+	offsets: 1, 0, 218, 1501
+minecraftskin_0/ref_skin0
+	bounds: 1113, 955, 171, 220
+	offsets: 1, 1, 173, 222
+	rotate: 90
+minecraftskin_0/shadow
+	bounds: 1223, 1239, 125, 34
+	offsets: 1, 1, 127, 36
+minecraftskin_piglin/arm_L
+	bounds: 1139, 1274, 67, 78
+	offsets: 1, 1, 69, 79
+	rotate: 90
+minecraftskin_piglin/arm_R
+	bounds: 1223, 1279, 62, 64
+	offsets: 1, 1, 64, 66
+	rotate: 90
+minecraftskin_piglin/body
+	bounds: 1195, 755, 89, 77
+	offsets: 1, 1, 91, 79
+minecraftskin_piglin/head
+	bounds: 1113, 838, 220, 111
+	offsets: 1, 1, 222, 113
+minecraftskin_piglin/leg_b
+	bounds: 1113, 784, 76, 48
+	offsets: 1, 1, 78, 50
+minecraftskin_piglin/leg_f
+	bounds: 1139, 1193, 75, 59
+	offsets: 1, 1, 77, 61
+	rotate: 90
+minecraftskin_piglin/leg_stand
+	bounds: 1293, 1295, 46, 57
+	offsets: 1, 1, 48, 58
+	rotate: 90
+minecraftskin_piglin/ref_piglin
+	bounds: 769, 182, 419, 220
+	offsets: 1, 1, 421, 222

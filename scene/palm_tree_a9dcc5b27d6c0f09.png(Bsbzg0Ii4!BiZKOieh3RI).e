@@ -5,8 +5,7 @@
   "name": "palm_tree_a9dcc5b27d6c0f09.png",
   "local_enabled": true,
   "local_position": {
-    "X": 2.7826652526855469,
-    "Y": -1.6139430999755859
+
   },
   "local_rotation": 0,
   "local_scale": {

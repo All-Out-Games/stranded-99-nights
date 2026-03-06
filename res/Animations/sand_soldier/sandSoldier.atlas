@@ -1,0 +1,39 @@
+sandSoldier.png
+	size: 1560, 488
+	filter: Linear, Linear
+sand effects/sand_eurption
+	bounds: 464, 93, 162, 392
+	offsets: 1, 1, 164, 393
+sand effects/sand_explosion
+	bounds: 3, 51, 458, 434
+	offsets: 12, 16, 485, 461
+sand_soldier/arm_L
+	bounds: 629, 3, 96, 482
+sand_soldier/arm_L_upper
+	bounds: 1211, 376, 74, 109
+	offsets: 1, 1, 76, 111
+sand_soldier/body
+	bounds: 728, 278, 149, 207
+	offsets: 1, 1, 151, 209
+sand_soldier/head
+	bounds: 880, 312, 136, 173
+	offsets: 1, 1, 138, 175
+sand_soldier/leg_L_lower
+	bounds: 1361, 392, 62, 93
+	offsets: 1, 1, 64, 95
+sand_soldier/leg_L_upper
+	bounds: 1288, 402, 70, 83
+	offsets: 1, 1, 72, 85
+sand_soldier/leg_R_lower
+	bounds: 1496, 397, 60, 88
+	offsets: 1, 1, 62, 90
+sand_soldier/leg_R_upper
+	bounds: 1426, 406, 67, 79
+	offsets: 1, 1, 69, 81
+sand_soldier/shadow
+	bounds: 1131, 324, 161, 77
+	offsets: 1, 1, 163, 79
+	rotate: 90
+sand_soldier/shield
+	bounds: 1019, 322, 109, 163
+	offsets: 1, 1, 111, 164

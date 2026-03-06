@@ -319,3 +319,26 @@ spawn_water_gun_projectile :: proc(player: Player, direction: v2, wt: Weapon_Typ
     proj.speed = config.projectile_speed;
     proj.max_lifetime = config.projectile_lifetime;
 }
+
+// Crossbow: projectile spawned from dedicated prefab.
+spawn_crossbow_projectile :: proc(player: Player, direction: v2, wt: Weapon_Type) {
+    if !Game.is_server() return;
+    config := get_weapon_config(wt);
+
+    spawn_pos := get_projectile_spawn_pos(player, direction);
+    proj_entity := Scene.create_entity();
+    proj_entity->set_local_position(spawn_pos);
+    proj_entity->set_local_rotation(to_degrees(atan2(direction.y, direction.x)));
+    proj_entity->set_local_scale({1.5, 1.5});
+
+    projectile_texture := get_asset(Texture_Asset, "Items/Arrow.png");
+    sprite := proj_entity->add_component(Sprite_Renderer);
+    sprite->set_texture(projectile_texture);
+
+    proj := proj_entity->add_component(Standard_Projectile);
+    proj.damage = config.base_damage;
+    proj.direction = normalize(direction);
+    proj.owner_id = player.entity.id;
+    proj.speed = config.projectile_speed;
+    proj.max_lifetime = config.projectile_lifetime;
+}

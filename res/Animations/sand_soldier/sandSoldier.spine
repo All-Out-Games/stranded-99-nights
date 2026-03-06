@@ -1,0 +1,924 @@
+{
+"skeleton": { "hash": "URav/LBO7GA", "spine": "4.0.64", "x": -114.53, "y": -122.71, "width": 254.36, "height": 495.82 },
+"bones": [
+	{ "name": "root" },
+	{ "name": "sand_soldier", "parent": "root", "y": -85 },
+	{ "name": "sand_soldier_body", "parent": "sand_soldier", "length": 78.5, "rotation": 93.09, "x": -1.21, "y": 118.27 },
+	{ "name": "sand_soldier_head", "parent": "sand_soldier_body", "length": 48.77, "rotation": -5.58, "x": 106.78, "y": -0.11 },
+	{ "name": "sand_soldier_arm_L_upper", "parent": "sand_soldier_body", "length": 82.45, "rotation": 167.03, "x": 79.83, "y": 70.46 },
+	{ "name": "sand_soldier_arm_L", "parent": "sand_soldier_arm_L_upper", "length": 26.21, "rotation": 96.88, "x": 82.91, "y": 1.58 },
+	{ "name": "sand_soldier_shield", "parent": "sand_soldier_body", "x": 34.38, "y": -90.95 },
+	{ "name": "sand_soldier_leg_L_upper", "parent": "sand_soldier_body", "length": 70.92, "rotation": 175.41, "x": 5.59, "y": 34.88 },
+	{ "name": "sand_soldier_leg_R_upper", "parent": "sand_soldier_body", "length": 63.1, "rotation": 179.29, "x": 4.53, "y": -20.49 },
+	{ "name": "sand_soldier/leg_L_lower", "parent": "sand_soldier", "length": 37.66, "rotation": -91.33, "x": -37.02, "y": 50.79 },
+	{ "name": "sand_soldier/leg_R_lower", "parent": "sand_soldier", "length": 42.03, "rotation": -90.6, "x": 20.76, "y": 57.8 },
+	{ "name": "sand_soldier_hand_L_target", "parent": "sand_soldier", "x": -62.39, "y": 110.36 },
+	{ "name": "sand_effects", "parent": "root" },
+	{ "name": "sand_splash", "parent": "sand_effects" },
+	{ "name": "sand_puff", "parent": "sand_effects" },
+	{ "name": "shadow", "parent": "root", "y": -85 }
+],
+"slots": [
+	{ "name": "sand_soldier_shadow", "bone": "shadow", "attachment": "sand_soldier/shadow" },
+	{ "name": "sand_soldier/leg_R_upper", "bone": "sand_soldier_leg_R_upper", "attachment": "sand_soldier/leg_R_upper" },
+	{ "name": "sand_soldier/leg_R_lower", "bone": "sand_soldier/leg_R_lower", "attachment": "sand_soldier/leg_R_lower" },
+	{ "name": "sand_soldier/leg_L_upper", "bone": "sand_soldier_leg_L_upper", "attachment": "sand_soldier/leg_L_upper" },
+	{ "name": "sand_soldier/leg_L_lower", "bone": "sand_soldier/leg_L_lower", "attachment": "sand_soldier/leg_L_lower" },
+	{ "name": "sand_soldier/body", "bone": "sand_soldier_body", "attachment": "sand_soldier/body" },
+	{ "name": "sand_soldier/head", "bone": "sand_soldier_head", "attachment": "sand_soldier/head" },
+	{ "name": "sand_soldier/arm_L_upper", "bone": "sand_soldier_arm_L_upper", "attachment": "sand_soldier/arm_L_upper" },
+	{ "name": "sand_soldier/arm_L", "bone": "sand_soldier_arm_L", "attachment": "sand_soldier/arm_L" },
+	{ "name": "sand_soldier/shield", "bone": "sand_soldier_shield", "attachment": "sand_soldier/shield" },
+	{ "name": "sand_splash", "bone": "sand_splash" },
+	{ "name": "sand_puff", "bone": "sand_puff" }
+],
+"ik": [
+	{
+		"name": "sand_soldier/leg_L_lower",
+		"order": 1,
+		"bones": [ "sand_soldier_leg_L_upper" ],
+		"target": "sand_soldier/leg_L_lower"
+	},
+	{
+		"name": "sand_soldier/leg_R_lower",
+		"order": 2,
+		"bones": [ "sand_soldier_leg_R_upper" ],
+		"target": "sand_soldier/leg_R_lower"
+	},
+	{
+		"name": "sand_soldier_hand_L_target",
+		"bones": [ "sand_soldier_arm_L_upper", "sand_soldier_arm_L" ],
+		"target": "sand_soldier_hand_L_target"
+	}
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"sand_puff": {
+				"sand effects/sand_explosion": { "x": 7.38, "y": 0.5, "width": 485, "height": 461 }
+			},
+			"sand_soldier/arm_L": {
+				"sand_soldier/arm_L": {
+					"type": "mesh",
+					"uvs": [ 0.99999, 0.22791, 0.99999, 0.32985, 0.70531, 0.38149, 0.82518, 0.64023, 0.96536, 0.66262, 1, 0.74967, 0.89547, 0.77965, 1, 1, 0.64688, 1, 0.60406, 0.78714, 0.17914, 0.7782, 0, 0.73535, 0, 0.67461, 0.13026, 0.65228, 0.52145, 0.64373, 0.41423, 0.38036, 0.00753, 0.34719, 0.00523, 0.24103, 0.20166, 1.0E-5, 0.52607, 1.0E-5, 0.34404, 0.68998, 0.35809, 0.75119 ],
+					"triangles": [ 12, 13, 20, 11, 12, 20, 10, 11, 21, 20, 13, 14, 11, 20, 21, 10, 21, 9, 8, 6, 7, 17, 18, 19, 17, 19, 0, 1, 17, 0, 16, 17, 1, 15, 16, 1, 2, 15, 1, 14, 15, 2, 14, 2, 3, 9, 21, 20, 5, 6, 3, 5, 3, 4, 3, 20, 14, 6, 20, 3, 20, 6, 9, 8, 9, 6 ],
+					"vertices": [ 1, 5, 57.72, 239.31, 1, 1, 5, 60.29, 190.24, 1, 1, 5, 33.34, 163.9, 1, 1, 5, 51.36, 39.96, 1, 1, 5, 65.36, 29.89, 1, 1, 5, 70.88, -11.84, 1, 1, 5, 61.61, -26.79, 1, 1, 5, 77.19, -132.33, 1, 1, 5, 43.34, -134.1, 1, 1, 5, 33.86, -31.86, 1, 1, 5, -7.1, -29.69, 1, 1, 5, -25.35, -9.96, 1, 1, 5, -26.88, 19.27, 1, 1, 5, -14.96, 30.67, 1, 1, 5, 22.33, 36.75, 1, 1, 5, 5.41, 162.99, 1, 1, 5, -34.42, 176.91, 1, 1, 5, -37.32, 228, 1, 1, 5, -24.56, 345, 1, 1, 5, 6.54, 346.63, 1, 1, 5, 6.49, 13.6, 1, 1, 5, 9.38, -15.79, 1 ],
+					"hull": 20
+				},
+				"sand_soldier/arm_L2": {
+					"type": "mesh",
+					"path": "sand_soldier/arm_L",
+					"uvs": [ 6.0E-5, 0.36637, 0, 0, 1, 0, 1, 0.36637 ],
+					"triangles": [ 0, 1, 2, 3, 0, 2 ],
+					"vertices": [ -34.65, 167.64, -43.9, 343.99, 51.97, 349.01, 61.22, 172.66 ],
+					"hull": 4
+				},
+				"sand_soldier/arm_L3": {
+					"type": "mesh",
+					"path": "sand_soldier/arm_L",
+					"uvs": [ 0, 0.5, 0, 0.25, 0, 0, 1, 0, 1, 0.25, 1, 0.5 ],
+					"triangles": [ 1, 2, 3, 1, 3, 4, 0, 1, 4, 0, 4, 5 ],
+					"vertices": [ -31.29, 103.32, -37.59, 223.65, -43.9, 343.99, 51.97, 349.01, 58.28, 228.68, 64.58, 108.34 ],
+					"hull": 6
+				},
+				"sand_soldier/arm_L4": {
+					"type": "mesh",
+					"path": "sand_soldier/arm_L",
+					"uvs": [ 2.0E-5, 0.79428, 0, 0.5, 0, 0.25, 0, 0, 1, 0, 1, 0.25, 1, 0.5, 1, 0.79428 ],
+					"triangles": [ 2, 3, 4, 2, 4, 5, 1, 2, 5, 1, 5, 6, 0, 1, 6, 7, 0, 6 ],
+					"vertices": [ -23.86, -38.33, -31.29, 103.32, -37.59, 223.65, -43.9, 343.99, 51.97, 349.01, 58.28, 228.68, 64.58, 108.34, 72.01, -33.31 ],
+					"hull": 8
+				},
+				"sand_soldier/arm_L_attack": {
+					"type": "mesh",
+					"path": "sand_soldier/arm_L",
+					"uvs": [ 0.99999, 0.22791, 0.99999, 0.32985, 0.70531, 0.38149, 0.82518, 0.64023, 0.96536, 0.66262, 1, 0.74967, 0.89547, 0.77965, 1, 1, 0.64688, 1, 0.60406, 0.78714, 0.30979, 0.78095, 0.17914, 0.7782, 0, 0.73535, 0, 0.67461, 0.13026, 0.65228, 0.30435, 0.64848, 0.52145, 0.64373, 0.41423, 0.38036, 0.00753, 0.34719, 0.00523, 0.24103, 0.20166, 1.0E-5, 0.52607, 1.0E-5, 0.34404, 0.68998, 0.35809, 0.75119, 0.1943, 0.68329, 0.2406, 0.74599 ],
+					"triangles": [ 3, 23, 22, 19, 20, 21, 19, 21, 0, 1, 19, 0, 18, 19, 1, 17, 18, 1, 2, 17, 1, 16, 17, 2, 16, 2, 3, 22, 15, 16, 5, 6, 3, 5, 3, 4, 3, 22, 16, 3, 9, 23, 6, 9, 3, 10, 23, 9, 8, 9, 6, 8, 6, 7, 24, 14, 15, 13, 14, 24, 24, 15, 22, 12, 13, 24, 25, 24, 22, 12, 24, 25, 25, 22, 23, 11, 12, 25, 10, 25, 23, 11, 25, 10 ],
+					"vertices": [ 1, 11, 48.56, 236.44, 1, 1, 11, 47.61, 187.31, 1, 1, 11, 18.85, 162.97, 1, 1, 11, 27.95, 38.06, 1, 1, 11, 41.19, 27.01, 1, 1, 11, 43.71, -15, 1, 1, 11, 33.4, -29.25, 1, 1, 11, 41.38, -135.64, 1, 1, 11, 7.49, -134.99, 1, 1, 11, 5.36, -32.32, 1, 2, 5, 5.5, -30.36, 0.69252, 11, -22.83, -28.8, 0.30748, 1, 5, -7.1, -29.69, 1, 1, 5, -25.35, -9.96, 1, 1, 5, -26.88, 19.27, 1, 1, 5, -14.96, 30.67, 1, 2, 5, 1.63, 33.38, 0.55497, 11, -22.12, 35.05, 0.44503, 1, 11, -1.24, 36.94, 1, 1, 11, -9.08, 164.06, 1, 1, 11, -47.81, 180.8, 1, 1, 11, -47.04, 231.96, 1, 1, 11, -25.95, 347.75, 1, 1, 11, 5.19, 347.14, 1, 2, 5, 6.49, 13.6, 0.39143, 11, -18.7, 14.98, 0.60857, 2, 5, 9.38, -15.79, 0.55143, 11, -17.92, -14.54, 0.44857, 2, 5, -8.04, 16.07, 0.88221, 11, -33.01, 18.48, 0.11779, 2, 5, -2.02, -13.88, 0.85986, 11, -29.15, -11.82, 0.14014 ],
+					"hull": 22
+				}
+			},
+			"sand_soldier/arm_L_upper": {
+				"sand_soldier/arm_L_upper": { "x": 32.7, "y": 5.48, "rotation": 99.88, "width": 76, "height": 111 }
+			},
+			"sand_soldier/body": {
+				"sand_soldier/body": { "x": 35.13, "y": 7, "rotation": -93.09, "width": 151, "height": 209 }
+			},
+			"sand_soldier/head": {
+				"sand_soldier/head": { "x": 45.71, "y": 1.58, "rotation": -87.51, "width": 138, "height": 175 }
+			},
+			"sand_soldier/leg_L_lower": {
+				"sand_soldier/leg_L_lower": { "x": 15.44, "y": 1.93, "rotation": 91.33, "width": 64, "height": 95 }
+			},
+			"sand_soldier/leg_L_upper": {
+				"sand_soldier/leg_L_upper": { "x": 27.22, "y": 3.18, "rotation": 92.5, "width": 72, "height": 85 }
+			},
+			"sand_soldier/leg_R_lower": {
+				"sand_soldier/leg_R_lower": { "x": 14.78, "y": 2.91, "rotation": 90.6, "width": 62, "height": 90 }
+			},
+			"sand_soldier/leg_R_upper": {
+				"sand_soldier/leg_R_upper": { "x": 28.08, "y": 2.55, "rotation": 87.61, "width": 69, "height": 81 }
+			},
+			"sand_soldier/shield": {
+				"sand_soldier/shield": { "x": -0.12, "y": 3.44, "rotation": -93.09, "width": 111, "height": 164 }
+			},
+			"sand_soldier_shadow": {
+				"sand_soldier/shadow": { "x": -4.01, "y": 1.79, "width": 163, "height": 79 }
+			},
+			"sand_splash": {
+				"sand effects/sand_eurption": { "x": -0.82, "y": 179.9, "width": 164, "height": 393 }
+			}
+		}
+	}
+],
+"animations": {
+	"appear": {
+		"slots": {
+			"sand_soldier/arm_L": {
+				"rgba": [
+					{ "color": "ffffff00" },
+					{ "time": 0.1667, "color": "ffffffff" }
+				],
+				"attachment": [
+					{ "name": "sand_soldier/arm_L2" },
+					{ "time": 0.25, "name": "sand_soldier/arm_L3" },
+					{ "time": 0.6667, "name": "sand_soldier/arm_L4" },
+					{ "time": 1, "name": "sand_soldier/arm_L" }
+				]
+			},
+			"sand_soldier/arm_L_upper": {
+				"rgba": [
+					{ "time": 0.5, "color": "ffffff00" },
+					{ "time": 0.6667, "color": "ffffffff" }
+				],
+				"attachment": [
+					{ "name": null },
+					{ "time": 0.5, "name": "sand_soldier/arm_L_upper" }
+				]
+			},
+			"sand_soldier/body": {
+				"rgba": [
+					{ "time": 0.6667, "color": "ffffff00" },
+					{ "time": 0.8333, "color": "ffffffff" }
+				],
+				"attachment": [
+					{ "name": null },
+					{ "time": 0.6667, "name": "sand_soldier/body" }
+				]
+			},
+			"sand_soldier/head": {
+				"attachment": [
+					{ "name": null },
+					{ "time": 0.3333, "name": "sand_soldier/head" }
+				]
+			},
+			"sand_soldier/leg_L_lower": {
+				"attachment": [
+					{ "name": null },
+					{ "time": 0.9167, "name": "sand_soldier/leg_L_lower" }
+				]
+			},
+			"sand_soldier/leg_L_upper": {
+				"attachment": [
+					{ "name": null },
+					{ "time": 0.75, "name": "sand_soldier/leg_L_upper" }
+				]
+			},
+			"sand_soldier/leg_R_lower": {
+				"attachment": [
+					{ "name": null },
+					{ "time": 0.9167, "name": "sand_soldier/leg_R_lower" }
+				]
+			},
+			"sand_soldier/leg_R_upper": {
+				"attachment": [
+					{ "name": null },
+					{ "time": 0.75, "name": "sand_soldier/leg_R_upper" }
+				]
+			},
+			"sand_soldier/shield": {
+				"rgba": [
+					{ "time": 0.5833, "color": "ffffff00" },
+					{ "time": 0.75, "color": "ffffffff" }
+				],
+				"attachment": [
+					{ "name": null },
+					{ "time": 0.5833, "name": "sand_soldier/shield" }
+				]
+			},
+			"sand_soldier_shadow": {
+				"attachment": [
+					{ "name": null },
+					{ "time": 1, "name": "sand_soldier/shadow" }
+				]
+			},
+			"sand_splash": {
+				"attachment": [
+					{ "name": "sand effects/sand_eurption" },
+					{ "time": 1.0833, "name": null }
+				]
+			}
+		},
+		"bones": {
+			"sand_soldier": {
+				"translate": [
+					{ "y": -330.91 },
+					{ "time": 1 }
+				]
+			},
+			"sand_soldier_hand_L_target": {
+				"translate": [
+					{
+						"x": 5.02,
+						"y": -4.02,
+						"curve": [ 0.333, 5.02, 0.667, 0, 0.333, -4.02, 0.667, 0 ]
+					},
+					{ "time": 1 }
+				]
+			},
+			"sand_splash": {
+				"translate": [
+					{ "x": -5.59, "y": -114.65 }
+				],
+				"scale": [
+					{
+						"y": 0.087,
+						"curve": [ 0.028, 1, 0.056, 1, 0.028, 0.313, 0.056, 0.427 ]
+					},
+					{
+						"time": 0.0833,
+						"y": 0.427,
+						"curve": [ 0.111, 1, 0.139, 1.196, 0.111, 0.427, 0.139, 0.331 ]
+					},
+					{
+						"time": 0.1667,
+						"x": 1.196,
+						"y": 0.331,
+						"curve": [ 0.194, 1.196, 0.222, 1, 0.194, 0.331, 0.222, 0.427 ]
+					},
+					{
+						"time": 0.25,
+						"y": 0.427,
+						"curve": [ 0.278, 1, 0.306, 1.196, 0.278, 0.427, 0.306, 0.331 ]
+					},
+					{
+						"time": 0.3333,
+						"x": 1.196,
+						"y": 0.331,
+						"curve": [ 0.361, 1.196, 0.389, 1, 0.361, 0.331, 0.389, 0.427 ]
+					},
+					{
+						"time": 0.4167,
+						"y": 0.427,
+						"curve": [ 0.444, 1, 0.472, 1.196, 0.444, 0.427, 0.472, 0.331 ]
+					},
+					{
+						"time": 0.5,
+						"x": 1.196,
+						"y": 0.331,
+						"curve": [ 0.528, 1.196, 0.556, 1, 0.528, 0.331, 0.556, 0.427 ]
+					},
+					{
+						"time": 0.5833,
+						"y": 0.427,
+						"curve": [ 0.611, 1, 0.639, 1.196, 0.611, 0.427, 0.639, 0.331 ]
+					},
+					{
+						"time": 0.6667,
+						"x": 1.196,
+						"y": 0.331,
+						"curve": [ 0.694, 1.196, 0.722, 1, 0.694, 0.331, 0.722, 0.427 ]
+					},
+					{
+						"time": 0.75,
+						"y": 0.427,
+						"curve": [ 0.778, 1, 0.806, 1.196, 0.778, 0.427, 0.806, 0.331 ]
+					},
+					{
+						"time": 0.8333,
+						"x": 1.196,
+						"y": 0.331,
+						"curve": [ 0.861, 1.196, 0.889, 1, 0.861, 0.331, 0.889, 0.427 ]
+					},
+					{
+						"time": 0.9167,
+						"y": 0.427,
+						"curve": [ 0.972, 1, 1.028, 1, 0.972, 0.427, 1.028, 0.313 ]
+					},
+					{ "time": 1.0833, "y": 0.087 }
+				]
+			}
+		}
+	},
+	"attack": {
+		"slots": {
+			"sand_soldier/arm_L": {
+				"attachment": [
+					{ "name": "sand_soldier/arm_L_attack" }
+				]
+			}
+		},
+		"bones": {
+			"sand_soldier_hand_L_target": {
+				"rotate": [
+					{
+						"curve": [ 0.056, 0, 0.111, -101.58 ]
+					},
+					{
+						"time": 0.1667,
+						"value": -101.58,
+						"curve": [ 0.194, -101.58, 0.222, -101.35 ]
+					},
+					{ "time": 0.25, "value": -101.35, "curve": "stepped" },
+					{ "time": 0.4167, "value": -101.35 },
+					{
+						"time": 0.5833,
+						"value": 1.92,
+						"curve": [ 0.611, 1.92, 0.639, 0 ]
+					},
+					{ "time": 0.6667 }
+				],
+				"translate": [
+					{
+						"curve": [ 0.056, 0, 0.111, -86.71, 0.056, 0, 0.111, 1.79 ]
+					},
+					{
+						"time": 0.1667,
+						"x": -86.71,
+						"y": 1.79,
+						"curve": [ 0.194, -86.71, 0.222, 58.82, 0.194, 1.79, 0.222, 10.49 ]
+					},
+					{
+						"time": 0.25,
+						"x": 58.82,
+						"y": 10.49,
+						"curve": [ 0.306, 58.82, 0.361, 51.63, 0.306, 10.49, 0.361, 8.43 ]
+					},
+					{
+						"time": 0.4167,
+						"x": 51.63,
+						"y": 8.43,
+						"curve": [ 0.472, 51.63, 0.528, -2.42, 0.472, 8.43, 0.528, 4.83 ]
+					},
+					{
+						"time": 0.5833,
+						"x": -2.42,
+						"y": 4.83,
+						"curve": [ 0.611, -2.42, 0.639, 0, 0.611, 4.83, 0.639, 0 ]
+					},
+					{ "time": 0.6667 }
+				]
+			},
+			"sand_soldier_body": {
+				"rotate": [
+					{
+						"curve": [ 0.056, 0, 0.111, 3.17 ]
+					},
+					{
+						"time": 0.1667,
+						"value": 3.17,
+						"curve": [ 0.194, 3.17, 0.222, -7.29 ]
+					},
+					{ "time": 0.25, "value": -7.29, "curve": "stepped" },
+					{
+						"time": 0.4167,
+						"value": -7.29,
+						"curve": [ 0.472, -7.29, 0.528, -2.43 ]
+					},
+					{ "time": 0.5833 }
+				],
+				"translate": [
+					{ "time": 0.1667 },
+					{ "time": 0.25, "x": 4.47 },
+					{
+						"time": 0.4167,
+						"x": 8.09,
+						"curve": [ 0.472, 8.09, 0.528, 0, 0.472, 0, 0.528, 0 ]
+					},
+					{ "time": 0.5833 }
+				]
+			},
+			"sand_soldier_shield": {
+				"rotate": [
+					{
+						"curve": [ 0.056, -1.29, 0.111, -3.87 ]
+					},
+					{
+						"time": 0.1667,
+						"value": -3.87,
+						"curve": [ 0.194, -3.87, 0.222, 10.31 ]
+					},
+					{ "time": 0.25, "value": 10.31, "curve": "stepped" },
+					{
+						"time": 0.4167,
+						"value": 10.31,
+						"curve": [ 0.472, 10.31, 0.528, 2.18 ]
+					},
+					{ "time": 0.5833 }
+				],
+				"translate": [
+					{
+						"curve": [ 0.056, -2.89, 0.111, -8.67, 0.056, -0.49, 0.111, 0 ]
+					},
+					{
+						"time": 0.1667,
+						"x": -8.67,
+						"y": -1.48,
+						"curve": [ 0.194, -8.67, 0.222, 7.51, 0.194, -2.22, 0.222, -9.99 ]
+					},
+					{ "time": 0.25, "x": 7.51, "y": -9.99, "curve": "stepped" },
+					{
+						"time": 0.4167,
+						"x": 7.51,
+						"y": -9.99,
+						"curve": [ 0.472, 7.51, 0.528, -0.65, 0.472, -9.99, 0.528, -3.56 ]
+					},
+					{ "time": 0.5833 }
+				]
+			},
+			"sand_soldier_head": {
+				"rotate": [
+					{
+						"curve": [ 0.056, 0, 0.111, -6.47 ]
+					},
+					{
+						"time": 0.1667,
+						"value": -6.47,
+						"curve": [ 0.194, -6.47, 0.222, 4.3 ]
+					},
+					{ "time": 0.25, "value": 4.3, "curve": "stepped" },
+					{
+						"time": 0.4167,
+						"value": 4.3,
+						"curve": [ 0.472, 4.3, 0.528, 1.43 ]
+					},
+					{ "time": 0.5833 }
+				]
+			}
+		},
+		"drawOrder": [
+			{
+				"offsets": [
+					{ "slot": "sand_soldier/shield", "offset": -2 }
+				]
+			}
+		]
+	},
+	"disappear": {
+		"slots": {
+			"sand_puff": {
+				"attachment": [
+					{ "name": "sand effects/sand_explosion" },
+					{ "time": 0.1667, "name": null }
+				]
+			},
+			"sand_soldier/arm_L": {
+				"rgba": [
+					{ "time": 0.0833, "color": "ffffffff" },
+					{ "time": 0.3333, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.3333, "name": null }
+				]
+			},
+			"sand_soldier/arm_L_upper": {
+				"rgba": [
+					{
+						"time": 0.0833,
+						"color": "ffffffff",
+						"curve": [ 0.139, 1, 0.194, 1, 0.139, 1, 0.194, 1, 0.139, 1, 0.194, 1, 0.139, 1, 0.194, 0.67 ]
+					},
+					{ "time": 0.25, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.25, "name": null }
+				]
+			},
+			"sand_soldier/body": {
+				"attachment": [
+					{ "time": 0.0833, "name": null }
+				]
+			},
+			"sand_soldier/head": {
+				"rgba": [
+					{ "time": 0.0833, "color": "ffffffff" },
+					{ "time": 0.25, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.25, "name": null }
+				]
+			},
+			"sand_soldier/leg_L_lower": {
+				"attachment": [
+					{ "time": 0.1667, "name": null }
+				]
+			},
+			"sand_soldier/leg_L_upper": {
+				"attachment": [
+					{ "time": 0.0833, "name": null }
+				]
+			},
+			"sand_soldier/leg_R_lower": {
+				"attachment": [
+					{ "time": 0.1667, "name": null }
+				]
+			},
+			"sand_soldier/leg_R_upper": {
+				"attachment": [
+					{ "time": 0.0833, "name": null }
+				]
+			},
+			"sand_soldier/shield": {
+				"rgba": [
+					{ "time": 0.0833, "color": "ffffffff" },
+					{ "time": 0.25, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.25, "name": null }
+				]
+			},
+			"sand_soldier_shadow": {
+				"attachment": [
+					{ "time": 0.1667, "name": null }
+				]
+			},
+			"sand_splash": {
+				"rgba": [
+					{ "time": 0.4167, "color": "ffffffff" },
+					{ "time": 0.5833, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.1667, "name": "sand effects/sand_eurption" },
+					{ "time": 0.5833, "name": null }
+				]
+			}
+		},
+		"bones": {
+			"sand_soldier_arm_L_upper": {
+				"rotate": [
+					{
+						"time": 0.0833,
+						"curve": [ 0.167, 0, 0.25, 10.16 ]
+					},
+					{ "time": 0.3333, "value": 30.48 }
+				],
+				"translate": [
+					{
+						"time": 0.0833,
+						"curve": [ 0.167, 0, 0.25, -24.88, 0.167, 0, 0.25, 22.52 ]
+					},
+					{ "time": 0.3333, "x": -74.65, "y": 67.55 }
+				]
+			},
+			"sand_soldier_arm_L": {
+				"rotate": [
+					{ "time": 0.0833, "value": 11.37 }
+				]
+			},
+			"sand_soldier_head": {
+				"rotate": [
+					{
+						"curve": [ 0.028, 1.81, 0.056, 5.17 ]
+					},
+					{
+						"time": 0.0833,
+						"value": 5.17,
+						"curve": [ 0.111, 5.17, 0.181, 7.63 ]
+					},
+					{ "time": 0.2083, "value": 12.54 }
+				],
+				"translate": [
+					{
+						"curve": [ 0.028, 6.8, 0.056, 16.3, 0.028, 4.36, 0.056, 1.55 ]
+					},
+					{
+						"time": 0.0833,
+						"x": 16.3,
+						"y": 1.55,
+						"curve": [ 0.111, 16.3, 0.181, -17.56, 0.111, 1.55, 0.181, 8.5 ]
+					},
+					{ "time": 0.2083, "x": -85.28, "y": 22.4 }
+				],
+				"scale": [
+					{
+						"time": 0.0833,
+						"curve": [ 0.111, 1, 0.181, 1.06, 0.111, 1, 0.181, 1 ]
+					},
+					{ "time": 0.2083, "x": 1.179 }
+				]
+			},
+			"sand_soldier_shield": {
+				"rotate": [
+					{
+						"curve": [ 0.028, -5.21, 0.056, -7.81 ]
+					},
+					{
+						"time": 0.0833,
+						"value": -7.81,
+						"curve": [ 0.139, -7.81, 0.194, 13.42 ]
+					},
+					{ "time": 0.25, "value": 15.15 }
+				],
+				"translate": [
+					{
+						"curve": [ 0.028, 3.63, 0.056, 5.45, 0.028, -13.25, 0.056, -19.87 ]
+					},
+					{
+						"time": 0.0833,
+						"x": 5.45,
+						"y": -19.87,
+						"curve": [ 0.139, 5.45, 0.194, -20.5, 0.139, -19.87, 0.195, -18.78 ]
+					},
+					{ "time": 0.25, "x": -77.19, "y": -13.87 }
+				],
+				"scale": [
+					{ "time": 0.0833 },
+					{ "time": 0.25, "x": 1.098, "y": 0.873 }
+				]
+			},
+			"sand_splash": {
+				"translate": [
+					{ "time": 0.1667, "y": -91.6 }
+				],
+				"scale": [
+					{
+						"time": 0.1667,
+						"x": 0.475,
+						"y": 0.145,
+						"curve": [ 0.222, 0.65, 0.278, 0.885, 0.222, 0.43, 0.278, 1 ]
+					},
+					{
+						"time": 0.3333,
+						"curve": [ 0.417, 1.173, 0.495, 0.859, 0.417, 1, 0.532, 0.476 ]
+					},
+					{ "time": 0.5833, "x": 0.936, "y": 0.196 }
+				]
+			},
+			"sand_puff": {
+				"translate": [
+					{ "x": -4.33, "y": 59.29 }
+				],
+				"scale": [
+					{
+						"x": 0.406,
+						"y": 0.406,
+						"curve": [ 0.056, 0.886, 0.111, 1, 0.056, 0.886, 0.111, 1 ]
+					},
+					{ "time": 0.1667 }
+				]
+			},
+			"sand_soldier_hand_L_target": {
+				"translate": [
+					{},
+					{ "time": 0.0833, "x": 0.82, "y": 6.57 }
+				]
+			}
+		},
+		"ik": {
+			"sand_soldier_hand_L_target": [
+				{ "time": 0.0833, "mix": 0 }
+			]
+		}
+	},
+	"idle": {
+		"bones": {
+			"sand_soldier_body": {
+				"translate": [
+					{ "time": 0.0833 }
+				]
+			}
+		}
+	},
+	"run": {
+		"bones": {
+			"sand_soldier/leg_R_lower": {
+				"rotate": [
+					{ "value": 46, "curve": "stepped" },
+					{
+						"time": 0.0417,
+						"value": 46,
+						"curve": [ 0.125, 46, 0.167, -75.27 ]
+					},
+					{ "time": 0.25, "value": -75.27, "curve": "stepped" },
+					{
+						"time": 0.2917,
+						"value": -75.27,
+						"curve": [ 0.333, -75.27, 0.333, -93.13 ]
+					},
+					{
+						"time": 0.375,
+						"value": -79.99,
+						"curve": [ 0.417, -66.85, 0.458, 46 ]
+					},
+					{ "time": 0.5, "value": 46 }
+				],
+				"translate": [
+					{ "x": 38.18, "y": 12.31, "curve": "stepped" },
+					{
+						"time": 0.0417,
+						"x": 38.18,
+						"y": 12.31,
+						"curve": [ 0.125, 38.18, 0.167, -43.72, 0.125, 12.31, 0.167, 19.02 ]
+					},
+					{ "time": 0.25, "x": -43.72, "y": 19.02, "curve": "stepped" },
+					{
+						"time": 0.2917,
+						"x": -43.72,
+						"y": 19.02,
+						"curve": [ 0.333, -43.72, 0.333, -17.43, 0.333, 19.02, 0.333, 7.17 ]
+					},
+					{
+						"time": 0.375,
+						"x": 0.94,
+						"y": 7.17,
+						"curve": [ 0.417, 19.31, 0.458, 38.18, 0.417, 7.17, 0.458, 12.31 ]
+					},
+					{ "time": 0.5, "x": 38.18, "y": 12.31 }
+				]
+			},
+			"sand_soldier/leg_L_lower": {
+				"rotate": [
+					{
+						"value": -61.48,
+						"curve": [ 0.042, -61.72, 0.028, -61.4 ]
+					},
+					{
+						"time": 0.0417,
+						"value": -61.48,
+						"curve": [ 0.083, -61.72, 0.126, -82.13 ]
+					},
+					{
+						"time": 0.1667,
+						"value": -77.39,
+						"curve": [ 0.209, -72.44, 0.209, 51.18 ]
+					},
+					{ "time": 0.25, "value": 51.18, "curve": "stepped" },
+					{
+						"time": 0.2917,
+						"value": 51.18,
+						"curve": [ 0.375, 51.18, 0.417, -60.99 ]
+					},
+					{ "time": 0.5, "value": -61.48 }
+				],
+				"translate": [
+					{
+						"x": -30.25,
+						"y": 20.68,
+						"curve": [ 0.042, -21.4, 0.028, -33.2, 0.042, 20, 0.028, 20.91 ]
+					},
+					{
+						"time": 0.0417,
+						"x": -30.25,
+						"y": 20.68,
+						"curve": [ 0.083, -21.4, 0.126, 12.46, 0.083, 20, 0.126, 7.75 ]
+					},
+					{
+						"time": 0.1667,
+						"x": 23.56,
+						"y": 6.89,
+						"curve": [ 0.209, 34.51, 0.209, 57.7, 0.209, 6.05, 0.209, 7.85 ]
+					},
+					{ "time": 0.25, "x": 57.7, "y": 7.85, "curve": "stepped" },
+					{
+						"time": 0.2917,
+						"x": 57.7,
+						"y": 7.85,
+						"curve": [ 0.375, 57.7, 0.417, -47.94, 0.375, 7.85, 0.417, 22.05 ]
+					},
+					{ "time": 0.5, "x": -30.25, "y": 20.68 }
+				]
+			},
+			"sand_soldier_body": {
+				"rotate": [
+					{
+						"value": -4.77,
+						"curve": [ 0.083, -4.77, 0.167, -8.59 ]
+					},
+					{
+						"time": 0.25,
+						"value": -8.59,
+						"curve": [ 0.333, -8.59, 0.417, -4.77 ]
+					},
+					{ "time": 0.5, "value": -4.77 }
+				],
+				"translate": [
+					{
+						"x": 2.79,
+						"y": 5.14,
+						"curve": [ 0.042, 2.79, 0.084, -0.68, 0.042, 5.14, 0.084, -11.02 ]
+					},
+					{
+						"time": 0.125,
+						"x": 0.5,
+						"y": -10.62,
+						"curve": [ 0.167, 1.68, 0.209, 5.66, 0.167, -10.23, 0.209, 6.71 ]
+					},
+					{
+						"time": 0.25,
+						"x": 5.66,
+						"y": 6.71,
+						"curve": [ 0.292, 5.66, 0.333, 4.47, 0.292, 6.71, 0.333, -10.74 ]
+					},
+					{
+						"time": 0.375,
+						"x": 3.29,
+						"y": -11.13,
+						"curve": [ 0.417, 2.11, 0.458, 2.79, 0.417, -11.52, 0.458, 5.14 ]
+					},
+					{ "time": 0.5, "x": 2.79, "y": 5.14 }
+				]
+			},
+			"sand_soldier_hand_L_target": {
+				"translate": [
+					{
+						"x": 17.3,
+						"y": 2,
+						"curve": [ 0.083, 17.3, 0.167, 51.4, 0.083, 2, 0.167, 8.56 ]
+					},
+					{
+						"time": 0.25,
+						"x": 51.4,
+						"y": 8.56,
+						"curve": [ 0.333, 51.4, 0.417, 17.3, 0.333, 8.56, 0.417, 2 ]
+					},
+					{ "time": 0.5, "x": 17.3, "y": 2 }
+				]
+			},
+			"sand_soldier_shield": {
+				"rotate": [
+					{
+						"value": 4.79,
+						"curve": [ 0.028, 3.87, 0.056, 2.49 ]
+					},
+					{
+						"time": 0.0833,
+						"value": 3.17,
+						"curve": [ 0.167, 5.24, 0.25, 9.38 ]
+					},
+					{
+						"time": 0.3333,
+						"value": 9.38,
+						"curve": [ 0.389, 9.38, 0.444, 6.63 ]
+					},
+					{ "time": 0.5, "value": 4.79 }
+				],
+				"translate": [
+					{
+						"x": -7.66,
+						"y": -5.51,
+						"curve": [ 0.028, -8.88, 0.056, -10.73, 0.028, -4.56, 0.056, -3.13 ]
+					},
+					{
+						"time": 0.0833,
+						"x": -9.82,
+						"y": -3.83,
+						"curve": [ 0.167, -7.07, 0.25, -1.56, 0.167, -5.97, 0.25, -10.24 ]
+					},
+					{
+						"time": 0.3333,
+						"x": -1.56,
+						"y": -10.24,
+						"curve": [ 0.389, -1.56, 0.444, -5.21, 0.389, -10.24, 0.444, -7.41 ]
+					},
+					{ "time": 0.5, "x": -7.66, "y": -5.51 }
+				]
+			},
+			"sand_soldier_head": {
+				"rotate": [
+					{ "value": -3.36 }
+				],
+				"translate": [
+					{ "x": -2.28, "y": -4.85 }
+				]
+			},
+			"sand_soldier_arm_L_upper": {
+				"rotate": [
+					{
+						"value": 16.43,
+						"curve": [ 0.083, 16.43, 0.167, -12.92 ]
+					},
+					{
+						"time": 0.25,
+						"value": -12.92,
+						"curve": [ 0.333, -12.92, 0.417, 16.43 ]
+					},
+					{ "time": 0.5, "value": 16.43 }
+				]
+			}
+		},
+		"ik": {
+			"sand_soldier_hand_L_target": [
+				{ "mix": 0 }
+			]
+		},
+		"drawOrder": [
+			{
+				"offsets": [
+					{ "slot": "sand_soldier/leg_L_lower", "offset": 1 }
+				]
+			}
+		]
+	}
+}
+}
