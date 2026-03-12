@@ -19,3 +19,4 @@ ao_debug.lock
 .agents
 .mcp.json
 AGENTS.md
+.claude

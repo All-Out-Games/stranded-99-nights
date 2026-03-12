@@ -62,6 +62,9 @@ Single_Shot_Ability :: class : Ability_Base {
                     case .HYDRO_CANNON: {
                         spawn_hydrocannon_projectile(p, aiming.aim_direction, wt);
                     }
+                    case .WATER_GUN: {
+                        spawn_water_gun_projectile(p, aiming.aim_direction, wt);
+                    }
                     case .CROSSBOW: {
                         spawn_crossbow_projectile(p, aiming.aim_direction, wt);
                     }

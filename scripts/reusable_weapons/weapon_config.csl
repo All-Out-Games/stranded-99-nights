@@ -123,19 +123,19 @@ get_weapon_config :: proc(wt: Weapon_Type) -> Weapon_Config {
             config.use_ik_var = "use_2h_ik";
         }
         case .WATER_GUN: {
-            config.fire_mode = .CONTINUOUS;
+            config.fire_mode = .SINGLE_SHOT;
             config.hand_type = .ONE_HAND;
-            config.fire_rate = 0.3;
+            config.ammo_per_shot = 0;
+            config.fire_rate = 0.8;
             config.base_damage = 10.0;
             config.projectile_speed = 17.0;
             config.weapon_skin = "weapons/water_pistol";
             config.weapon_icon_path = "reusable_weapons/sprites/reusable-weapons/weapon_icons/weapon_icons_250x250/watergun.png";
             config.item_id = "water_gun";
             config.item_name = "Water Gun";
-            config.ammo_type_index = 0;
+            config.ammo_type_index = -1;
             config.ammo_first_pickup = 240;
-            config.shoot_start_trigger = "shoot_fast_start";
-            config.shoot_end_trigger = "shoot_fast_end";
+            config.shoot_trigger = "shoot_1h_weapon";
             config.use_ik_var = "use_1h_ik";
         }
         case .MISSILE_BARRAGE: {

@@ -1,0 +1,168 @@
+Chest_Loot_Entry :: struct {
+    defn: Item_Definition;
+    amount: s64;
+}
+
+Chest :: class : Interactable {
+    spine_animator: Spine_Animator @ao_serialize;
+    open_animation_name: string @ao_serialize;
+    despawn_delay_seconds: float @ao_serialize;
+    loot_item_ids: [..]string @ao_serialize;
+    loot_item_amounts: [..]s64 @ao_serialize;
+    min_drop_count: s64 @ao_serialize;
+    max_drop_count: s64 @ao_serialize;
+    drop_spawn_radius: float @ao_serialize;
+
+    opened: bool;
+    opened_time: float;
+    resolved_open: bool;
+
+    ao_start :: method() {
+        this->set_listener(this);
+
+        if radius <= 0.0 {
+            radius = 1.8;
+        }
+        if despawn_delay_seconds < 0.0 {
+            despawn_delay_seconds = 0.0;
+        }
+        if min_drop_count <= 0 {
+            min_drop_count = 3;
+        }
+        if max_drop_count <= 0 {
+            max_drop_count = 5;
+        }
+        if max_drop_count < min_drop_count {
+            max_drop_count = min_drop_count;
+        }
+        if drop_spawn_radius < 0.0 {
+            drop_spawn_radius = 0.0;
+        }
+
+        this->set_text("Open Chest");
+        this->set_hold_text("Opening...");
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if player == null return false;
+        if opened return false;
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        if opened return;
+
+        opened = true;
+        opened_time = get_time();
+        this->set_text("Opened");
+        play_open_animation();
+
+        if Game.is_server() {
+            spawn_loot();
+        }
+    }
+
+    ao_update :: method(dt: float) {
+        if !opened return;
+        if resolved_open return;
+
+        if get_time() - opened_time < despawn_delay_seconds {
+            return;
+        }
+
+        resolved_open = true;
+        if Game.is_server() {
+            entity->destroy();
+        }
+    }
+
+    play_open_animation :: method() {
+        if open_animation_name.count <= 0 return;
+
+        if spine_animator == null {
+            spine_animator = entity->get_component(Spine_Animator);
+        }
+        if spine_animator == null return;
+
+        spine_animator->awaken();
+        if spine_animator.instance == null return;
+
+        spine_animator.instance->set_animation(open_animation_name, false, 0);
+    }
+
+    find_loot_definition :: method(item_id: string) -> Item_Definition {
+        if item_id.count <= 0 return null;
+
+        defn := ItemManager.TryFindItem(item_id);
+        if defn != null {
+            return defn;
+        }
+
+        return try_find_reusable_weapon_item_def_by_id(item_id);
+    }
+
+    spawn_loot :: method() {
+        if loot_item_ids.count <= 0 return;
+        first_item_id := loot_item_ids[0];
+        if first_item_id.count <= 0 return;
+
+        guaranteed_defn := find_loot_definition(first_item_id);
+        if guaranteed_defn == null return;
+        guaranteed_amount: s64 = 1;
+        if loot_item_amounts.count > 0 {
+            guaranteed_amount = max(loot_item_amounts[0], 1);
+        }
+
+        remaining_entries: [..]Chest_Loot_Entry;
+        i: s64 = 1;
+        while i < loot_item_ids.count {
+            item_id := loot_item_ids[i];
+            if item_id.count <= 0 {
+                i += 1;
+                continue;
+            }
+
+            defn := find_loot_definition(item_id);
+            if defn != null {
+                amount: s64 = 1;
+                if i < loot_item_amounts.count {
+                    amount = max(loot_item_amounts[i], 1);
+                }
+                remaining_entries->append(Chest_Loot_Entry{defn, amount});
+            }
+            i += 1;
+        }
+
+        min_count := max(min_drop_count, 0);
+        max_count := max(max_drop_count, min_count);
+        if max_count < 0 return;
+
+        rng := rng_seed_time();
+        drop_total := rng_range_int(ref rng, min_count, max_count).(s64);
+
+        center := entity.world_position;
+        spawn_position := center;
+        if drop_spawn_radius > 0.0 {
+            spawn_position = ItemDrops.random_point_on_circle_edge(center, drop_spawn_radius, ref rng);
+        }
+        ItemDrops.spawn_from_definition(spawn_position, guaranteed_defn, guaranteed_amount);
+
+        remaining_drop_count := max(drop_total - 1, 0);
+        if remaining_entries.count <= 0 || remaining_drop_count <= 0 {
+            return;
+        }
+
+        dropped: s64 = 0;
+        while dropped < remaining_drop_count {
+            random_index := rng_range_int(ref rng, 0, remaining_entries.count - 1).(s64);
+            extra_entry := remaining_entries[random_index];
+
+            extra_spawn_position := center;
+            if drop_spawn_radius > 0.0 {
+                extra_spawn_position = ItemDrops.random_point_on_circle_edge(center, drop_spawn_radius, ref rng);
+            }
+            ItemDrops.spawn_from_definition(extra_spawn_position, extra_entry.defn, extra_entry.amount);
+            dropped += 1;
+        }
+    }
+}

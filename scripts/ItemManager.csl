@@ -22,6 +22,8 @@ ItemManager :: struct {
             fiber_icon := get_asset(Texture_Asset, "Items/Fiber.png");
             fish_icon := get_asset(Texture_Asset, "Items/Fish.png");
             arrow_icon := get_asset(Texture_Asset, "Items/Arrow.png");
+            sulfur_icon := get_asset(Texture_Asset, "Items/Sulfur.png");
+            root_resin_icon := get_asset(Texture_Asset, "Items/RootResin.png");
 
             // Wood
             wood := Items.register_item_definition(
@@ -54,6 +56,22 @@ ItemManager :: struct {
                 Item_Instance
             );
             defs->append(fish);
+
+             // Sulfur
+            sulfur := Items.register_item_definition(
+                {"sulfur", "Sulfur", sulfur_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(sulfur);
+
+             // Root Resin
+            root_resin := Items.register_item_definition(
+                {"root.resin", "Root Resin", root_resin_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(root_resin);
 
             // Arrow
             arrow := Items.register_item_definition(

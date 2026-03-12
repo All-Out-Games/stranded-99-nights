@@ -106,6 +106,7 @@ Item_Drop_Magnet :: class : Component {
             if p == null continue;
             if p.self == null continue;
             if !p.enabled continue;
+            if p->is_dead_for_night_state() continue;
             if p.entity == null continue;
             if p.entity.self == null continue;
             if !p.entity->get_world_enabled() continue;
@@ -143,6 +144,7 @@ Item_Drop_Magnet :: class : Component {
         if defn == null return false;
         if player == null return false;
         if player.self == null return false;
+        if player->is_dead_for_night_state() return false;
         if player.entity == null return false;
         if player.entity.self == null return false;
         if !player.entity->get_world_enabled() return false;

@@ -16,6 +16,10 @@ CraftingSystem :: struct {
         defn := ItemManager.TryFindItem(item_id);
         if defn != null return defn;
 
+        // Reusable weapons register their own weapon/ammo item defs.
+        reusable_def := try_find_reusable_weapon_item_def_by_id(item_id);
+        if reusable_def != null return reusable_def;
+
         // Weapon item definitions come from reusable_weapons.
         if item_id == "spear" {
             return get_weapon_item_def(.SPEAR);
@@ -130,6 +134,16 @@ CraftingSystem :: struct {
             CraftingSystem.add_input(r7, "fiber", 1);
             CraftingSystem.add_output(r7, "arrow", 10);
             recipes->append(r7);
+
+            r8 := CraftingSystem.make_recipe(
+                "craft_ar_ammo_bundle",
+                "AR Ammo x30",
+                "Craft 30 AR rounds."
+            );
+            CraftingSystem.add_input(r8, "sulfur", 6);
+            CraftingSystem.add_input(r8, "scrap", 10);
+            CraftingSystem.add_output(r8, "ar_ammo", 30);
+            recipes->append(r8);
         }
 
         return recipes;

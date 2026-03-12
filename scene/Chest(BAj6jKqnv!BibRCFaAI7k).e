@@ -1,0 +1,51 @@
+13
+395136991233
+283943025420783 1773085788335017700
+{
+  "name": "Chest",
+  "local_enabled": true,
+  "local_position": {
+    "X": -69.3140869140625000,
+    "Y": 40.7523956298828125
+  },
+  "local_rotation": 0,
+  "local_scale": {
+    "X": 1,
+    "Y": 1
+  },
+  "previous_sibling": "177537166787513:1772747203638132300",
+  "next_sibling": "96282698901151:1773179589928275700"
+},
+{
+  "cid": 1,
+  "aoid": "283953902925820:1773085793485313700",
+  "component_type": "Internal_Component",
+  "internal_component_type": "Chest",
+  "data": {
+    "radius": 2,
+    "required_hold_time": 0.5000000000000000,
+    "prompt_offset": {
+      "Y": 1
+    },
+    "spine_animator": "283991047342781:1773085811072503200",
+    "open_animation_name": "open",
+    "despawn_delay_seconds": 1.7000000476837158,
+    "loot_item_ids": [
+      "crossbow",
+      "arrow",
+      "arrow",
+      "scrap",
+      "fish"
+    ],
+    "loot_item_amounts": [
+      1,
+      5,
+      5,
+      2,
+      1
+    ],
+    "min_drop_count": 3,
+    "max_drop_count": 5,
+    "drop_spawn_radius": 1.5000000000000000
+  }
+}

@@ -1,0 +1,14 @@
+8572306ef2cbc297.png
+	size: 404, 404
+	filter: Linear, Linear
+_images/Gold Chest/chest_closed
+	bounds: 216, 155, 240, 179
+	offsets: 1, 1, 242, 181
+	rotate: 90
+_images/Gold Chest/chest_open
+	bounds: 6, 124, 204, 271
+	offsets: 1, 1, 206, 273
+_images/Gold Chest/sparkle
+	bounds: 216, 100, 49, 58
+	offsets: 1, 1, 51, 59
+	rotate: 90

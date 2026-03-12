@@ -1,0 +1,68 @@
+FISH_ITEM_ID :: "fish";
+FISH_HEAL_AMOUNT :: 15.0;
+
+player_get_selected_hotbar_item :: proc(player: Player) -> Item_Instance {
+    if player == null return null;
+    if player.default_inventory == null return null;
+    if player.default_inventory.self == null return null;
+    if player.default_inventory.capacity <= 0 return null;
+    if player.last_selected_index < 0 return null;
+    if player.last_selected_index >= player.default_inventory.capacity return null;
+    return player.default_inventory->get_item(player.last_selected_index);
+}
+
+player_is_holding_fish :: proc(player: Player) -> bool {
+    selected := player_get_selected_hotbar_item(player);
+    if selected == null return false;
+    if selected.quantity <= 0 return false;
+
+    defn := selected->get_definition();
+    if defn == null return false;
+
+    return defn->get_id() == FISH_ITEM_ID;
+}
+
+consume_selected_item_stack :: proc(player: Player, amount: s64) -> bool {
+    if !Game.is_server() return false;
+    if amount <= 0 return true;
+
+    selected := player_get_selected_hotbar_item(player);
+    if selected == null return false;
+    if selected.quantity < amount return false;
+
+    Items.destroy_item_instance(selected, amount);
+    return true;
+}
+
+Eat_Fish_Ability :: class : Ability_Base {
+    on_init :: proc(ability: Ability_Base) {
+        ability.name = "Eat Fish";
+        ability.icon = get_asset(Texture_Asset, "Items/Fish.png");
+        ability.disable_keybind = true;
+        ability.is_aimed_ability = false;
+    }
+
+    can_use :: proc(ability: Ability_Base) -> bool {
+        p := ability.player.(Player);
+        if !player_is_holding_fish(p) return false;
+        if p.health >= p.max_health return false;
+        return true;
+    }
+
+    on_update :: proc(ability: Ability_Base, params: ref Ability_Update_Params) {
+        if !params.can_use return;
+
+        did_activate := params.just_pressed || params.clicked;
+        if !did_activate return;
+        if ability.current_cooldown > 0.0 return;
+
+        p := ability.player.(Player);
+        ability.current_cooldown = 0.2;
+
+        if Game.is_server() {
+            if consume_selected_item_stack(p, 1) {
+                p.health = min(p.health + FISH_HEAL_AMOUNT, p.max_health);
+            }
+        }
+    }
+}

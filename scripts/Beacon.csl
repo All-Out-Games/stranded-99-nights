@@ -14,6 +14,7 @@ Beacon :: class : Interactable {
     fog2: Entity @ao_serialize;
     fog3: Entity @ao_serialize;
     safety_zone_visual: Entity @ao_serialize;
+    los_caster: LOS_Caster @ao_serialize;
     spine_animator: Spine_Animator @ao_serialize;
     level: s64;
     fuel: s64 @ao_serialize;
@@ -57,6 +58,7 @@ Beacon :: class : Interactable {
         stockpile->clear();
         apply_level_world_state();
         apply_fuel_animation_state();
+        apply_dynamic_safety_radius_state();
         refresh_prompt_text();
     }
 
@@ -75,6 +77,7 @@ Beacon :: class : Interactable {
     ao_update :: method(dt: float) {
         if Game.is_server() {
             tick_fuel_consumption();
+            apply_dynamic_safety_radius_state();
         }
         apply_fuel_animation_state();
     }
@@ -104,6 +107,28 @@ Beacon :: class : Interactable {
 
     get_safety_radius :: method() -> float {
         return BeaconSystem.get_safety_radius_for_level(level);
+    }
+
+    get_remaining_fuel_seconds :: method() -> float {
+        if fuel <= 0 return 0.0;
+        if fuel_burn_interval_seconds <= 0.0 return 0.0;
+
+        remaining := get_seconds_until_next_fuel_burn();
+        whole_fuel_after_current := max(fuel - 1, 0);
+        return whole_fuel_after_current.(float) * fuel_burn_interval_seconds + remaining;
+    }
+
+    get_safety_radius_fuel_t :: method() -> float {
+        baseline_total_seconds := DEFAULT_STARTING_FUEL.(float) * fuel_burn_interval_seconds;
+        if baseline_total_seconds <= 0.0 return 0.0;
+
+        remaining_seconds := get_remaining_fuel_seconds();
+        return clamp(remaining_seconds / baseline_total_seconds, 0.0, 1.0);
+    }
+
+    get_current_safety_radius :: method() -> float {
+        if !has_active_fuel() return 0.0;
+        return get_safety_radius() * get_safety_radius_fuel_t();
     }
 
     has_active_fuel :: method() -> bool {
@@ -144,6 +169,7 @@ Beacon :: class : Interactable {
         }
 
         apply_fuel_animation_state();
+        apply_dynamic_safety_radius_state();
     }
 
     set_fuel_for_round :: method(amount: s64) {
@@ -159,6 +185,7 @@ Beacon :: class : Interactable {
         }
 
         apply_fuel_animation_state();
+        apply_dynamic_safety_radius_state();
     }
 
     tick_fuel_consumption :: method() {
@@ -252,8 +279,17 @@ Beacon :: class : Interactable {
     apply_safety_zone_visual_scale :: method() {
         if safety_zone_visual == null return;
 
-        safety_radius := get_safety_radius();
+        safety_radius := get_current_safety_radius();
         safety_zone_visual->set_local_scale({safety_radius, safety_radius});
+    }
+
+    apply_dynamic_safety_radius_state :: method() {
+        safety_radius := get_current_safety_radius();
+        apply_safety_zone_visual_scale();
+
+        if los_caster != null {
+            los_caster.radii = {safety_radius, safety_radius};
+        }
     }
 
     rebuild_game_navmesh :: method() {
@@ -337,7 +373,7 @@ BeaconSystem :: struct {
             if beacon.entity == null continue;
             if !beacon->has_active_fuel() continue;
 
-            safety_radius := beacon->get_safety_radius();
+            safety_radius := beacon->get_current_safety_radius();
             padded_radius := safety_radius + 0.25;
             if padded_radius <= 0.0 continue;
 
@@ -358,6 +394,23 @@ BeaconSystem :: struct {
             adjusted = beacon_pos + dir * padded_radius;
         }
         return adjusted;
+    }
+
+    is_position_inside_active_safety_zone :: proc(position: v2) -> bool {
+        foreach beacon: component_iterator(Beacon) {
+            if beacon == null continue;
+            if beacon.entity == null continue;
+            if !beacon->has_active_fuel() continue;
+
+            safety_radius := beacon->get_current_safety_radius();
+            if safety_radius <= 0.0 continue;
+
+            delta := position - beacon.entity.world_position;
+            if length_squared(delta) <= safety_radius * safety_radius {
+                return true;
+            }
+        }
+        return false;
     }
 
     get_item_count_in_inventory :: proc(inventory: Inventory, defn: Item_Definition) -> s64 {

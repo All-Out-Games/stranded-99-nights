@@ -6,11 +6,28 @@ setup_reusable_weapons_player_state_machine :: proc(player: Player) {
     ao_idle := base_layer->try_get_state("Idle");
     ao_run := base_layer->try_get_state("Run_Fast");
     moving_var := sm->try_get_variable("moving");
+    ghost_mode_var := sm->create_variable("is_ghost_mode", .BOOL);
     death_trigger := sm->create_variable("death_no_hp", .TRIGGER);
     death_reset_trigger := sm->create_variable("death_reset", .TRIGGER);
     death_state := base_layer->create_state("Death_No_HP", false);
     base_layer->create_global_transition(death_state, false)->create_trigger_condition(death_trigger);
     base_layer->create_transition(death_state, ao_idle, false)->create_trigger_condition(death_reset_trigger);
+    ghost_idle_state := base_layer->create_state("Idle_Ghost", true);
+    ghost_run_state := base_layer->create_state("Run_Ghost", true);
+    to_ghost_idle := base_layer->create_global_transition(ghost_idle_state, false);
+    to_ghost_idle->create_bool_condition(ghost_mode_var, true);
+    to_ghost_idle->create_bool_condition(moving_var, false);
+    to_ghost_run := base_layer->create_global_transition(ghost_run_state, false);
+    to_ghost_run->create_bool_condition(ghost_mode_var, true);
+    to_ghost_run->create_bool_condition(moving_var, true);
+    ghost_idle_state_to_run := base_layer->create_transition(ghost_idle_state, ghost_run_state, false);
+    ghost_idle_state_to_run->create_bool_condition(moving_var, true);
+    ghost_run_state_to_idle := base_layer->create_transition(ghost_run_state, ghost_idle_state, false);
+    ghost_run_state_to_idle->create_bool_condition(moving_var, false);
+    ghost_idle_to_ao_idle := base_layer->create_transition(ghost_idle_state, ao_idle, false);
+    ghost_idle_to_ao_idle->create_bool_condition(ghost_mode_var, false);
+    ghost_run_to_ao_run := base_layer->create_transition(ghost_run_state, ao_run, false);
+    ghost_run_to_ao_run->create_bool_condition(ghost_mode_var, false);
 
     //--- Base Layer: IK variables ---//
     use_2h_ik := sm->create_variable("use_2h_ik", .BOOL);
@@ -65,6 +82,11 @@ setup_reusable_weapons_player_state_machine :: proc(player: Player) {
     throw_state := additive_layer->create_state("redsun/Throw_mIK", false);
     additive_layer->create_transition(idle_state, throw_state, false)->create_trigger_condition(sm->create_variable("throw", .TRIGGER));
     additive_layer->create_transition(throw_state, idle_state, true);
+
+    // Dodge roll (uses the closest available evasive full-body clip)
+    dodge_roll_state := additive_layer->create_state("redsun/Throw_mIK", false);
+    additive_layer->create_transition(idle_state, dodge_roll_state, false)->create_trigger_condition(sm->create_variable("dodge_roll", .TRIGGER));
+    additive_layer->create_transition(dodge_roll_state, idle_state, true);
 
     // Akimbo pistols
     shoot_akimbo_state := additive_layer->create_state("redsun/special/Shoot_Akimbo_mIK_AL", false);

@@ -7,6 +7,7 @@ Resource_Type :: enum {
     FIBER;
     FISH;
     DRIFTRESIN;
+    SULFUR;
 }
 
 ResourceNode :: class : Interactable {
@@ -155,6 +156,7 @@ ResourceNode :: class : Interactable {
             case .SCRAP: return "scrap";
             case .FIBER: return "fiber";
             case .FISH: return "fish";
+            case .SULFUR: return "sulfur";
             case .NONE: return "";
         }
         return "";

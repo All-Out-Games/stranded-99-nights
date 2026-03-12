@@ -4,14 +4,17 @@ MobSpawner :: class : Component {
     spawn_radius: float @ao_serialize;
     max_mobs: s64 @ao_serialize;
     spawn_rate_seconds: float @ao_serialize;
+    NightOnly: bool @ao_serialize;
+    NightCounter: s64 @ao_serialize;
     log_spawn_warnings: bool @ao_serialize;
+
+    SPAWN_PLAYER_CLEARANCE_RADIUS :: 7.0;
 
     spawned_mobs: [..]Entity;
     rng: u64;
     navmesh_triangle_hint: s64;
     respawn_timer_remaining_seconds: float;
     respawn_timer_active: bool;
-    was_night_last_frame: bool;
     missing_prefab_warning_logged: bool;
     missing_navmesh_warning_logged: bool;
 
@@ -19,6 +22,7 @@ MobSpawner :: class : Component {
         if spawn_radius <= 0.0 { spawn_radius = 6.0; }
         if max_mobs < 0 { max_mobs = 0; }
         if spawn_rate_seconds < 0.0 { spawn_rate_seconds = 0.0; }
+        if NightCounter < 0 { NightCounter = 0; }
 
         rng = rng_seed(entity.id);
         navmesh_triangle_hint = 0;
@@ -27,15 +31,11 @@ MobSpawner :: class : Component {
         missing_prefab_warning_logged = false;
         missing_navmesh_warning_logged = false;
 
-        was_night_last_frame = false;
-        manager := get_game_manager();
-        if manager != null {
-            was_night_last_frame = manager->is_night_time();
-        }
-
         if !Game.is_server() return;
 
-        spawn_to_target_immediately(get_target_count_for_phase(was_night_last_frame));
+        if NightOnly && !can_spawn_night_only_mobs() return;
+
+        spawn_to_target_immediately(max_mobs);
     }
 
     ao_update :: method(dt: float) {
@@ -43,22 +43,16 @@ MobSpawner :: class : Component {
 
         prune_spawned_mobs();
 
-        manager := get_game_manager();
-        is_night := false;
-        if manager != null {
-            is_night = manager->is_night_time();
-        }
-
-        if is_night != was_night_last_frame {
-            if is_night {
-                on_night_started();
-            } else {
-                on_night_ended();
+        if NightOnly && !can_spawn_night_only_mobs() {
+            if spawned_mobs.count > 0 {
+                destroy_all_spawned_mobs();
             }
-            was_night_last_frame = is_night;
+            respawn_timer_active = false;
+            respawn_timer_remaining_seconds = 0.0;
+            return;
         }
 
-        target_count := get_target_count_for_phase(is_night);
+        target_count := max_mobs;
         if spawned_mobs.count >= target_count {
             respawn_timer_active = false;
             respawn_timer_remaining_seconds = 0.0;
@@ -95,24 +89,6 @@ MobSpawner :: class : Component {
     ao_end :: method() {
         if !Game.is_server() return;
         destroy_all_spawned_mobs();
-    }
-
-    get_target_count_for_phase :: method(is_night: bool) -> s64 {
-        if !is_night return max_mobs;
-        return max_mobs * 2;
-    }
-
-    on_night_started :: method() {
-        spawn_to_target_immediately(get_target_count_for_phase(true));
-        respawn_timer_active = false;
-        respawn_timer_remaining_seconds = 0.0;
-    }
-
-    on_night_ended :: method() {
-        destroy_all_spawned_mobs();
-        spawn_to_target_immediately(get_target_count_for_phase(false));
-        respawn_timer_active = false;
-        respawn_timer_remaining_seconds = 0.0;
     }
 
     spawn_to_target_immediately :: method(target_count: s64) {
@@ -188,6 +164,10 @@ MobSpawner :: class : Component {
         }
         navmesh_triangle_hint = hint_as_int.(s64);
 
+        if !is_spawn_position_clear_of_players(spawn_pos) {
+            return false;
+        }
+
         spawned_entity := Scene.instantiate(prefab);
         if spawned_entity == null return false;
 
@@ -217,5 +197,25 @@ MobSpawner :: class : Component {
             center.x + cos(angle) * dist,
             center.y + sin(angle) * dist
         };
+    }
+
+    is_spawn_position_clear_of_players :: method(spawn_pos: v2) -> bool {
+        clearance_sq := SPAWN_PLAYER_CLEARANCE_RADIUS * SPAWN_PLAYER_CLEARANCE_RADIUS;
+        foreach p: component_iterator(Player) {
+            if p.health <= 0.0 continue;
+
+            dist_sq := length_squared(p.entity.world_position - spawn_pos);
+            if dist_sq <= clearance_sq {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    can_spawn_night_only_mobs :: method() -> bool {
+        manager := get_game_manager();
+        if manager == null return false;
+        if !manager->is_night_time() return false;
+        return manager->get_nights() > NightCounter;
     }
 }

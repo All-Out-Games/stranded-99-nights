@@ -1,0 +1,120 @@
+DODGE_ROLL_COOLDOWN_SECONDS :: 1.1;
+DODGE_ROLL_DURATION_SECONDS :: 0.6;
+DODGE_ROLL_SPEED_MULTIPLIER :: 0.012;
+DODGE_ROLL_MIN_SPEED :: 12.0;
+DODGE_ROLL_MAX_SPEED :: 20.0;
+DODGE_ROLL_EXIT_SPEED_MULTIPLIER :: 0.0;
+DODGE_ROLL_DIRECTION_EPSILON_SQ :: 0.0001;
+DODGE_ROLL_FALLBACK_AIM_DISTANCE :: 3.0;
+DODGE_ROLL_STANDSTILL_RAMP_SECONDS :: 0.12;
+DODGE_ROLL_STANDSTILL_START_SPEED_MULTIPLIER :: 0.35;
+DODGE_ROLL_TRIGGER :: "dodge_roll";
+
+get_player_facing_direction :: proc(player: Player) -> v2 {
+    dir := v2{1.0, 0.0};
+    if player.entity.local_scale.x < 0.0 {
+        dir.x = -1.0;
+    }
+    return dir;
+}
+
+resolve_dodge_roll_direction :: proc(player: Player) -> v2 {
+    dir := player.agent.input_this_frame;
+    if length_squared(dir) <= DODGE_ROLL_DIRECTION_EPSILON_SQ {
+        dir = player.agent.velocity;
+    }
+    if length_squared(dir) <= DODGE_ROLL_DIRECTION_EPSILON_SQ {
+        dir = get_player_facing_direction(player);
+    }
+    return normalize(dir);
+}
+
+has_dodge_roll_motion_intent :: proc(player: Player) -> bool {
+    if length_squared(player.agent.input_this_frame) > DODGE_ROLL_DIRECTION_EPSILON_SQ return true;
+    if length_squared(player.agent.velocity) > DODGE_ROLL_DIRECTION_EPSILON_SQ return true;
+    return false;
+}
+
+Dodge_Roll_Effect :: class : Effect_Base {
+    direction: v2;
+    speed: float;
+    standstill_startup_ramp: bool;
+    elapsed: float;
+
+    effect_start :: method() {
+        player_specific.disable_movement_inputs = true;
+        set_duration(DODGE_ROLL_DURATION_SECONDS);
+        elapsed = 0.0;
+
+        if player == null return;
+        if length_squared(direction) <= DODGE_ROLL_DIRECTION_EPSILON_SQ {
+            direction = normalize(get_player_facing_direction(player));
+        } else {
+            direction = normalize(direction);
+        }
+
+        if direction.x > 0.001 {
+            player->set_facing_right(true);
+        } else if direction.x < -0.001 {
+            player->set_facing_right(false);
+        }
+        player->set_aim_target(player.entity.world_position + direction * DODGE_ROLL_FALLBACK_AIM_DISTANCE);
+
+        if player.animator != null && player.animator.instance != null && player.animator.instance.state_machine != null {
+            player.animator.instance.state_machine->set_trigger(DODGE_ROLL_TRIGGER);
+        }
+    }
+
+    effect_update :: method(dt: float) {
+        if player == null return;
+        elapsed += dt;
+
+        applied_speed := speed;
+        if standstill_startup_ramp && DODGE_ROLL_STANDSTILL_RAMP_SECONDS > 0.0 {
+            t := clamp(elapsed / DODGE_ROLL_STANDSTILL_RAMP_SECONDS, 0.0, 1.0);
+            start_speed := speed * DODGE_ROLL_STANDSTILL_START_SPEED_MULTIPLIER;
+            applied_speed = lerp(start_speed, speed, t);
+        }
+
+        player.agent.velocity = direction * applied_speed;
+    }
+
+    effect_end :: method(interrupt: bool) {
+        if player == null return;
+        player.agent.velocity = direction * (speed * DODGE_ROLL_EXIT_SPEED_MULTIPLIER);
+    }
+}
+
+Dodge_Roll_Ability :: class : Ability_Base {
+    on_init :: proc(ability: Ability_Base) {
+        ability.name = "Dodge";
+        ability.icon = get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/weapon_icons/weapon_icons_250x250/windblaster.png");
+    }
+
+    can_use :: proc(ability: Ability_Base) -> bool {
+        p := ability.player.(Player);
+        return p.entity.active_effect == null || p.entity.active_effect.#type != Dodge_Roll_Effect;
+    }
+
+    on_update :: proc(ability: Ability_Base, params: ref Ability_Update_Params) {
+        if !(params.clicked && params.can_use && ability.current_cooldown <= 0.0) return;
+
+        p := ability.player.(Player);
+        has_motion_intent := has_dodge_roll_motion_intent(p);
+        direction := resolve_dodge_roll_direction(p);
+        speed := DODGE_ROLL_MIN_SPEED;
+        if has_motion_intent {
+            speed = clamp(p.agent.movement_speed * DODGE_ROLL_SPEED_MULTIPLIER, DODGE_ROLL_MIN_SPEED, DODGE_ROLL_MAX_SPEED);
+        }
+
+        if Game.is_server() {
+            effect := new(Dodge_Roll_Effect);
+            effect.direction = direction;
+            effect.speed = speed;
+            effect.standstill_startup_ramp = !has_motion_intent;
+            p.entity->set_active_effect(effect);
+        }
+
+        ability.current_cooldown = DODGE_ROLL_COOLDOWN_SECONDS;
+    }
+}

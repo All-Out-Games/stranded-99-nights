@@ -41,6 +41,8 @@ MELEE_ATTACK_AIM_LOCK_SECONDS :: 0.45;
 PLAYER_DEATH_FADE_SECONDS :: 2.0;
 PLAYER_DEATH_BLACK_HOLD_SECONDS :: 2.0;
 PLAYER_DEATH_FADE_IN_SECONDS :: 2.0;
+PLAYER_DOWNED_DURATION_SECONDS :: 10.0;
+PLAYER_DOWNED_REVIVE_HEALTH :: 25.0;
 PLAYER_DEATH_DROP_SELF_PICKUP_BLOCK_SECONDS :: 5.0;
 PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS :: 2.5;
 ISLAND1_RESPAWN_ENTITY_NAME :: "Island1Spawn";
@@ -139,6 +141,154 @@ Player_Death_Effect :: class : Effect_Base {
     }
 }
 
+Downed_Revive_Interactable :: class : Interactable {
+    downed_player: Player;
+
+    ao_start :: method() {
+        this->set_listener(this);
+        this->set_text("Revive");
+        this->set_hold_text("Reviving...");
+        if radius <= 0.0 {
+            radius = 2.0;
+        }
+        if required_hold_time <= 0.0 {
+            required_hold_time = 0.35;
+        }
+        prompt_offset = v2{0.0, 1.0};
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if player == null return false;
+        if downed_player == null return false;
+        if player == downed_player return false;
+        if player->is_dead_for_night_state() return false;
+        return downed_player->is_downed_for_night();
+    }
+
+    on_interact :: method(player: Player) {
+        if downed_player == null return;
+        downed_player->revive_from_downed(PLAYER_DOWNED_REVIVE_HEALTH);
+    }
+}
+
+Player_Downed_Effect :: class : Effect_Base {
+    revive_interactable_entity: Entity;
+
+    effect_start :: method() {
+        player_specific.freeze_player = true;
+        if player != null {
+            player->trigger_death_animation();
+        }
+        spawn_revive_interactable();
+    }
+
+    spawn_revive_interactable :: method() {
+        if !Game.is_server() return;
+        if player == null return;
+        if player.entity == null return;
+
+        revive_interactable_entity = Scene.create_entity();
+        if revive_interactable_entity == null return;
+
+        revive_interactable_entity->set_parent(player.entity, false);
+        revive_interactable_entity->set_local_position(v2{0.0, 0.0});
+
+        revive := revive_interactable_entity->add_component(Downed_Revive_Interactable);
+        if revive == null return;
+        revive.downed_player = player;
+        revive.priority = 50;
+    }
+
+    destroy_revive_interactable :: method() {
+        if !Game.is_server() return;
+        if revive_interactable_entity == null return;
+        if #alive(revive_interactable_entity) {
+            revive_interactable_entity->destroy();
+        }
+        revive_interactable_entity = null;
+    }
+
+    revive_in_place :: method(revive_health: float) {
+        if player == null return;
+        player->set_ghost_mode_enabled(false);
+        player.health = clamp(revive_health, 1.0, player.max_health);
+        remove_effect(false);
+    }
+
+    revive_at_respawn :: method() {
+        if player == null return;
+        player->set_ghost_mode_enabled(false);
+        player.health = player.max_health;
+        if player.entity != null {
+            player.entity->set_local_position(get_respawn_position());
+        }
+        remove_effect(false);
+    }
+
+    effect_update :: method(dt: float) {
+        if player == null return;
+
+        manager := get_game_manager();
+        if manager == null || manager->get_phase() != .IN_ROUND {
+            this->revive_at_respawn();
+            return;
+        }
+
+        if !manager->is_night_time() {
+            this->revive_at_respawn();
+            return;
+        }
+
+        elapsed := get_elapsed_time();
+        if elapsed >= PLAYER_DOWNED_DURATION_SECONDS {
+            player->set_ghost_mode_enabled(true);
+            remove_effect(false);
+            return;
+        }
+    }
+
+    effect_late_update :: method(dt: float) {
+        if Game.is_server() return;
+        if player == null return;
+        if player.entity == null return;
+
+        elapsed := get_elapsed_time();
+        remaining_seconds := max(PLAYER_DOWNED_DURATION_SECONDS - elapsed, 0.0);
+        fill_t := clamp(remaining_seconds / PLAYER_DOWNED_DURATION_SECONDS, 0.0, 1.0);
+
+        center := player.entity.world_position + v2{0.0, 2.2};
+        bar_rect := Rect{center, center}->grow(0.04, 0.72, 0.04, 0.72);
+        fill_rect := bar_rect->inset(0.01);
+        fill_rect.max.x = fill_rect.min.x + fill_rect->width() * fill_t;
+
+        UI.push_world_draw_context();
+        defer UI.pop_draw_context();
+        UI.push_z(center.y - 0.0002);
+        defer UI.pop_z();
+
+        UI.quad(bar_rect, core_globals.white_sprite, {0.0, 0.0, 0.0, 0.85});
+        UI.quad(fill_rect, core_globals.white_sprite, {0.86, 0.18, 0.18, 0.95});
+
+        text_rect := bar_rect->offset(0.0, 0.22)->grow(0.2, 0.2, 0.2, 0.2);
+        ts := UI.default_text_settings();
+        ts.size = 0.20;
+        ts.halign = .CENTER;
+        ts.valign = .CENTER;
+        ts.color = {1, 1, 1, 1};
+        ts.do_outline = true;
+        ts.outline_thickness = 2;
+        ts.outline_color = {0, 0, 0, 1};
+        UI.text(text_rect, ts, "%", {format_float(remaining_seconds, decimals=1)});
+    }
+
+    effect_end :: method(interrupt: bool) {
+        destroy_revive_interactable();
+        if player != null && !player.is_ghost_mode {
+            player->reset_death_animation();
+        }
+    }
+}
+
 Player :: class : Player_Base {
     health: float;
     max_health: float;
@@ -153,6 +303,8 @@ Player :: class : Player_Base {
     beacon_ui_open: bool;
     active_beacon: Beacon;
     death_drop_pickup_blocks: [..]Death_Drop_Pickup_Block;
+    is_ghost_mode: bool;
+    ghost_current_animation_name: string;
 
     // Local-only LOS light (viewer-specific).
 	local_light_entity: Entity;
@@ -174,6 +326,8 @@ Player :: class : Player_Base {
         selected_crafting_recipe_index = 0;
         beacon_ui_open = false;
         active_beacon = null;
+        is_ghost_mode = false;
+        ghost_current_animation_name = "";
         damage_pulse_elapsed_seconds = PLAYER_DAMAGE_PULSE_DURATION_SECONDS;
         camera.size = max(camera.size * PLAYER_CAMERA_ZOOM_OUT_MULTIPLIER, 1.0);
 
@@ -190,6 +344,7 @@ Player :: class : Player_Base {
     ao_update :: method(dt: float) {
         // Called once per frame
         this->update_damage_pulse(dt);
+        this->update_ghost_mode_animation();
         if this->is_local_or_server() {
 			if this->is_local() {
 				this->update_local_vision_light();
@@ -216,27 +371,41 @@ Player :: class : Player_Base {
     }
 
    ao_late_update :: method(dt: float) {
-    if is_local_or_server() {
-        // Primary ability: default melee unless a weapon overrides it.
-        if equipped_weapon_type != .NONE {
-            config := get_weapon_config(equipped_weapon_type);
-            switch config.fire_mode {
-                case .CONTINUOUS:  { draw_ability_button(this, Continuous_Fire_Ability, 0); }
-                case .SINGLE_SHOT: { draw_ability_button(this, Single_Shot_Ability, 0); }
-                case .SPREAD:      { draw_ability_button(this, Spread_Shot_Ability, 0); }
-                case .LOBBED:      { draw_ability_button(this, Lobbed_Shot_Ability, 0); }
-                case .BEAM:        { draw_ability_button(this, Beam_Ability, 0); }
-                case .SPECIAL:     { draw_ability_button(this, Special_Ability, 0); }
-                case .MELEE:       { draw_ability_button(this, Melee_Ability, 0); }
-            }
-        } else {
-            draw_ability_button(this, Melee_Ability, 0);
-        }
+    dead_for_night := this->is_dead_for_night_state();
+    if dead_for_night {
+        crafting_ui_open = false;
+        beacon_ui_open = false;
+        active_beacon = null;
+    }
 
-        // Draw hotbar and handle equip/unequip
+    if is_local_or_server() && !dead_for_night {
+        // Draw hotbar first so held-item abilities react immediately on selection change.
         options := Inventory_Draw_Options.default();
         hotbar := Items.draw_hotbar(this, default_inventory, options);
         handle_equipped_item_changing(hotbar.selected_item_index);
+
+        if player_is_holding_fish(this) {
+            draw_ability_button(this, Eat_Fish_Ability, 0);
+        } else {
+            // Primary ability: default melee unless a weapon overrides it.
+            if equipped_weapon_type != .NONE {
+                config := get_weapon_config(equipped_weapon_type);
+                switch config.fire_mode {
+                    case .CONTINUOUS:  { draw_ability_button(this, Continuous_Fire_Ability, 0); }
+                    case .SINGLE_SHOT: { draw_ability_button(this, Single_Shot_Ability, 0); }
+                    case .SPREAD:      { draw_ability_button(this, Spread_Shot_Ability, 0); }
+                    case .LOBBED:      { draw_ability_button(this, Lobbed_Shot_Ability, 0); }
+                    case .BEAM:        { draw_ability_button(this, Beam_Ability, 0); }
+                    case .SPECIAL:     { draw_ability_button(this, Special_Ability, 0); }
+                    case .MELEE:       { draw_ability_button(this, Melee_Ability, 0); }
+                }
+            } else {
+                draw_ability_button(this, Melee_Ability, 0);
+            }
+        }
+
+        // Always-available secondary movement ability.
+        draw_ability_button(this, Dodge_Roll_Ability, 1);
 
         dropped_item: Dropped_Item;
         if Dropped_Item.handle_dropped_item(hotbar, entity.world_position, ref dropped_item) {
@@ -290,12 +459,14 @@ Player :: class : Player_Base {
     ao_can_use_ability :: method(ability: Ability_Base) -> bool {
         // Called to determine if the player is allowed to use the given ability
         if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect return false;
+        if this->is_dead_for_night_state() return false;
         return true;
     }
 
     ao_can_use_interactable :: method(interactable: Interactable) -> bool {
         // Called to determine if the player is allowed to use the given interactable
         if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect return false;
+        if this->is_dead_for_night_state() return false;
         if this->is_death_drop_pickup_blocked(interactable) return false;
         return true;
     }
@@ -345,6 +516,8 @@ Player :: class : Player_Base {
     apply_mob_damage :: method(amount: float) {
         if amount <= 0.0 return;
         if health <= 0.0 return;
+        if this->is_dead_for_night_state() return;
+        if BeaconSystem.is_position_inside_active_safety_zone(entity.world_position) return;
 
         health -= amount;
         if health < 0.0 {
@@ -354,7 +527,12 @@ Player :: class : Player_Base {
         this->trigger_damage_feedback(amount);
         if health <= 0.0 {
             this->drop_all_inventory_items_on_death();
-            this->begin_death_effect();
+            manager := get_game_manager();
+            if manager != null && manager->get_phase() == .IN_ROUND && manager->is_night_time() {
+                this->begin_downed_effect();
+            } else {
+                this->begin_death_effect();
+            }
         }
     }
 
@@ -495,12 +673,109 @@ Player :: class : Player_Base {
     }
 
     begin_death_effect :: method() {
+        if this->is_dead_for_night_state() return;
         if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect return;
         effect := new(Player_Death_Effect);
         entity->set_active_effect(effect);
     }
 
+    begin_downed_effect :: method() {
+        if this->is_dead_for_night_state() return;
+        if entity.active_effect != null && entity.active_effect.#type == Player_Downed_Effect return;
+        effect := new(Player_Downed_Effect);
+        entity->set_active_effect(effect);
+    }
+
+    is_downed_for_night :: method() -> bool {
+        return entity.active_effect != null && entity.active_effect.#type == Player_Downed_Effect;
+    }
+
+    is_dead_for_night_state :: method() -> bool {
+        if is_ghost_mode return true;
+        return this->is_downed_for_night();
+    }
+
+    revive_from_downed :: method(revive_health: float) -> bool {
+        if !this->is_downed_for_night() return false;
+        downed := entity.active_effect.(Player_Downed_Effect);
+        downed->revive_in_place(revive_health);
+        return true;
+    }
+
+    revive_for_day_start :: method() {
+        if this->is_downed_for_night() {
+            downed := entity.active_effect.(Player_Downed_Effect);
+            downed->revive_at_respawn();
+            return;
+        }
+
+        if !is_ghost_mode return;
+        this->set_ghost_mode_enabled(false);
+        health = max_health;
+        entity->set_local_position(get_respawn_position());
+        this->reset_death_animation();
+    }
+
+    set_ghost_mode_enabled :: method(ghost_enabled: bool) {
+        if is_ghost_mode == ghost_enabled return;
+
+        is_ghost_mode = ghost_enabled;
+        ghost_current_animation_name = "";
+        // Ensure the animator leaves the death state before ghost playback starts.
+        this->reset_death_animation();
+    }
+
+    update_ghost_mode_animation :: method() {
+        if animator == null return;
+        if animator.instance == null return;
+        if animator.instance.state_machine == null return;
+
+        animator.instance.state_machine->set_bool("is_ghost_mode", is_ghost_mode);
+    }
+
+    clear_inventory_for_restart :: method() {
+        if !Game.is_server() return;
+        if default_inventory == null || default_inventory.self == null return;
+        if default_inventory.capacity <= 0 return;
+
+        for i: 0..default_inventory.capacity-1 {
+            item := default_inventory->get_item(i);
+            if item == null continue;
+            Items.remove_item_from_inventory(item, default_inventory);
+        }
+    }
+
+    reset_for_game_restart :: method() {
+        this->set_ghost_mode_enabled(false);
+        if this->is_downed_for_night() {
+            downed := entity.active_effect.(Player_Downed_Effect);
+            downed->revive_at_respawn();
+        } else if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect {
+            death_effect := entity.active_effect.(Player_Death_Effect);
+            death_effect->remove_effect(true);
+            health = max_health;
+            entity->set_local_position(get_respawn_position());
+        } else {
+            health = max_health;
+            this->reset_death_animation();
+        }
+
+        if equipped_weapon_type != .NONE {
+            weapon_unequip(this, equipped_weapon_type);
+            equipped_weapon_type = .NONE;
+        }
+        equipped_item_def = null;
+        last_selected_index = -1;
+        this->set_mouse_ik_enabled(false);
+        crafting_ui_open = false;
+        beacon_ui_open = false;
+        active_beacon = null;
+        death_drop_pickup_blocks->clear();
+        this->clear_inventory_for_restart();
+    }
+
     trigger_death_animation :: method() {
+        if is_ghost_mode return;
         if animator == null return;
         if animator.instance == null return;
         if animator.instance.state_machine == null return;
@@ -709,9 +984,10 @@ Player :: class : Player_Base {
         manager := get_game_manager();
         if manager == null return;
 
-        overlay_alpha := manager->get_round_start_overlay_alpha();
+        overlay_alpha := max(manager->get_round_start_overlay_alpha(), manager->get_game_over_overlay_alpha());
         should_draw_text := manager->should_draw_round_start_text();
-        if overlay_alpha <= 0.0 && !should_draw_text return;
+        should_draw_game_over_text := manager->should_draw_game_over_text();
+        if overlay_alpha <= 0.0 && !should_draw_text && !should_draw_game_over_text return;
 
         UI.push_screen_draw_context();
         defer UI.pop_draw_context();
@@ -733,6 +1009,31 @@ Player :: class : Player_Base {
             ts.outline_thickness = 3;
             ts.outline_color = {0, 0, 0, 1};
             UI.text(text_rect, ts, "Survive!");
+        }
+
+        if should_draw_game_over_text {
+            game_over_rect := UI.get_safe_screen_rect()->center_rect()->grow(140, 650, 140, 650)->offset(0, 40);
+            nights_rect := game_over_rect->offset(0, -130)->grow(0, -120, 0, -120);
+
+            title_ts := UI.default_text_settings();
+            title_ts.size = 112;
+            title_ts.halign = .CENTER;
+            title_ts.valign = .CENTER;
+            title_ts.color = {1.0, 0.25, 0.25, 1.0};
+            title_ts.do_outline = true;
+            title_ts.outline_thickness = 3;
+            title_ts.outline_color = {0, 0, 0, 1};
+            UI.text(game_over_rect, title_ts, "GAME OVER");
+
+            detail_ts := UI.default_text_settings();
+            detail_ts.size = 54;
+            detail_ts.halign = .CENTER;
+            detail_ts.valign = .CENTER;
+            detail_ts.color = {1, 1, 1, 1};
+            detail_ts.do_outline = true;
+            detail_ts.outline_thickness = 2;
+            detail_ts.outline_color = {0, 0, 0, 1};
+            UI.text(nights_rect, detail_ts, "Nights Survived: %", {manager->get_game_over_nights_lasted()});
         }
     }
 

@@ -1,6 +1,8 @@
 MOB_DAMAGE_PULSE_DURATION_SECONDS :: 0.65;
 MOB_DAMAGE_PULSE_OSCILLATIONS :: 7.0;
-MOB_NIGHT_ACQUIRE_RANGE_MIN :: 100.0;
+MOB_NIGHT_HEALTH_MULTIPLIER :: 2.0;
+MOB_NIGHT_MOVE_SPEED_BONUS :: 50.0;
+MOB_NIGHT_AGGRO_RADIUS_BONUS :: 10.0;
 
 Mob :: class : Component {
     max_health: float @ao_serialize;
@@ -28,6 +30,10 @@ Mob :: class : Component {
     animation_state_machine: State_Machine;
     base_local_scale: v2;
     damage_pulse_elapsed_seconds: float;
+    base_max_health: float;
+    base_move_speed: float;
+    base_acquire_range: float;
+    night_stats_applied: bool;
 
     ao_start :: method() {
         if max_health <= 0.0 { max_health = 100.0; }
@@ -43,6 +49,10 @@ Mob :: class : Component {
         if separation_radius <= 0.0 { separation_radius = 1.0; }
         if separation_strength <= 0.0 { separation_strength = 0.75; }
 
+        base_max_health = max_health;
+        base_move_speed = move_speed;
+        base_acquire_range = acquire_range;
+        night_stats_applied = false;
         health = max_health;
         target_player_id = 0;
         damage_pulse_elapsed_seconds = MOB_DAMAGE_PULSE_DURATION_SECONDS;
@@ -66,6 +76,7 @@ Mob :: class : Component {
 
         setup_animation_state_machine();
         lock_to_game_navmesh();
+        sync_night_stats();
     }
 
     ao_update :: method(dt: float) {
@@ -90,6 +101,7 @@ Mob :: class : Component {
         }
 
         lock_to_game_navmesh();
+        sync_night_stats();
         movement_agent.movement_speed = move_speed;
 
         target := resolve_or_find_target_player();
@@ -98,6 +110,10 @@ Mob :: class : Component {
         }
 
         target_pos := target.entity.world_position;
+        if BeaconSystem.is_position_inside_active_safety_zone(target_pos) {
+            target_player_id = 0;
+            return;
+        }
         destination := get_spread_destination(target_pos, target.entity.id);
         self_pos := entity.world_position;
         destination = BeaconSystem.clamp_position_outside_safety_zones(destination, self_pos);
@@ -167,6 +183,7 @@ Mob :: class : Component {
             foreach p: component_iterator(Player) {
                 if p.entity.id != target_player_id continue;
                 if p.health <= 0.0 break;
+                if BeaconSystem.is_position_inside_active_safety_zone(p.entity.world_position) break;
 
                 dist_sq := length_squared(p.entity.world_position - entity.world_position);
                 if dist_sq <= effective_acquire_range_sq {
@@ -181,6 +198,7 @@ Mob :: class : Component {
         closest_dist_sq := effective_acquire_range_sq;
         foreach p: component_iterator(Player) {
             if p.health <= 0.0 continue;
+            if BeaconSystem.is_position_inside_active_safety_zone(p.entity.world_position) continue;
             diff := p.entity.world_position - entity.world_position;
             dist_sq := length_squared(diff);
             if dist_sq <= closest_dist_sq {
@@ -198,14 +216,36 @@ Mob :: class : Component {
     }
 
     get_effective_acquire_range :: method() -> float {
-        effective_range := acquire_range;
+        return acquire_range;
+    }
 
+    sync_night_stats :: method() {
         manager := get_game_manager();
-        if manager != null && manager->is_night_time() {
-            effective_range = max(effective_range, MOB_NIGHT_ACQUIRE_RANGE_MIN);
+        is_night := false;
+        if manager != null {
+            is_night = manager->is_night_time();
         }
 
-        return effective_range;
+        if is_night {
+            if night_stats_applied return;
+
+            max_health = base_max_health * MOB_NIGHT_HEALTH_MULTIPLIER;
+            health *= MOB_NIGHT_HEALTH_MULTIPLIER;
+            move_speed = base_move_speed + MOB_NIGHT_MOVE_SPEED_BONUS;
+            acquire_range = base_acquire_range + MOB_NIGHT_AGGRO_RADIUS_BONUS;
+            night_stats_applied = true;
+            return;
+        }
+
+        if !night_stats_applied return;
+
+        max_health = base_max_health;
+        move_speed = base_move_speed;
+        acquire_range = base_acquire_range;
+        if health > max_health {
+            health = max_health;
+        }
+        night_stats_applied = false;
     }
 
     lock_to_game_navmesh :: method() {

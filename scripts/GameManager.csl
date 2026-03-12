@@ -147,10 +147,19 @@ GameManager :: class : Component {
     ROUND_START_BLACK_HOLD_SECONDS :: 1.0;
     ROUND_START_FADE_IN_SECONDS :: 1.0;
     ROUND_START_TEXT_DURATION_SECONDS :: 5.0;
+    GAME_OVER_FADE_OUT_SECONDS :: 1.0;
+    GAME_OVER_BLACK_HOLD_SECONDS :: 1.25;
+    GAME_OVER_FADE_IN_SECONDS :: 1.0;
+    GAME_OVER_TEXT_DURATION_SECONDS :: 10.0;
     DAY_MUSIC_ASSET_PATH :: "Music/WoP.wav";
     NIGHT_MUSIC_ASSET_PATH :: "Music/FtI.wav";
     warned_player_user_ids_for_current_day: [..]string;
+    warned_player_entities_for_current_day: [..]Entity;
     round_start_teleport_done: bool;
+    game_over_sequence_active: bool;
+    game_over_sequence_restart_done: bool;
+    game_over_sequence_start_time: float;
+    game_over_nights_lasted: s64;
 
     ao_start :: method() {
         if g_game_manager != null && g_game_manager != this {
@@ -187,9 +196,6 @@ GameManager :: class : Component {
 
         // Keep core game state authoritative on the server.
         // Music playback is client-side so each player always hears it.
-        if !Game.is_server() {
-            return;
-        }
 
         game_time_seconds += dt;
         phase_time_seconds += dt;
@@ -209,6 +215,8 @@ GameManager :: class : Component {
                 // Post round state: cleanup, score display, and reset hooks.
             }
         }
+
+        update_game_over_sequence();
 
     }
 
@@ -262,10 +270,14 @@ GameManager :: class : Component {
             }
             case .IN_ROUND: {
                 log_info("GameManager phase -> IN_ROUND", {});
+                run_round_start_poi_setup();
                 nights = 0;
                 reset_day_night_cycle();
                 reset_beacons_for_round();
                 round_start_teleport_done = false;
+                game_over_sequence_active = false;
+                game_over_sequence_restart_done = false;
+                game_over_sequence_start_time = 0.0;
             }
             case .POST_ROUND: {
                 log_info("GameManager phase -> POST_ROUND", {});
@@ -385,6 +397,36 @@ GameManager :: class : Component {
         }
     }
 
+    run_round_start_poi_setup :: method() {
+        if !Game.is_server() return;
+
+        spawned_count: s64 = 0;
+        total_count: s64 = 0;
+        foreach poi: component_iterator(POI) {
+            if poi == null continue;
+            total_count += 1;
+            if poi->spawn_for_round() {
+                spawned_count += 1;
+            }
+        }
+
+        if total_count > 0 {
+            log_info("POI round start complete: %/% spawned.", {spawned_count, total_count});
+        }
+
+        rebuild_player_navmesh_for_round_start();
+    }
+
+    rebuild_player_navmesh_for_round_start :: method() {
+        if player_navmesh == null return;
+
+        ok := player_navmesh->rebuild_immediately();
+        if !ok {
+            player_navmesh->mark_for_rebuild();
+            log_info("Player navmesh immediate rebuild failed; scheduled deferred rebuild.", {});
+        }
+    }
+
     lock_player_to_navmesh :: method(player: Player) {
         if player == null return;
 
@@ -409,6 +451,7 @@ GameManager :: class : Component {
         day_night_blend_to = 0.0;
         day_night_blend_transition_time_seconds = 0.0;
         warned_player_user_ids_for_current_day->clear();
+        warned_player_entities_for_current_day->clear();
         log_info("Day/Night -> DAY", {});
     }
 
@@ -416,8 +459,8 @@ GameManager :: class : Component {
         day_night_phase_time_seconds += dt;
 
         if day_night_phase == .DAY {
-            maybe_send_night_warning();
             if day_night_phase_time_seconds >= DAY_DURATION_SECONDS {
+                send_night_warning();
                 day_night_phase = .NIGHT;
                 day_night_phase_time_seconds = 0.0;
                 begin_day_night_blend_transition();
@@ -430,34 +473,116 @@ GameManager :: class : Component {
             day_night_phase = .DAY;
             day_night_phase_time_seconds = 0.0;
             warned_player_user_ids_for_current_day->clear();
+            warned_player_entities_for_current_day->clear();
             nights += 1;
             begin_day_night_blend_transition();
+            revive_dead_players_for_day_start();
             notify_all_players_survived_night();
             log_info("Day/Night -> DAY (Nights: %)", {nights});
         }
     }
 
-    maybe_send_night_warning :: method() {
-        if !is_night_warning_window_active() return;
+    revive_dead_players_for_day_start :: method() {
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            if !p->is_dead_for_night_state() continue;
+            p->revive_for_day_start();
+        }
+    }
+
+    are_all_players_dead_for_night :: method() -> bool {
+        player_count: s64 = 0;
+        dead_count: s64 = 0;
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            player_count += 1;
+            if p->is_dead_for_night_state() {
+                dead_count += 1;
+            }
+        }
+        if player_count <= 0 return false;
+        return dead_count >= player_count;
+    }
+
+    start_game_over_sequence :: method() {
+        if game_over_sequence_active return;
+        game_over_sequence_active = true;
+        game_over_sequence_restart_done = false;
+        game_over_sequence_start_time = get_time();
+        game_over_nights_lasted = nights;
+        log_info("Game Over sequence started.", {});
+    }
+
+    update_game_over_sequence :: method() {
+        if !game_over_sequence_active {
+            if current_phase == .IN_ROUND && day_night_phase == .NIGHT {
+                if are_all_players_dead_for_night() {
+                    start_game_over_sequence();
+                }
+            }
+            return;
+        }
+
+        elapsed := get_time() - game_over_sequence_start_time;
+        if !game_over_sequence_restart_done && elapsed >= GAME_OVER_FADE_OUT_SECONDS {
+            run_game_over_restart();
+            game_over_sequence_restart_done = true;
+        }
+
+        fade_total_time := GAME_OVER_FADE_OUT_SECONDS + GAME_OVER_BLACK_HOLD_SECONDS + GAME_OVER_FADE_IN_SECONDS;
+        total_time := max(fade_total_time, GAME_OVER_TEXT_DURATION_SECONDS);
+        if elapsed >= total_time {
+            game_over_sequence_active = false;
+            game_over_sequence_restart_done = false;
+            game_over_sequence_start_time = 0.0;
+        }
+    }
+
+    run_game_over_restart :: method() {
+        if !Game.is_server() return;
+
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            p->reset_for_game_restart();
+        }
+
+        reset_beacons_for_full_restart();
+        reset_game_state();
+
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            teleport_player_to_lobby_spawn(p);
+        }
+    }
+
+    reset_beacons_for_full_restart :: method() {
+        foreach beacon: component_iterator(Beacon) {
+            if beacon == null continue;
+            beacon.level = 1;
+            beacon->clear_stockpile();
+            beacon->set_fuel_for_round(Beacon.DEFAULT_STARTING_FUEL);
+            beacon->apply_level_world_state();
+            beacon->refresh_prompt_text();
+        }
+    }
+
+    send_night_warning :: method() {
         notify_all_players_night_warning();
     }
 
     notify_all_players_night_warning :: method() {
-        notified_count: s64 = 0;
         foreach p: component_iterator(Player) {
             if p == null continue;
-            user_id := p->get_user_id();
-            if user_id == "" continue;
-            if was_player_warned_this_day(user_id) continue;
+            if p.entity == null continue;
 
-            Notifier.notify(p, NIGHT_WARNING_NOTIFICATION_TEXT);
-            warned_player_user_ids_for_current_day->append(user_id);
-            notified_count += 1;
+            if Game.is_server() {
+                Notifier.notify(p, NIGHT_WARNING_NOTIFICATION_TEXT);
+            } else if p->is_local() {
+                Notifier.notify(NIGHT_WARNING_NOTIFICATION_TEXT);
+            }
+            log_info("Sent night warning to %", {p->get_username()});
         }
-
-        if notified_count > 0 {
-            log_info("Sent pre-night warning to % player(s) this day.", {notified_count});
-        }
+        // play a warning horn sfx here.
     }
 
     was_player_warned_this_day :: method(user_id: string) -> bool {
@@ -469,10 +594,26 @@ GameManager :: class : Component {
         return false;
     }
 
+    was_player_entity_warned_this_day :: method(player_entity: Entity) -> bool {
+        for warned_entity: warned_player_entities_for_current_day {
+            if warned_entity == player_entity {
+                return true;
+            }
+        }
+        return false;
+    }
+
     notify_all_players_survived_night :: method() {
         remaining_nights := max(99 - nights, 0);
         foreach p: component_iterator(Player) {
-            Notifier.notify(p, SURVIVED_NIGHT_NOTIFICATION_TEXT, {remaining_nights});
+            if p == null continue;
+            if p.entity == null continue;
+
+            if Game.is_server() {
+                Notifier.notify(p, SURVIVED_NIGHT_NOTIFICATION_TEXT, {remaining_nights});
+            } else if p->is_local() {
+                Notifier.notify(SURVIVED_NIGHT_NOTIFICATION_TEXT, {remaining_nights});
+            }
         }
         log_info("Broadcasted survived-night notification (remaining: %).", {remaining_nights});
     }
@@ -561,6 +702,40 @@ GameManager :: class : Component {
         return 0.0;
     }
 
+    get_game_over_overlay_alpha :: method() -> float {
+        if !game_over_sequence_active return 0.0;
+
+        elapsed := get_time() - game_over_sequence_start_time;
+        fade_out_end := GAME_OVER_FADE_OUT_SECONDS;
+        black_hold_end := fade_out_end + GAME_OVER_BLACK_HOLD_SECONDS;
+        fade_in_end := black_hold_end + GAME_OVER_FADE_IN_SECONDS;
+
+        if elapsed <= fade_out_end {
+            return clamp(elapsed / GAME_OVER_FADE_OUT_SECONDS, 0.0, 1.0);
+        }
+
+        if elapsed <= black_hold_end {
+            return 1.0;
+        }
+
+        if elapsed <= fade_in_end {
+            fade_in_t := clamp((elapsed - black_hold_end) / GAME_OVER_FADE_IN_SECONDS, 0.0, 1.0);
+            return 1.0 - fade_in_t;
+        }
+
+        return 0.0;
+    }
+
+    should_draw_game_over_text :: method() -> bool {
+        if !game_over_sequence_active return false;
+        elapsed := get_time() - game_over_sequence_start_time;
+        return elapsed <= GAME_OVER_TEXT_DURATION_SECONDS;
+    }
+
+    get_game_over_nights_lasted :: method() -> s64 {
+        return game_over_nights_lasted;
+    }
+
     should_draw_round_start_text :: method() -> bool {
         if current_phase != .IN_ROUND return false;
         if !round_start_teleport_done return false;
@@ -571,6 +746,7 @@ GameManager :: class : Component {
 
     try_auto_start_from_lobby :: method() {
         if current_phase != .LOBBY return;
+        if game_over_sequence_active return;
 
         player_count := get_player_count();
         if player_count < PLAYERS_REQUIRED_TO_START return;
