@@ -243,9 +243,13 @@ GameManager :: class : Component {
     nights: s64;
     current_night_event: Night_Event_Type;
     raid_spawn_cap_multiplier: s64 @ao_serialize;
+    night_event_min_completed_nights_before_roll: s64 @ao_serialize;
     night_event_none_weight: float @ao_serialize;
     night_event_raid_weight: float @ao_serialize;
     night_event_supply_drop_weight: float @ao_serialize;
+    night_event_weight_scale_start: float @ao_serialize;
+    night_event_weight_scale_gain_per_completed_night: float @ao_serialize;
+    night_event_weight_scale_cap: float @ao_serialize;
     SupplyDropPrefab: string @ao_serialize;
     supply_drop_spawn_point: Entity @ao_serialize;
     active_supply_drop_entity: Entity;
@@ -294,9 +298,13 @@ GameManager :: class : Component {
         if damage_number_lifetime_seconds <= 0.0 { damage_number_lifetime_seconds = 0.65; }
         if damage_number_rise_speed <= 0.0 { damage_number_rise_speed = 1.4; }
         if raid_spawn_cap_multiplier <= 1 { raid_spawn_cap_multiplier = 2; }
+        if night_event_min_completed_nights_before_roll <= 0 { night_event_min_completed_nights_before_roll = 2; }
         if night_event_none_weight <= 0.0 { night_event_none_weight = 65.0; }
         if night_event_raid_weight <= 0.0 { night_event_raid_weight = 25.0; }
         if night_event_supply_drop_weight <= 0.0 { night_event_supply_drop_weight = 10.0; }
+        if night_event_weight_scale_start <= 0.0 { night_event_weight_scale_start = 0.1; }
+        if night_event_weight_scale_gain_per_completed_night <= 0.0 { night_event_weight_scale_gain_per_completed_night = 0.1; }
+        if night_event_weight_scale_cap <= 0.0 { night_event_weight_scale_cap = 1.0; }
         last_notified_night_event = .NONE;
         reset_game_state();
         apply_navmesh_lock_to_all_players();
@@ -879,9 +887,22 @@ GameManager :: class : Component {
         clear_active_night_event();
         current_night_event = .NONE;
 
+        if nights < night_event_min_completed_nights_before_roll {
+            log_info("Night event skipped: completed nights % below unlock threshold %.", {
+                nights,
+                night_event_min_completed_nights_before_roll
+            });
+            return;
+        }
+
+        unlocked_nights := nights - night_event_min_completed_nights_before_roll;
+        event_weight_scale := night_event_weight_scale_start +
+            unlocked_nights.(float) * night_event_weight_scale_gain_per_completed_night;
+        event_weight_scale = clamp(event_weight_scale, 0.0, night_event_weight_scale_cap);
+
         none_weight := max(night_event_none_weight, 0.0);
-        raid_weight := max(night_event_raid_weight, 0.0);
-        supply_weight := max(night_event_supply_drop_weight, 0.0);
+        raid_weight := max(night_event_raid_weight, 0.0) * event_weight_scale;
+        supply_weight := max(night_event_supply_drop_weight, 0.0) * event_weight_scale;
         total_weight := none_weight + raid_weight + supply_weight;
         if total_weight <= 0.0 return;
 
@@ -899,6 +920,10 @@ GameManager :: class : Component {
 
         apply_active_night_event();
         notify_all_players_night_event_started();
+        log_info("Night event roll applied with scale % after % completed nights.", {
+            format_float(event_weight_scale, decimals=2),
+            nights
+        });
     }
 
     apply_active_night_event :: method() {

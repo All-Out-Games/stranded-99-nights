@@ -13,7 +13,6 @@
     "X": 1,
     "Y": 1
   },
-  "previous_sibling": "189307011333948:1772752776482508300",
   "next_sibling": "107553319698585:1772825786014433400",
   "parent": "216089299951551:1773349045489529300"
 },
@@ -25,7 +24,7 @@
   "data": {
     "mob_prefab_path": "SandSoldier.prefab",
     "spawn_radius": 15,
-    "max_mobs": 2,
+    "max_mobs": 1,
     "spawn_rate_seconds": 8
   }
 },

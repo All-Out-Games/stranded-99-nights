@@ -24,7 +24,7 @@
     "attack_damage": 5,
     "attack_speed": 3,
     "attack_range": 1.5000000000000000,
-    "acquire_range": 8,
+    "acquire_range": 2.5000000000000000,
     "despawn_delay_seconds": 3,
     "spine_animator": "187544843927176:1772751942122743400",
     "idle_animation_name": "idle",

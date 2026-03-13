@@ -25,8 +25,9 @@
   "data": {
     "mob_prefab_path": "Wolf.prefab",
     "spawn_radius": 15,
-    "max_mobs": 2,
-    "spawn_rate_seconds": 8
+    "max_mobs": 1,
+    "spawn_rate_seconds": 8,
+    "NightOnly": true
   }
 },
 {

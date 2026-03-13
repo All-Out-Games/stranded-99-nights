@@ -23,7 +23,7 @@
   "internal_component_type": "ResourceNode",
   "data": {
     "radius": 2,
-    "required_hold_time": 2,
+    "required_hold_time": 1,
     "prompt_offset": {
       "Y": 1
     },

@@ -244,18 +244,24 @@ Mob :: class : Component {
     sync_night_stats :: method() {
         manager := get_game_manager();
         is_night := false;
+        is_raid_night := false;
         if manager != null {
             is_night = manager->is_night_time();
+            is_raid_night = manager->is_raid_event_active();
         }
 
         if is_night {
-            if night_stats_applied return;
+            if !night_stats_applied {
+                max_health = base_max_health * MOB_NIGHT_HEALTH_MULTIPLIER;
+                health *= MOB_NIGHT_HEALTH_MULTIPLIER;
+                move_speed = base_move_speed + MOB_NIGHT_MOVE_SPEED_BONUS;
+                night_stats_applied = true;
+            }
 
-            max_health = base_max_health * MOB_NIGHT_HEALTH_MULTIPLIER;
-            health *= MOB_NIGHT_HEALTH_MULTIPLIER;
-            move_speed = base_move_speed + MOB_NIGHT_MOVE_SPEED_BONUS;
-            acquire_range = base_acquire_range + MOB_NIGHT_AGGRO_RADIUS_BONUS;
-            night_stats_applied = true;
+            acquire_range = base_acquire_range;
+            if is_raid_night {
+                acquire_range += MOB_NIGHT_AGGRO_RADIUS_BONUS;
+            }
             return;
         }
 

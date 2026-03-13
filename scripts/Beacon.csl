@@ -485,9 +485,11 @@ BeaconSystem :: struct {
         foreach p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
-            log_info("Notifying player % about beacon upgrade.", {p->get_username()});
-            Notifier.notify(p, "Beacon upgraded! The Map has Expanded!");
+            if p->is_local() {
+                Notifier.notify("Beacon upgraded! The Map has Expanded!");
+            }
         }
+        
 
         if beacon.level == 2 {
             beacon->rebuild_game_navmesh();
