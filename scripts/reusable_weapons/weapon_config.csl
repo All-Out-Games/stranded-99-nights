@@ -536,7 +536,7 @@ get_weapon_config :: proc(wt: Weapon_Type) -> Weapon_Config {
             config.base_damage = 8.0;
             config.ammo_per_shot = 0;
             config.weapon_skin = "012MIM/weapons/spear";
-            config.weapon_icon_path = "reusable_weapons/sprites/reusable-weapons/katana.png";
+            config.weapon_icon_path = "Items/Spear.png";
             config.item_id = "spear";
             config.item_name = "Spear";
             config.ammo_type_index = -1;
@@ -550,8 +550,8 @@ get_weapon_config :: proc(wt: Weapon_Type) -> Weapon_Config {
             config.fire_rate = 1.0;
             config.base_damage = 15.0;
             config.ammo_per_shot = 0;
-            config.weapon_skin = "012MIM/weapons/sword_stone";
-            config.weapon_icon_path = "reusable_weapons/sprites/reusable-weapons/katana.png";
+            config.weapon_skin = "012MIM/weapons/sword_steel";
+            config.weapon_icon_path = "Items/steel_sword.png";
             config.item_id = "sword";
             config.item_name = "Sword";
             config.ammo_type_index = -1;

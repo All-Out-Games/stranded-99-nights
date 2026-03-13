@@ -22,11 +22,14 @@ Beacon :: class : Interactable {
     stockpile: [..]Beacon_Stockpile_Entry;
     fuel_next_burn_time_seconds: float;
     current_fuel_animation_name: string;
+    upgrade_feedback_sequence: s64;
+    seen_upgrade_feedback_sequence: s64;
 
     MAX_LEVEL :: 3;
     DEFAULT_STARTING_FUEL :: 3;
     DEFAULT_FUEL_BURN_INTERVAL_SECONDS :: 15.0;
     MAX_FUEL_ANIMATION_BUCKET :: 5;
+    UPGRADE_NOTIFICATION_TEXT :: "Beacon upgraded! The Map has Expanded!";
 
     ao_start :: method() {
         this->set_listener(this);
@@ -59,6 +62,7 @@ Beacon :: class : Interactable {
         apply_level_world_state();
         apply_fuel_animation_state();
         apply_dynamic_safety_radius_state();
+        seen_upgrade_feedback_sequence = upgrade_feedback_sequence;
         refresh_prompt_text();
     }
 
@@ -72,6 +76,7 @@ Beacon :: class : Interactable {
         player.crafting_ui_open = false;
         player.beacon_ui_open = true;
         player.active_beacon = this;
+        game_sfx_play(.UI_CLICK, player.entity);
     }
 
     ao_update :: method(dt: float) {
@@ -80,6 +85,7 @@ Beacon :: class : Interactable {
             apply_dynamic_safety_radius_state();
         }
         apply_fuel_animation_state();
+        flush_upgrade_feedback();
     }
 
     ao_late_update :: method(dt: float) {
@@ -288,7 +294,7 @@ Beacon :: class : Interactable {
         apply_safety_zone_visual_scale();
 
         if los_caster != null {
-            los_caster.radii = {safety_radius, safety_radius};
+            los_caster.radii = {safety_radius, safety_radius + 2.0};
         }
     }
 
@@ -300,6 +306,27 @@ Beacon :: class : Interactable {
         ok := manager.player_navmesh->rebuild_immediately();
         if !ok {
             manager.player_navmesh->mark_for_rebuild();
+        }
+    }
+
+    flush_upgrade_feedback :: method() {
+        if seen_upgrade_feedback_sequence == upgrade_feedback_sequence return;
+
+        seen_upgrade_feedback_sequence = upgrade_feedback_sequence;
+
+        sent_to_any_player := false;
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            if p.entity == null continue;
+
+            if p->is_local_or_server() {
+                Notifier.notify(p, UPGRADE_NOTIFICATION_TEXT);
+                sent_to_any_player = true;
+            }
+        }
+
+        if sent_to_any_player {
+            game_sfx_play(.BEACON_UPGRADE);
         }
     }
 
@@ -441,7 +468,7 @@ BeaconSystem :: struct {
     }
 
     try_auto_upgrade :: proc(beacon: Beacon) -> bool {
-        if !Game.is_server() return false;
+        //if !Game.is_server() return false;
         if beacon == null return false;
         if beacon.level >= Beacon.MAX_LEVEL return false;
 
@@ -453,30 +480,28 @@ BeaconSystem :: struct {
         beacon->clear_stockpile();
         beacon->apply_level_world_state();
         beacon->refresh_prompt_text();
+        beacon.upgrade_feedback_sequence += 1;
+
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            if p.entity == null continue;
+            log_info("Notifying player % about beacon upgrade.", {p->get_username()});
+            Notifier.notify(p, "Beacon upgraded! The Map has Expanded!");
+        }
 
         if beacon.level == 2 {
             beacon->rebuild_game_navmesh();
-            foreach p: component_iterator(Player) {
-                Notifier.notify(p, "Beacon upgraded to Level 2.");
-            }
             return true;
         }
         if beacon.level == 3 {
             beacon->rebuild_game_navmesh();
-            foreach p: component_iterator(Player) {
-                Notifier.notify(p, "Beacon upgraded to Max Level.");
-            }
             return true;
-        }
-
-        foreach p: component_iterator(Player) {
-            Notifier.notify(p, "Beacon upgraded.");
         }
         return true;
     }
 
     try_deposit_item :: proc(player: Player, beacon: Beacon, item_id: string) -> bool {
-        if !Game.is_server() return false;
+        //if !Game.is_server() return false;
         if player == null return false;
         if beacon == null return false;
         if beacon.level >= Beacon.MAX_LEVEL {
@@ -641,7 +666,11 @@ BeaconSystem :: struct {
             fuel_button_ts,
             format_string("Add Fuel (1 Wood) - You: %", {wood_have})
         ).clicked {
-            _ := BeaconSystem.try_add_fuel(player, beacon);
+            if BeaconSystem.try_add_fuel(player, beacon) {
+                game_sfx_play(.CRAFT_SUCCESS, player.entity);
+            } else {
+                game_sfx_play(.UI_ERROR, player.entity);
+            }
         }
         UI.pop_disabled();
 
@@ -749,7 +778,11 @@ BeaconSystem :: struct {
                 UI.push_id("beacon_deposit_%", {cost.item_id});
                 UI.push_disabled(!can_deposit);
                 if UI.button(deposit_button_rect, button_bs, button_ts, button_label).clicked {
-                    _ := BeaconSystem.try_deposit_item(player, beacon, cost.item_id);
+                    if BeaconSystem.try_deposit_item(player, beacon, cost.item_id) {
+                        game_sfx_play(.CRAFT_SUCCESS, player.entity);
+                    } else {
+                        game_sfx_play(.UI_ERROR, player.entity);
+                    }
                 }
                 UI.pop_disabled();
                 UI.pop_id();
@@ -765,6 +798,7 @@ BeaconSystem :: struct {
 
         bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
         if UI.button(close_rect, bs, close_ts, "Close").clicked {
+            game_sfx_play(.UI_CLICK, player.entity);
             BeaconSystem.close_modal(player);
             return;
         }

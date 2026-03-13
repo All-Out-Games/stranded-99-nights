@@ -3,12 +3,10 @@ POI :: class : Component {
     log_spawn_warnings: bool @ao_serialize;
     clear_previous_spawn_on_round_start: bool @ao_serialize;
 
-    rng: u64;
     spawned_entity: Entity;
     missing_prefab_list_warning_logged: bool;
 
     ao_start :: method() {
-        rng = rng_seed(entity.id);
         missing_prefab_list_warning_logged = false;
     }
 
@@ -17,14 +15,14 @@ POI :: class : Component {
         destroy_spawned_entity();
     }
 
-    spawn_for_round :: method() -> bool {
+    spawn_for_round :: method(round_rng: ref u64) -> bool {
         if !Game.is_server() return false;
 
         if clear_previous_spawn_on_round_start {
             destroy_spawned_entity();
         }
 
-        prefab_path := get_random_prefab_path();
+        prefab_path := get_random_prefab_path(ref round_rng);
         if prefab_path == "" {
             if log_spawn_warnings && !missing_prefab_list_warning_logged {
                 missing_prefab_list_warning_logged = true;
@@ -55,7 +53,7 @@ POI :: class : Component {
         return true;
     }
 
-    get_random_prefab_path :: method() -> string {
+    get_random_prefab_path :: method(round_rng: ref u64) -> string {
         if prefab_paths.count <= 0 {
             return "";
         }
@@ -65,7 +63,7 @@ POI :: class : Component {
         }
 
         max_index := prefab_paths.count - 1;
-        random_index := rng_range_int(ref rng, 0, max_index);
+        random_index := rng_range_int(ref round_rng, 0, max_index);
         return prefab_paths[random_index];
     }
 

@@ -5,8 +5,8 @@
   "name": "MobSpawner",
   "local_enabled": true,
   "local_position": {
-    "X": 15.1665630340576172,
-    "Y": -83.7389450073242188
+    "X": 19.4038810729980469,
+    "Y": -41.5582275390625000
   },
   "local_rotation": 0,
   "local_scale": {
@@ -23,7 +23,7 @@
   "internal_component_type": "MobSpawner",
   "data": {
     "mob_prefab_path": "Mimicer.prefab",
-    "spawn_radius": 15,
+    "spawn_radius": 50,
     "max_mobs": 1,
     "spawn_rate_seconds": 8,
     "NightOnly": true,
@@ -37,6 +37,6 @@
   "internal_component_type": "Circle_Collider",
   "data": {
     "is_trigger": true,
-    "size": 15
+    "size": 50
   }
 }

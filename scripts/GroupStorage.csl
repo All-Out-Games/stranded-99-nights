@@ -24,6 +24,7 @@ GroupStorage :: class : Interactable {
 
     on_interact :: method(player: Player) {
         if player == null return;
+        game_sfx_play(.UI_CLICK, player.entity);
         // Placeholder shell component; storage behavior intentionally removed.
     }
 }

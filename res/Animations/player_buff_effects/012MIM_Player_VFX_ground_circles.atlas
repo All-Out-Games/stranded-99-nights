@@ -1,0 +1,27 @@
+012MIM_Player_VFX_ground_circles.png
+	size: 2048, 512
+	filter: Linear, Linear
+	scale: 0.5
+Healing FX/floor_circle
+	bounds: 763, 62, 208, 166
+	offsets: 5, 5, 218, 176
+	rotate: 90
+PE-Buff/back
+	bounds: 518, 9, 261, 239
+	offsets: 1, 1, 263, 241
+	rotate: 90
+PE-Buff/front
+	bounds: 1075, 123, 147, 134
+	offsets: 1, 1, 149, 136
+	rotate: 90
+PE-Debuff/back
+	bounds: 273, 9, 261, 239
+	offsets: 1, 1, 263, 241
+	rotate: 90
+PE-Debuff/front
+	bounds: 935, 123, 147, 134
+	offsets: 1, 1, 149, 136
+	rotate: 90
+PlayerCharacter
+	bounds: 6, 6, 261, 264
+	offsets: 10, 4, 283, 271

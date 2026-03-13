@@ -156,6 +156,7 @@ ResourceNode :: class : Interactable {
             case .SCRAP: return "scrap";
             case .FIBER: return "fiber";
             case .FISH: return "fish";
+            case .DRIFTRESIN: return "root.resin";
             case .SULFUR: return "sulfur";
             case .NONE: return "";
         }

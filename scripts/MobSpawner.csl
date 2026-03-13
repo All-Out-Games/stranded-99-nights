@@ -17,6 +17,7 @@ MobSpawner :: class : Component {
     respawn_timer_active: bool;
     missing_prefab_warning_logged: bool;
     missing_navmesh_warning_logged: bool;
+    temporary_spawn_cap_bonus: s64;
 
     ao_start :: method() {
         if spawn_radius <= 0.0 { spawn_radius = 6.0; }
@@ -30,6 +31,7 @@ MobSpawner :: class : Component {
         respawn_timer_active = false;
         missing_prefab_warning_logged = false;
         missing_navmesh_warning_logged = false;
+        temporary_spawn_cap_bonus = 0;
 
         if !Game.is_server() return;
 
@@ -52,7 +54,7 @@ MobSpawner :: class : Component {
             return;
         }
 
-        target_count := max_mobs;
+        target_count := get_target_mob_cap();
         if spawned_mobs.count >= target_count {
             respawn_timer_active = false;
             respawn_timer_remaining_seconds = 0.0;
@@ -103,6 +105,24 @@ MobSpawner :: class : Component {
             }
             attempts += 1;
         }
+    }
+
+    get_target_mob_cap :: method() -> s64 {
+        return max(max_mobs + temporary_spawn_cap_bonus, 0);
+    }
+
+    set_temporary_spawn_cap_bonus :: method(bonus: s64) {
+        temporary_spawn_cap_bonus = max(bonus, 0);
+    }
+
+    clear_temporary_spawn_cap_bonus :: method() {
+        temporary_spawn_cap_bonus = 0;
+    }
+
+    force_fill_to_current_cap :: method() {
+        if !Game.is_server() return;
+        prune_spawned_mobs();
+        spawn_to_target_immediately(get_target_mob_cap());
     }
 
     prune_spawned_mobs :: method() {

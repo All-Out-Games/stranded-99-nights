@@ -1,5 +1,24 @@
 FISH_ITEM_ID :: "fish";
+BANDAGE_ITEM_ID :: "bandage";
+MEDKIT_ITEM_ID :: "medkit";
 FISH_HEAL_AMOUNT :: 15.0;
+BANDAGE_HEAL_AMOUNT :: 30.0;
+MEDKIT_HEAL_AMOUNT :: 80.0;
+FISH_HEAL_EFFECT_PREFAB_PATH :: "HealEffect.prefab";
+FISH_HEAL_EFFECT_DURATION :: 2.0;
+FISH_HEAL_SFX_PATH :: "reusable_weapons/sounds/reusable-weapons/heal_oneshot.wav";
+
+Fish_Heal_Effect_Lifetime :: class : Component {
+    lifetime: float;
+    elapsed: float;
+
+    ao_update :: method(dt: float) {
+        elapsed += dt;
+        if lifetime > 0.0 && elapsed >= lifetime {
+            entity->destroy();
+        }
+    }
+}
 
 player_get_selected_hotbar_item :: proc(player: Player) -> Item_Instance {
     if player == null return null;
@@ -11,7 +30,23 @@ player_get_selected_hotbar_item :: proc(player: Player) -> Item_Instance {
     return player.default_inventory->get_item(player.last_selected_index);
 }
 
-player_is_holding_fish :: proc(player: Player) -> bool {
+is_healing_item_id :: proc(item_id: string) -> bool {
+    if item_id == FISH_ITEM_ID return true;
+    if item_id == BANDAGE_ITEM_ID return true;
+    if item_id == MEDKIT_ITEM_ID return true;
+    return false;
+}
+
+get_heal_amount_for_item_id :: proc(item_id: string) -> float {
+    switch item_id {
+        case FISH_ITEM_ID:    return FISH_HEAL_AMOUNT;
+        case BANDAGE_ITEM_ID: return BANDAGE_HEAL_AMOUNT;
+        case MEDKIT_ITEM_ID:  return MEDKIT_HEAL_AMOUNT;
+    }
+    return 0.0;
+}
+
+player_is_holding_healing_item :: proc(player: Player) -> bool {
     selected := player_get_selected_hotbar_item(player);
     if selected == null return false;
     if selected.quantity <= 0 return false;
@@ -19,7 +54,30 @@ player_is_holding_fish :: proc(player: Player) -> bool {
     defn := selected->get_definition();
     if defn == null return false;
 
-    return defn->get_id() == FISH_ITEM_ID;
+    return is_healing_item_id(defn->get_id());
+}
+
+player_get_selected_heal_amount :: proc(player: Player) -> float {
+    selected := player_get_selected_hotbar_item(player);
+    if selected == null return 0.0;
+    if selected.quantity <= 0 return 0.0;
+
+    defn := selected->get_definition();
+    if defn == null return 0.0;
+
+    return get_heal_amount_for_item_id(defn->get_id());
+}
+
+player_get_selected_healing_item_icon :: proc(player: Player) -> Texture_Asset {
+    selected := player_get_selected_hotbar_item(player);
+    if selected == null return null;
+    if selected.quantity <= 0 return null;
+
+    defn := selected->get_definition();
+    if defn == null return null;
+    if !is_healing_item_id(defn->get_id()) return null;
+
+    return defn->get_icon();
 }
 
 consume_selected_item_stack :: proc(player: Player, amount: s64) -> bool {
@@ -34,22 +92,59 @@ consume_selected_item_stack :: proc(player: Player, amount: s64) -> bool {
     return true;
 }
 
+spawn_fish_heal_effect :: proc(player: Player) {
+    if player == null return;
+    if player.entity == null return;
+
+    prefab := get_asset(Prefab_Asset, FISH_HEAL_EFFECT_PREFAB_PATH);
+    if prefab == null return;
+
+    effect_entity := Scene.instantiate(prefab);
+    if effect_entity == null return;
+
+    effect_entity->set_parent(player.entity, false);
+    effect_entity->set_local_position(v2{0.0, 0.0});
+
+    effect_lifetime := effect_entity->add_component(Fish_Heal_Effect_Lifetime);
+    effect_lifetime.lifetime = FISH_HEAL_EFFECT_DURATION;
+}
+
+play_fish_heal_sfx :: proc(player: Player) {
+    if player == null return;
+    if player.entity == null return;
+
+    sfx := get_asset(SFX_Asset, FISH_HEAL_SFX_PATH);
+    if sfx == null return;
+
+    desc := SFX.default_sfx_desc();
+    desc.channel = .SFX;
+    desc.entity_to_follow = player.entity.id;
+    SFX.play(sfx, desc);
+}
+
 Eat_Fish_Ability :: class : Ability_Base {
     on_init :: proc(ability: Ability_Base) {
-        ability.name = "Eat Fish";
+        ability.name = "Use Consumable";
         ability.icon = get_asset(Texture_Asset, "Items/Fish.png");
-        ability.disable_keybind = true;
         ability.is_aimed_ability = false;
     }
 
     can_use :: proc(ability: Ability_Base) -> bool {
         p := ability.player.(Player);
-        if !player_is_holding_fish(p) return false;
+        if !player_is_holding_healing_item(p) return false;
+        if player_get_selected_heal_amount(p) <= 0.0 return false;
         if p.health >= p.max_health return false;
         return true;
     }
 
     on_update :: proc(ability: Ability_Base, params: ref Ability_Update_Params) {
+        icon := player_get_selected_healing_item_icon(ability.player.(Player));
+        if icon != null {
+            ability.icon = icon;
+        } else {
+            ability.icon = get_asset(Texture_Asset, "Items/Fish.png");
+        }
+
         if !params.can_use return;
 
         did_activate := params.just_pressed || params.clicked;
@@ -59,9 +154,14 @@ Eat_Fish_Ability :: class : Ability_Base {
         p := ability.player.(Player);
         ability.current_cooldown = 0.2;
 
+        heal_amount := player_get_selected_heal_amount(p);
+        if heal_amount <= 0.0 return;
+
         if Game.is_server() {
             if consume_selected_item_stack(p, 1) {
-                p.health = min(p.health + FISH_HEAL_AMOUNT, p.max_health);
+                p.health = min(p.health + heal_amount, p.max_health);
+                spawn_fish_heal_effect(p);
+                play_fish_heal_sfx(p);
             }
         }
     }

@@ -1,0 +1,504 @@
+{
+"skeleton": { "hash": "u4jdxv6mBnM", "spine": "4.0.64" },
+"bones": [
+	{ "name": "root" },
+	{ "name": "floor", "parent": "root", "y": -50 },
+	{ "name": "floor_circle_outer", "parent": "floor" },
+	{ "name": "floor_circle_inner", "parent": "floor" }
+],
+"slots": [
+	{ "name": "floor_circle", "bone": "floor_circle_outer" },
+	{ "name": "floor_circle_inner", "bone": "floor_circle_inner" },
+	{ "name": "PlayerCharacter", "bone": "root" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"floor_circle": {
+				"Healing FX/floor_circle": { "width": 436, "height": 351 },
+				"PE-Buff/back": { "width": 526, "height": 482 },
+				"PE-Debuff/back": { "width": 526, "height": 482 }
+			},
+			"floor_circle_inner": {
+				"PE-Buff/front": { "width": 297, "height": 272 },
+				"PE-Debuff/front": { "width": 297, "height": 272 }
+			},
+			"PlayerCharacter": {
+				"PlayerCharacter": { "y": 52.12, "scaleX": 0.5, "scaleY": 0.5, "width": 566, "height": 541 }
+			}
+		}
+	}
+],
+"animations": {
+	"PE_buff_effect_intro": {
+		"slots": {
+			"floor_circle": {
+				"rgba": [
+					{
+						"color": "ffffff00",
+						"curve": [ 0.089, 1, 0.178, 1, 0.089, 1, 0.178, 1, 0.089, 1, 0.178, 1, 0.089, 0, 0.178, 1 ]
+					},
+					{ "time": 0.2667, "color": "ffffffff" }
+				],
+				"attachment": [
+					{ "name": "PE-Buff/back" }
+				]
+			},
+			"floor_circle_inner": {
+				"rgba": [
+					{
+						"color": "ffffff00",
+						"curve": [ 0.089, 1, 0.178, 1, 0.089, 1, 0.178, 1, 0.089, 1, 0.178, 1, 0.089, 0, 0.178, 1 ]
+					},
+					{ "time": 0.2667, "color": "ffffffff" }
+				],
+				"attachment": [
+					{ "name": "PE-Buff/front" }
+				]
+			}
+		},
+		"bones": {
+			"floor_circle_inner": {
+				"rotate": [
+					{ "value": 180 },
+					{ "time": 0.5, "value": 360 }
+				]
+			},
+			"floor_circle_outer": {
+				"rotate": [
+					{ "value": -180 },
+					{ "time": 0.5, "value": -360 }
+				]
+			},
+			"floor": {
+				"scale": [
+					{
+						"x": 0.454,
+						"y": 0.387,
+						"curve": [ 0.122, 0.65, 0.244, 1.14, 0.122, 0.554, 0.244, 0.971 ]
+					},
+					{
+						"time": 0.3667,
+						"x": 1.14,
+						"y": 0.971,
+						"curve": [ 0.411, 1.14, 0.456, 1, 0.411, 0.971, 0.456, 0.852 ]
+					},
+					{ "time": 0.5, "y": 0.852 }
+				]
+			}
+		}
+	},
+	"PE_buff_effect_loop": {
+		"slots": {
+			"floor_circle": {
+				"attachment": [
+					{ "name": "PE-Buff/back" }
+				]
+			},
+			"floor_circle_inner": {
+				"attachment": [
+					{ "name": "PE-Buff/front" }
+				]
+			}
+		},
+		"bones": {
+			"floor_circle_inner": {
+				"rotate": [
+					{},
+					{ "time": 1, "value": 360 }
+				],
+				"scale": [
+					{
+						"curve": [ 0.167, 1, 0.333, 0.83, 0.167, 1, 0.333, 0.83 ]
+					},
+					{
+						"time": 0.5,
+						"x": 0.83,
+						"y": 0.83,
+						"curve": [ 0.667, 0.83, 0.833, 1, 0.667, 0.83, 0.833, 1 ]
+					},
+					{ "time": 1 }
+				]
+			},
+			"floor_circle_outer": {
+				"rotate": [
+					{},
+					{ "time": 1, "value": -360 }
+				],
+				"scale": [
+					{
+						"curve": [ 0.167, 1, 0.333, 0.83, 0.167, 1, 0.333, 0.83 ]
+					},
+					{
+						"time": 0.5,
+						"x": 0.83,
+						"y": 0.83,
+						"curve": [ 0.667, 0.83, 0.833, 1, 0.667, 0.83, 0.833, 1 ]
+					},
+					{ "time": 1 }
+				]
+			},
+			"floor": {
+				"scale": [
+					{ "y": 0.852 }
+				]
+			}
+		}
+	},
+	"PE_buff_effect_outro": {
+		"slots": {
+			"floor_circle": {
+				"rgba": [
+					{
+						"time": 0.3333,
+						"color": "ffffffff",
+						"curve": [ 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 0 ]
+					},
+					{ "time": 0.6, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "name": "PE-Buff/back" }
+				]
+			},
+			"floor_circle_inner": {
+				"rgba": [
+					{
+						"time": 0.3333,
+						"color": "ffffffff",
+						"curve": [ 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 0 ]
+					},
+					{ "time": 0.6, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "name": "PE-Buff/front" },
+					{ "time": 0.6, "name": null }
+				]
+			}
+		},
+		"bones": {
+			"floor_circle_inner": {
+				"rotate": [
+					{},
+					{ "time": 0.6, "value": 216 }
+				]
+			},
+			"floor_circle_outer": {
+				"rotate": [
+					{},
+					{ "time": 0.6, "value": -216 }
+				]
+			},
+			"floor": {
+				"scale": [
+					{
+						"y": 0.852,
+						"curve": [ 0.044, 1, 0.089, 0.805, 0.044, 0.852, 0.089, 0.686 ]
+					},
+					{
+						"time": 0.1333,
+						"x": 0.805,
+						"y": 0.686,
+						"curve": [ 0.311, 0.805, 0.424, 1.11, 0.311, 0.686, 0.424, 0.919 ]
+					},
+					{ "time": 0.6, "x": 1.324, "y": 1.127 }
+				]
+			}
+		}
+	},
+	"PE_debuff_effect_intro": {
+		"slots": {
+			"floor_circle": {
+				"rgba": [
+					{
+						"color": "ffffff00",
+						"curve": [ 0.089, 1, 0.178, 1, 0.089, 1, 0.178, 1, 0.089, 1, 0.178, 1, 0.089, 0, 0.178, 1 ]
+					},
+					{ "time": 0.2667, "color": "ffffffff" }
+				],
+				"attachment": [
+					{ "name": "PE-Debuff/back" }
+				]
+			},
+			"floor_circle_inner": {
+				"rgba": [
+					{
+						"color": "ffffff00",
+						"curve": [ 0.089, 1, 0.178, 1, 0.089, 1, 0.178, 1, 0.089, 1, 0.178, 1, 0.089, 0, 0.178, 1 ]
+					},
+					{ "time": 0.2667, "color": "ffffffff" }
+				],
+				"attachment": [
+					{ "name": "PE-Debuff/front" }
+				]
+			}
+		},
+		"bones": {
+			"floor_circle_inner": {
+				"rotate": [
+					{ "value": 180 },
+					{ "time": 0.5, "value": 360 }
+				]
+			},
+			"floor_circle_outer": {
+				"rotate": [
+					{ "value": -180 },
+					{ "time": 0.5, "value": -360 }
+				]
+			},
+			"floor": {
+				"scale": [
+					{
+						"x": 0.454,
+						"y": 0.387,
+						"curve": [ 0.122, 0.65, 0.244, 1.14, 0.122, 0.554, 0.244, 0.971 ]
+					},
+					{
+						"time": 0.3667,
+						"x": 1.14,
+						"y": 0.971,
+						"curve": [ 0.411, 1.14, 0.456, 1, 0.411, 0.971, 0.456, 0.852 ]
+					},
+					{ "time": 0.5, "y": 0.852 }
+				]
+			}
+		}
+	},
+	"PE_debuff_effect_loop": {
+		"slots": {
+			"floor_circle": {
+				"attachment": [
+					{ "name": "PE-Debuff/back" }
+				]
+			},
+			"floor_circle_inner": {
+				"attachment": [
+					{ "name": "PE-Debuff/front" }
+				]
+			}
+		},
+		"bones": {
+			"floor_circle_inner": {
+				"rotate": [
+					{},
+					{ "time": 1, "value": 360 }
+				],
+				"scale": [
+					{
+						"curve": [ 0.167, 1, 0.333, 0.83, 0.167, 1, 0.333, 0.83 ]
+					},
+					{
+						"time": 0.5,
+						"x": 0.83,
+						"y": 0.83,
+						"curve": [ 0.667, 0.83, 0.833, 1, 0.667, 0.83, 0.833, 1 ]
+					},
+					{ "time": 1 }
+				]
+			},
+			"floor_circle_outer": {
+				"rotate": [
+					{},
+					{ "time": 1, "value": -360 }
+				],
+				"scale": [
+					{
+						"curve": [ 0.167, 1, 0.333, 0.83, 0.167, 1, 0.333, 0.83 ]
+					},
+					{
+						"time": 0.5,
+						"x": 0.83,
+						"y": 0.83,
+						"curve": [ 0.667, 0.83, 0.833, 1, 0.667, 0.83, 0.833, 1 ]
+					},
+					{ "time": 1 }
+				]
+			},
+			"floor": {
+				"scale": [
+					{ "y": 0.852 }
+				]
+			}
+		}
+	},
+	"PE_debuff_effect_outro": {
+		"slots": {
+			"floor_circle": {
+				"rgba": [
+					{
+						"time": 0.3333,
+						"color": "ffffffff",
+						"curve": [ 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 0 ]
+					},
+					{ "time": 0.6, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "name": "PE-Debuff/back" },
+					{ "time": 0.6, "name": null }
+				]
+			},
+			"floor_circle_inner": {
+				"rgba": [
+					{
+						"time": 0.3333,
+						"color": "ffffffff",
+						"curve": [ 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 1, 0.422, 1, 0.511, 0 ]
+					},
+					{ "time": 0.6, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "name": "PE-Debuff/front" },
+					{ "time": 0.6, "name": null }
+				]
+			}
+		},
+		"bones": {
+			"floor_circle_inner": {
+				"rotate": [
+					{},
+					{ "time": 0.6, "value": 216 }
+				]
+			},
+			"floor_circle_outer": {
+				"rotate": [
+					{},
+					{ "time": 0.6, "value": -216 }
+				]
+			},
+			"floor": {
+				"scale": [
+					{
+						"y": 0.852,
+						"curve": [ 0.044, 1, 0.089, 0.805, 0.044, 0.852, 0.089, 0.686 ]
+					},
+					{
+						"time": 0.1333,
+						"x": 0.805,
+						"y": 0.686,
+						"curve": [ 0.311, 0.805, 0.424, 1.11, 0.311, 0.686, 0.424, 0.919 ]
+					},
+					{ "time": 0.6, "x": 1.324, "y": 1.127 }
+				]
+			}
+		}
+	},
+	"PE_healing_effect_intro": {
+		"slots": {
+			"floor_circle": {
+				"rgba": [
+					{ "color": "ffffff00", "curve": "stepped" },
+					{ "time": 0.1, "color": "ffffff00" },
+					{ "time": 0.6667, "color": "ffffffff" }
+				],
+				"attachment": [
+					{ "name": "Healing FX/floor_circle" }
+				]
+			}
+		},
+		"bones": {
+			"floor": {
+				"scale": [
+					{
+						"time": 0.0833,
+						"x": 0.186,
+						"y": 0.186,
+						"curve": [ 0.185, 0.699, 0.328, 1.045, 0.201, 0.499, 0.33, 0.952 ]
+					},
+					{
+						"time": 0.45,
+						"x": 1.092,
+						"y": 1.002,
+						"curve": [ 0.632, 1.162, 0.73, 1.148, 0.633, 1.078, 0.73, 1.148 ]
+					},
+					{
+						"time": 0.9167,
+						"x": 1.189,
+						"y": 1.189,
+						"curve": [ 1.056, 1.22, 1.206, 1.151, 1.056, 1.22, 1.206, 1.151 ]
+					},
+					{ "time": 1.3333, "x": 1.125, "y": 1.125 }
+				]
+			}
+		}
+	},
+	"PE_healing_effect_loop": {
+		"slots": {
+			"floor_circle": {
+				"attachment": [
+					{ "name": "Healing FX/floor_circle" }
+				]
+			},
+			"PlayerCharacter": {
+				"attachment": [
+					{ "name": null }
+				]
+			}
+		},
+		"bones": {
+			"floor": {
+				"scale": [
+					{
+						"x": 1.125,
+						"y": 1.125,
+						"curve": [ 0.135, 1.098, 0.261, 1.072, 0.135, 1.098, 0.261, 1.072 ]
+					},
+					{
+						"time": 0.3833,
+						"x": 1.072,
+						"y": 1.072,
+						"curve": [ 0.567, 1.072, 0.73, 1.148, 0.567, 1.072, 0.73, 1.148 ]
+					},
+					{
+						"time": 0.9167,
+						"x": 1.189,
+						"y": 1.189,
+						"curve": [ 1.056, 1.22, 1.206, 1.151, 1.056, 1.22, 1.206, 1.151 ]
+					},
+					{ "time": 1.3333, "x": 1.125, "y": 1.125 }
+				]
+			}
+		}
+	},
+	"PE_healing_effect_outro": {
+		"slots": {
+			"floor_circle": {
+				"rgba": [
+					{
+						"time": 0.55,
+						"color": "ffffffff",
+						"curve": [ 0.717, 1, 0.9, 1, 0.717, 1, 0.9, 1, 0.717, 1, 0.9, 1, 0.738, 1.03, 0.971, 0.43 ]
+					},
+					{ "time": 1.0667, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "name": "Healing FX/floor_circle" }
+				]
+			}
+		},
+		"bones": {
+			"floor": {
+				"scale": [
+					{
+						"x": 1.125,
+						"y": 1.125,
+						"curve": [ 0.135, 1.098, 0.261, 1.167, 0.135, 1.098, 0.261, 1.167 ]
+					},
+					{
+						"time": 0.3833,
+						"x": 1.167,
+						"y": 1.167,
+						"curve": [ 0.567, 1.167, 0.732, 1.161, 0.567, 1.167, 0.734, 1.372 ]
+					},
+					{
+						"time": 0.9167,
+						"x": 1.531,
+						"y": 1.596,
+						"curve": [ 1.042, 1.783, 1.206, 2.086, 1.061, 1.772, 1.206, 1.575 ]
+					},
+					{ "time": 1.3333, "x": 2.059, "y": 1.548 }
+				]
+			}
+		}
+	}
+}
+}

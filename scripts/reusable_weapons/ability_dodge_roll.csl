@@ -1,8 +1,8 @@
 DODGE_ROLL_COOLDOWN_SECONDS :: 1.1;
 DODGE_ROLL_DURATION_SECONDS :: 0.6;
-DODGE_ROLL_SPEED_MULTIPLIER :: 0.012;
-DODGE_ROLL_MIN_SPEED :: 12.0;
-DODGE_ROLL_MAX_SPEED :: 20.0;
+DODGE_ROLL_SPEED_MULTIPLIER :: 0.024;
+DODGE_ROLL_MIN_SPEED :: 24.0;
+DODGE_ROLL_MAX_SPEED :: 40.0;
 DODGE_ROLL_EXIT_SPEED_MULTIPLIER :: 0.0;
 DODGE_ROLL_DIRECTION_EPSILON_SQ :: 0.0001;
 DODGE_ROLL_FALLBACK_AIM_DISTANCE :: 3.0;
@@ -59,6 +59,7 @@ Dodge_Roll_Effect :: class : Effect_Base {
             player->set_facing_right(false);
         }
         player->set_aim_target(player.entity.world_position + direction * DODGE_ROLL_FALLBACK_AIM_DISTANCE);
+        game_sfx_play(.DODGE_ROLL, player.entity);
 
         if player.animator != null && player.animator.instance != null && player.animator.instance.state_machine != null {
             player.animator.instance.state_machine->set_trigger(DODGE_ROLL_TRIGGER);
@@ -88,7 +89,7 @@ Dodge_Roll_Effect :: class : Effect_Base {
 Dodge_Roll_Ability :: class : Ability_Base {
     on_init :: proc(ability: Ability_Base) {
         ability.name = "Dodge";
-        ability.icon = get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/weapon_icons/weapon_icons_250x250/windblaster.png");
+        ability.icon = get_asset(Texture_Asset, "Items/light_feet_icon.png");
     }
 
     can_use :: proc(ability: Ability_Base) -> bool {

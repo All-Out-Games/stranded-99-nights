@@ -23,7 +23,9 @@ ItemManager :: struct {
             fish_icon := get_asset(Texture_Asset, "Items/Fish.png");
             arrow_icon := get_asset(Texture_Asset, "Items/Arrow.png");
             sulfur_icon := get_asset(Texture_Asset, "Items/Sulfur.png");
-            root_resin_icon := get_asset(Texture_Asset, "Items/RootResin.png");
+            root_resin_icon := get_asset(Texture_Asset, "Items/root_resin.png");
+            bandage_icon := get_asset(Texture_Asset, "Items/Bandage.png");
+            medkit_icon := get_asset(Texture_Asset, "Items/Medkit.png");
 
             // Wood
             wood := Items.register_item_definition(
@@ -72,6 +74,22 @@ ItemManager :: struct {
                 Item_Instance
             );
             defs->append(root_resin);
+
+            // Bandage
+            bandage := Items.register_item_definition(
+                {"bandage", "Bandage", bandage_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(bandage);
+
+            // Medkit
+            medkit := Items.register_item_definition(
+                {"medkit", "Medkit", medkit_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(medkit);
 
             // Arrow
             arrow := Items.register_item_definition(

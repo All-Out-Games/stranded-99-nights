@@ -144,6 +144,25 @@ CraftingSystem :: struct {
             CraftingSystem.add_input(r8, "scrap", 10);
             CraftingSystem.add_output(r8, "ar_ammo", 30);
             recipes->append(r8);
+
+            r9 := CraftingSystem.make_recipe(
+                "craft_bandage",
+                "Bandage",
+                "A simple healing item that restores 30 HP."
+            );
+            CraftingSystem.add_input(r9, "fiber", 2);
+            CraftingSystem.add_output(r9, "bandage", 1);
+            recipes->append(r9);
+
+            r10 := CraftingSystem.make_recipe(
+                "craft_medkit",
+                "Medkit",
+                "A powerful healing item that restores 80 HP."
+            );
+            CraftingSystem.add_input(r10, "fish", 2);
+            CraftingSystem.add_input(r10, "fiber", 2);
+            CraftingSystem.add_output(r10, "medkit", 1);
+            recipes->append(r10);
         }
 
         return recipes;
@@ -353,6 +372,7 @@ CraftingSystem :: struct {
             close_ts.halign = .CENTER;
             if UI.button(close_button_rect, bs, close_ts, "Close").clicked {
                 player.crafting_ui_open = false;
+                game_sfx_play(.UI_CLICK, player.entity);
             }
             return;
         }
@@ -404,6 +424,7 @@ CraftingSystem :: struct {
                         if button_result.clicked {
                             player.selected_crafting_recipe_index = i;
                             selected_recipe = recipe;
+                            game_sfx_play(.UI_CLICK, player.entity);
                         }
 
                         icon := CraftingSystem.get_primary_recipe_icon(recipe);
@@ -529,6 +550,7 @@ CraftingSystem :: struct {
         close_ts.halign = .CENTER;
         if UI.button(close_button_rect, bs, close_ts, "Close").clicked {
             player.crafting_ui_open = false;
+            game_sfx_play(.UI_CLICK, player.entity);
             return;
         }
 
@@ -540,7 +562,12 @@ CraftingSystem :: struct {
         UI.push_disabled(!can_craft);
         defer UI.pop_disabled();
         if UI.button(craft_button_rect, bs, craft_ts, "Craft").clicked {
-            _ := CraftingSystem.try_craft_recipe(player, selected_recipe);
+            crafted := CraftingSystem.try_craft_recipe(player, selected_recipe);
+            if crafted {
+                game_sfx_play(.CRAFT_SUCCESS, player.entity);
+            } else {
+                game_sfx_play(.UI_ERROR, player.entity);
+            }
         }
     }
 }

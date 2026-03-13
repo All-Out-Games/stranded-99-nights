@@ -25,6 +25,7 @@
 
     ],
     "depth_offset": -0.2029457092285156,
+    "mask_in_shadow": true,
     "initial_animation": "idle",
     "loop_initial_animation": true
   }

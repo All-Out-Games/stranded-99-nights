@@ -19,7 +19,7 @@
   "component_type": "Internal_Component",
   "internal_component_type": "Mob",
   "data": {
-    "max_health": 20,
+    "max_health": 10,
     "move_speed": 265,
     "attack_damage": 5,
     "attack_speed": 3,
@@ -30,7 +30,8 @@
     "idle_animation_name": "idle",
     "move_animation_name": "run",
     "attack_animation_name": "attack",
-    "death_animation_name": "disappear"
+    "death_animation_name": "disappear",
+    "death_drop_item_id": "scrap"
   }
 },
 {

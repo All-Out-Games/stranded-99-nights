@@ -5,11 +5,22 @@ import "reusable_weapons"
 ao_before_scene_load :: proc() {
     // Called before the scene is loaded
     ItemManager.AllItemDefinitions();
+
+     // Economy currency registration (global, safe to call once).
+    #static moon_currency_registered: bool;
+    if !moon_currency_registered {
+        moon_currency_registered = true;
+        moon_icon := get_asset(Texture_Asset, "Items/Moon.png");
+        Economy.register_currency("Moons", moon_icon);
+    }
 }
 
 ao_start :: proc() {
     // Called after the scene is loaded
     ensure_game_manager_exists();
+
+    // Use left mouse button as the default primary ability keybind for desktop players.
+    core_globals.ability_keybinds[0] = Keybinds.register("Ability 1", .MOUSE_LEFT);
 }
 
 ao_update :: proc(dt: float) {
@@ -20,6 +31,8 @@ ao_update :: proc(dt: float) {
 ao_late_update :: proc(dt: float) {
     // Called once per frame after physics has been resolved
 }
+
+MOON_CURRENCY :: "Moons";
 
 
 PLAYER_LIGHT_BASE_INNER_RADIUS :: 12;
@@ -35,19 +48,24 @@ PLAYER_DAMAGE_PULSE_OSCILLATIONS :: 7.0;
 
 CLOCK_ROTATION_LERP_STEP :: 0.35;
 CLOCK_ALPHA_LERP_STEP :: 0.03;
+NIGHT_TINT_MAX_ALPHA :: 0.22;
+NIGHT_TINT_COLOR := v4.{0.14, 0.28, 0.85, 1.0};
 RESOURCE_GATHER_SWING_INTERVAL :: 0.5;
 MELEE_IDLE_AIM_DISTANCE :: 3.0;
 MELEE_ATTACK_AIM_LOCK_SECONDS :: 0.45;
 PLAYER_DEATH_FADE_SECONDS :: 2.0;
 PLAYER_DEATH_BLACK_HOLD_SECONDS :: 2.0;
 PLAYER_DEATH_FADE_IN_SECONDS :: 2.0;
-PLAYER_DOWNED_DURATION_SECONDS :: 10.0;
+PLAYER_DOWNED_DURATION_SECONDS :: 45.0;
 PLAYER_DOWNED_REVIVE_HEALTH :: 25.0;
 PLAYER_DEATH_DROP_SELF_PICKUP_BLOCK_SECONDS :: 5.0;
 PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS :: 2.5;
+GHOST_HIDE_FROM_LIVING_REASON :: "ghost_hide_from_living";
+GHOST_FACING_DELTA_THRESHOLD :: 0.01;
 ISLAND1_RESPAWN_ENTITY_NAME :: "Island1Spawn";
 DEFAULT_RESPAWN_POSITION := v2.{0.0, 0.0};
 PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE :: 10.0;
+SUPPLY_DROP_ARROW_HIDE_DISTANCE :: 8.0;
 
 Death_Drop_Pickup_Block :: struct {
     dropped_entity_id: u64;
@@ -167,7 +185,9 @@ Downed_Revive_Interactable :: class : Interactable {
 
     on_interact :: method(player: Player) {
         if downed_player == null return;
-        downed_player->revive_from_downed(PLAYER_DOWNED_REVIVE_HEALTH);
+        if downed_player->revive_from_downed(PLAYER_DOWNED_REVIVE_HEALTH) {
+            game_sfx_play(.REVIVE, downed_player.entity);
+        }
     }
 }
 
@@ -305,6 +325,8 @@ Player :: class : Player_Base {
     death_drop_pickup_blocks: [..]Death_Drop_Pickup_Block;
     is_ghost_mode: bool;
     ghost_current_animation_name: string;
+    ghost_last_world_position: v2;
+    ghost_last_world_position_initialized: bool;
 
     // Local-only LOS light (viewer-specific).
 	local_light_entity: Entity;
@@ -328,6 +350,8 @@ Player :: class : Player_Base {
         active_beacon = null;
         is_ghost_mode = false;
         ghost_current_animation_name = "";
+        ghost_last_world_position = entity.world_position;
+        ghost_last_world_position_initialized = true;
         damage_pulse_elapsed_seconds = PLAYER_DAMAGE_PULSE_DURATION_SECONDS;
         camera.size = max(camera.size * PLAYER_CAMERA_ZOOM_OUT_MULTIPLIER, 1.0);
 
@@ -345,6 +369,7 @@ Player :: class : Player_Base {
         // Called once per frame
         this->update_damage_pulse(dt);
         this->update_ghost_mode_animation();
+        this->update_ghost_visibility_for_local_view();
         if this->is_local_or_server() {
 			if this->is_local() {
 				this->update_local_vision_light();
@@ -371,6 +396,7 @@ Player :: class : Player_Base {
     }
 
    ao_late_update :: method(dt: float) {
+    this->update_ghost_facing_from_movement();
     dead_for_night := this->is_dead_for_night_state();
     if dead_for_night {
         crafting_ui_open = false;
@@ -378,13 +404,17 @@ Player :: class : Player_Base {
         active_beacon = null;
     }
 
+    this->draw_night_tint_overlay();
+
+    draw_coin_currency_hud(this);
+
     if is_local_or_server() && !dead_for_night {
         // Draw hotbar first so held-item abilities react immediately on selection change.
         options := Inventory_Draw_Options.default();
         hotbar := Items.draw_hotbar(this, default_inventory, options);
         handle_equipped_item_changing(hotbar.selected_item_index);
 
-        if player_is_holding_fish(this) {
+        if player_is_holding_healing_item(this) {
             draw_ability_button(this, Eat_Fish_Ability, 0);
         } else {
             // Primary ability: default melee unless a weapon overrides it.
@@ -418,6 +448,7 @@ Player :: class : Player_Base {
             drop_rng := rng_seed_time();
             dropped_item->do_spawn_animation(ref drop_rng, drop_navmesh);
             this->register_pickup_block(dropped_item, PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS);
+            game_sfx_play(.ITEM_DROP, entity);
         }
 
         // Crafting UI and actions are player-scoped state.
@@ -435,6 +466,7 @@ Player :: class : Player_Base {
 
     if this->is_local_or_server() {
         this->draw_pre_night_beacon_arrow();
+        this->draw_supply_drop_arrow();
     }
 
     if this->is_local_or_server() {
@@ -442,6 +474,22 @@ Player :: class : Player_Base {
         this->draw_round_start_intro();
     }
    }
+
+    draw_night_tint_overlay :: method() {
+        if !this->is_local_or_server() return;
+
+        manager := get_game_manager();
+        if manager == null return;
+        if manager->get_phase() != .IN_ROUND return;
+        if !manager->is_night_time() return;
+
+        tint_alpha := clamp(manager->get_night_blend(), 0.0, 1.0) * NIGHT_TINT_MAX_ALPHA;
+        if tint_alpha <= 0.0 return;
+
+        UI.push_screen_draw_context();
+        defer UI.pop_draw_context();
+        UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {NIGHT_TINT_COLOR.x, NIGHT_TINT_COLOR.y, NIGHT_TINT_COLOR.z, tint_alpha});
+    }
 
     ao_end :: method() {
         // Called when this component is destroyed
@@ -489,6 +537,43 @@ Player :: class : Player_Base {
         this->drive_resource_gather_feedback(node);
     }
 
+    draw_coin_currency_hud :: proc(player: Player) {
+    if player == null return;
+    if !player->is_local() return;
+
+    safe := UI.get_safe_screen_rect();
+
+    // Top-right coin panel
+    panel := safe->bottom_left_rect()->grow(50, 100, 50, 100)->offset(150, 70);
+    #static gold_frame := get_asset(Texture_Asset, "UI/GoldFrame.png");
+    if gold_frame != null {
+        UI.quad(panel, gold_frame, {0.5, 0.5, 0.5, 1});
+    }
+    else {
+        UI.quad(panel, core_globals.white_sprite, {0.15, 0.15, 0.15, 0.85});
+    }
+
+    inner := panel->inset(12);
+    icon_rect := inner->cut_left_unscaled(54);
+    _ := inner->cut_left_unscaled(12);
+
+    #static coin_icon := get_asset(Texture_Asset, "Items/Moon.png");
+    if coin_icon != null {
+        UI.quad(icon_rect->fit_aspect(coin_icon->get_aspect()), coin_icon);
+    }
+
+    balance := Economy.get_balance(player, MOON_CURRENCY);
+
+    ts := UI.default_text_settings();
+    ts.size = 36;
+    ts.halign = .LEFT;
+    ts.valign = .CENTER;
+    ts.do_outline = true;
+    ts.outline_thickness = 3;
+    ts.outline_color = {0, 0, 0, 1};
+    UI.text(inner, ts, "%", {balance});
+    }
+
     drive_resource_gather_feedback :: method(node: ResourceNode) {
         if node == null return;
         if node.entity == null return;
@@ -505,6 +590,7 @@ Player :: class : Player_Base {
 
         node->trigger_harvest_visual_pulse();
         next_resource_gather_swing_time = now + RESOURCE_GATHER_SWING_INTERVAL;
+        game_sfx_play(.RESOURCE_GATHER, entity);
 
         if animator == null return;
         if animator.instance == null return;
@@ -517,7 +603,12 @@ Player :: class : Player_Base {
         if amount <= 0.0 return;
         if health <= 0.0 return;
         if this->is_dead_for_night_state() return;
-        if BeaconSystem.is_position_inside_active_safety_zone(entity.world_position) return;
+        manager := get_game_manager();
+        raid_active := false;
+        if manager != null {
+            raid_active = manager->should_mobs_ignore_beacon_safety();
+        }
+        if !raid_active && BeaconSystem.is_position_inside_active_safety_zone(entity.world_position) return;
 
         health -= amount;
         if health < 0.0 {
@@ -525,11 +616,14 @@ Player :: class : Player_Base {
         }
 
         this->trigger_damage_feedback(amount);
+        game_sfx_play(.DAMAGE_HIT, entity);
         if health <= 0.0 {
+            game_sfx_play(.DEATH, entity);
             this->drop_all_inventory_items_on_death();
             manager := get_game_manager();
             if manager != null && manager->get_phase() == .IN_ROUND && manager->is_night_time() {
                 this->begin_downed_effect();
+                manager->notify_all_players_player_downed(this);
             } else {
                 this->begin_death_effect();
             }
@@ -721,8 +815,54 @@ Player :: class : Player_Base {
 
         is_ghost_mode = ghost_enabled;
         ghost_current_animation_name = "";
+        ghost_last_world_position_initialized = false;
         // Ensure the animator leaves the death state before ghost playback starts.
         this->reset_death_animation();
+    }
+
+    update_ghost_visibility_for_local_view :: method() {
+        if Game.is_server() return;
+
+        hidden_from_local := false;
+        if local_player, ok := Game.get_local_player(); ok {
+            if local_player != this && is_ghost_mode && !local_player.is_ghost_mode {
+                hidden_from_local = true;
+            }
+        }
+
+        if hidden_from_local {
+            this->add_invisibility_reason(GHOST_HIDE_FROM_LIVING_REASON);
+            this->add_name_invisibility_reason(GHOST_HIDE_FROM_LIVING_REASON);
+        } else {
+            this->remove_invisibility_reason(GHOST_HIDE_FROM_LIVING_REASON);
+            this->remove_name_invisibility_reason(GHOST_HIDE_FROM_LIVING_REASON);
+        }
+    }
+
+    update_ghost_facing_from_movement :: method() {
+        if entity == null return;
+
+        current_world_position := entity.world_position;
+        if !is_ghost_mode {
+            ghost_last_world_position = current_world_position;
+            ghost_last_world_position_initialized = true;
+            return;
+        }
+
+        if !ghost_last_world_position_initialized {
+            ghost_last_world_position = current_world_position;
+            ghost_last_world_position_initialized = true;
+            return;
+        }
+
+        delta_x := current_world_position.x - ghost_last_world_position.x;
+        if delta_x > GHOST_FACING_DELTA_THRESHOLD {
+            this->set_facing_right(true);
+        } else if delta_x < -GHOST_FACING_DELTA_THRESHOLD {
+            this->set_facing_right(false);
+        }
+
+        ghost_last_world_position = current_world_position;
     }
 
     update_ghost_mode_animation :: method() {
@@ -814,6 +954,7 @@ Player :: class : Player_Base {
     ao_on_state_sync :: method() {
         // Called on the client after applying a state sync from the server
         // Use this to override things for the local player only like name colors or lighting for example
+        this->update_ghost_visibility_for_local_view();
     }
 
     get_local_light_radii :: proc(using this: Player) -> v2 {
@@ -956,6 +1097,28 @@ Player :: class : Player_Base {
         Tutorial_Arrow.draw(this, manager.island1_spawn.world_position, options);
     }
 
+    draw_supply_drop_arrow :: method() {
+        manager := get_game_manager();
+        if manager == null return;
+        if !manager->is_supply_drop_event_active() return;
+        if entity == null return;
+
+        target_pos, has_target := manager->get_supply_drop_arrow_target();
+        if !has_target return;
+
+        to_target := target_pos - entity.world_position;
+        hide_dist_sq := SUPPLY_DROP_ARROW_HIDE_DISTANCE * SUPPLY_DROP_ARROW_HIDE_DISTANCE;
+        if length_squared(to_target) <= hide_dist_sq return;
+
+        options := Tutorial_Arrow.default_options();
+        options.alpha = 1.0;
+        options.far = true;
+        options.near = true;
+        options.bob_scale = 0.5;
+        options.bob_bias = 1.5;
+        Tutorial_Arrow.draw(this, target_pos, options);
+    }
+
     draw_lobby_waiting_text :: method() {
         manager := get_game_manager();
         if manager == null return;
@@ -1000,6 +1163,7 @@ Player :: class : Player_Base {
 
         if should_draw_text {
             text_rect := UI.get_safe_screen_rect()->center_rect()->grow(120, 550, 120, 550);
+            night_text_rect := text_rect->offset(0, -120)->grow(0, -200, 0, -200);
             ts := UI.default_text_settings();
             ts.size = 96;
             ts.halign = .CENTER;
@@ -1009,6 +1173,9 @@ Player :: class : Player_Base {
             ts.outline_thickness = 3;
             ts.outline_color = {0, 0, 0, 1};
             UI.text(text_rect, ts, "Survive!");
+
+            ts.size = 54;
+            UI.text(night_text_rect, ts, "Night 1/99");
         }
 
         if should_draw_game_over_text {

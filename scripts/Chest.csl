@@ -55,6 +55,7 @@ Chest :: class : Interactable {
         opened = true;
         opened_time = get_time();
         this->set_text("Opened");
+        game_sfx_play(.CHEST_OPEN, entity);
         play_open_animation();
 
         if Game.is_server() {

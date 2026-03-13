@@ -22,6 +22,21 @@ Day_Night_Phase :: enum {
     NIGHT;
 }
 
+Night_Event_Type :: enum {
+    NONE;
+    RAID;
+    SUPPLY_DROP;
+}
+
+night_event_type_to_text :: proc(event_type: Night_Event_Type) -> string {
+    switch event_type {
+        case .RAID:        return "Raid";
+        case .SUPPLY_DROP: return "Supply Drop";
+        case .NONE:        return "None";
+    }
+    return "None";
+}
+
 Music_Track :: enum {
     NONE;
     DAY;
@@ -29,6 +44,97 @@ Music_Track :: enum {
 }
 
 g_start_music_sound_id: u64;
+
+Game_Sfx_Event :: enum {
+    NONE;
+    ROUND_START;
+    NIGHT_START;
+    DAY_START;
+    GAME_OVER;
+    RESOURCE_GATHER;
+    ITEM_PICKUP;
+    UI_CLICK;
+    UI_ERROR;
+    CRAFT_SUCCESS;
+    CHEST_OPEN;
+    ITEM_DROP;
+    BEACON_UPGRADE;
+    NIGHT_WARNING;
+    REVIVE;
+    DEATH;
+    MOB_ATTACK;
+    DAMAGE_HIT;
+    DODGE_ROLL;
+}
+
+game_sfx_path_for_event :: proc(event: Game_Sfx_Event) -> string {
+    switch event {
+        case .ROUND_START:     return "fight_start.wav";
+        case .NIGHT_START:     return "Unknown/night_time_change.wav";
+        case .DAY_START:       return "Music/day_night_change.wav";
+        case .GAME_OVER:       return "decline_fight.wav";
+        case .RESOURCE_GATHER: return "SFX/gather_material.wav";
+        case .ITEM_PICKUP:     return "pickup_item.wav";
+        case .UI_CLICK:        return "ui_click.wav";
+        case .UI_ERROR:        return "Unknown/ui_error.wav";
+        case .CRAFT_SUCCESS:   return "SFX/craft_item.wav";
+        case .CHEST_OPEN:      return "chest_open.wav";
+        case .ITEM_DROP:       return "SFX/drop_item.wav";
+        case .BEACON_UPGRADE:  return "reward.wav";
+        case .NIGHT_WARNING:   return "Music/icicle_warning.wav";
+        case .REVIVE:          return "SFX/revive.wav";
+        case .DEATH:           return "SFX/death.wav";
+        case .MOB_ATTACK:      return "slime_attack.wav";
+        case .DAMAGE_HIT:      return "bullet_bodyimpact.wav";
+        case .DODGE_ROLL:      return "SFX/dodge_roll.wav";
+        case .NONE:            return "";
+    }
+    return "";
+}
+
+game_sfx_default_volume_for_event :: proc(event: Game_Sfx_Event) -> float {
+    switch event {
+        case .ROUND_START:     return 0.40;
+        case .NIGHT_START:     return 0.35;
+        case .DAY_START:       return 0.30;
+        case .GAME_OVER:       return 0.45;
+        case .RESOURCE_GATHER: return 0.28;
+        case .ITEM_PICKUP:     return 0.35;
+        case .UI_CLICK:        return 0.30;
+        case .UI_ERROR:        return 0.35;
+        case .CRAFT_SUCCESS:   return 0.45;
+        case .CHEST_OPEN:      return 0.45;
+        case .ITEM_DROP:       return 0.30;
+        case .BEACON_UPGRADE:  return 0.50;
+        case .NIGHT_WARNING:   return 0.45;
+        case .REVIVE:          return 0.45;
+        case .DEATH:           return 0.45;
+        case .MOB_ATTACK:      return 0.40;
+        case .DAMAGE_HIT:      return 0.35;
+        case .DODGE_ROLL:      return 0.40;
+        case .NONE:            return 0.35;
+    }
+    return 0.35;
+}
+
+game_sfx_play :: proc(event: Game_Sfx_Event, follow_entity: Entity = null, volume_scale: float = 1.0) {
+    if event == .NONE return;
+    if event == .NIGHT_WARNING && Game.is_server() return;
+
+    path := game_sfx_path_for_event(event);
+    if path.count <= 0 return;
+
+    sfx := get_asset(SFX_Asset, path);
+    if sfx == null return;
+
+    desc := SFX.default_sfx_desc();
+    desc.channel = .SFX;
+    if follow_entity != null {
+        desc.entity_to_follow = follow_entity.id;
+    }
+    desc.volume = clamp(game_sfx_default_volume_for_event(event) * max(volume_scale, 0.0), 0.0, 1.0);
+    SFX.play(sfx, desc);
+}
 
 get_game_manager :: proc() -> GameManager {
     return g_game_manager;
@@ -135,14 +241,28 @@ GameManager :: class : Component {
     day_night_blend_to: float;
     day_night_blend_transition_time_seconds: float;
     nights: s64;
+    current_night_event: Night_Event_Type;
+    raid_spawn_cap_multiplier: s64 @ao_serialize;
+    night_event_none_weight: float @ao_serialize;
+    night_event_raid_weight: float @ao_serialize;
+    night_event_supply_drop_weight: float @ao_serialize;
+    SupplyDropPrefab: string @ao_serialize;
+    supply_drop_spawn_point: Entity @ao_serialize;
+    active_supply_drop_entity: Entity;
+    last_notified_night_event: Night_Event_Type;
 
     DAY_DURATION_SECONDS :: 90.0;
     NIGHT_DURATION_SECONDS :: 60.0;
-    DAY_NIGHT_BLEND_TRANSITION_SECONDS :: 15.0;
+    DAY_NIGHT_BLEND_TRANSITION_SECONDS :: 5.0;
     NIGHT_WARNING_LEAD_TIME_SECONDS :: 10.0;
     PLAYERS_REQUIRED_TO_START :: 6;
     NIGHT_WARNING_NOTIFICATION_TEXT :: "Night is almost here! Get back to the Beacon!";
     SURVIVED_NIGHT_NOTIFICATION_TEXT :: "You Survived the Night! % more to go!";
+    SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT :: "+% % for surviving the night!";
+    SURVIVED_NIGHT_REWARD_CURRENCY :: "Moons";
+    SURVIVED_NIGHT_REWARD_AMOUNT :: 1;
+    NIGHT_EVENT_NOTIFICATION_TEXT :: "Night Event: %!";
+    PLAYER_DOWNED_NOTIFICATION_TEXT :: "% has been downed!";
     ROUND_START_FADE_OUT_SECONDS :: 1.0;
     ROUND_START_BLACK_HOLD_SECONDS :: 1.0;
     ROUND_START_FADE_IN_SECONDS :: 1.0;
@@ -153,6 +273,8 @@ GameManager :: class : Component {
     GAME_OVER_TEXT_DURATION_SECONDS :: 10.0;
     DAY_MUSIC_ASSET_PATH :: "Music/WoP.wav";
     NIGHT_MUSIC_ASSET_PATH :: "Music/FtI.wav";
+    LOBBY_MATCHMAKING_PRIORITY :: 1;
+    IN_ROUND_MATCHMAKING_PRIORITY :: 0;
     warned_player_user_ids_for_current_day: [..]string;
     warned_player_entities_for_current_day: [..]Entity;
     round_start_teleport_done: bool;
@@ -171,6 +293,11 @@ GameManager :: class : Component {
         g_game_manager = this;
         if damage_number_lifetime_seconds <= 0.0 { damage_number_lifetime_seconds = 0.65; }
         if damage_number_rise_speed <= 0.0 { damage_number_rise_speed = 1.4; }
+        if raid_spawn_cap_multiplier <= 1 { raid_spawn_cap_multiplier = 2; }
+        if night_event_none_weight <= 0.0 { night_event_none_weight = 65.0; }
+        if night_event_raid_weight <= 0.0 { night_event_raid_weight = 25.0; }
+        if night_event_supply_drop_weight <= 0.0 { night_event_supply_drop_weight = 10.0; }
+        last_notified_night_event = .NONE;
         reset_game_state();
         apply_navmesh_lock_to_all_players();
         if !Game.is_server() {
@@ -209,6 +336,7 @@ GameManager :: class : Component {
                 // Round state: active gameplay should run here.
                 update_round_start_sequence();
                 update_day_night_cycle(dt);
+                update_night_event_notifications();
                 update_day_night_blend(dt);
             }
             case .POST_ROUND: {
@@ -247,6 +375,7 @@ GameManager :: class : Component {
     }
 
     reset_game_state :: method() {
+        clear_active_night_event();
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;
         nights = 0;
@@ -267,12 +396,18 @@ GameManager :: class : Component {
         switch phase {
             case .LOBBY: {
                 log_info("GameManager phase -> LOBBY", {});
+                apply_matchmaking_priority_for_phase(phase);
             }
             case .IN_ROUND: {
                 log_info("GameManager phase -> IN_ROUND", {});
+                apply_matchmaking_priority_for_phase(phase);
+                if !Game.is_server() {
+                    game_sfx_play(.ROUND_START);
+                }
                 run_round_start_poi_setup();
                 nights = 0;
                 reset_day_night_cycle();
+                current_night_event = .NONE;
                 reset_beacons_for_round();
                 round_start_teleport_done = false;
                 game_over_sequence_active = false;
@@ -285,6 +420,23 @@ GameManager :: class : Component {
         }
     }
 
+    apply_matchmaking_priority_for_phase :: method(phase: Game_Phase) {
+        if !Game.is_server() return;
+
+        switch phase {
+            case .LOBBY: {
+                Server.set_matchmaking_priority(LOBBY_MATCHMAKING_PRIORITY);
+            }
+            case .IN_ROUND: {
+                Server.set_matchmaking_priority(IN_ROUND_MATCHMAKING_PRIORITY);
+            }
+            case .POST_ROUND: {
+                // Keep matchmaking off while post-round cleanup runs.
+                Server.set_matchmaking_priority(IN_ROUND_MATCHMAKING_PRIORITY);
+            }
+        }
+    }
+
     on_exit_phase :: method(phase: Game_Phase) {
         switch phase {
             case .LOBBY: {
@@ -292,6 +444,7 @@ GameManager :: class : Component {
             }
             case .IN_ROUND: {
                 // Exit round hooks go here.
+                clear_active_night_event();
                 day_night_phase = .DAY;
                 day_night_phase_time_seconds = 0.0;
                 day_night_blend = 0.0;
@@ -400,12 +553,13 @@ GameManager :: class : Component {
     run_round_start_poi_setup :: method() {
         if !Game.is_server() return;
 
+        poi_rng := rng_seed_time();
         spawned_count: s64 = 0;
         total_count: s64 = 0;
         foreach poi: component_iterator(POI) {
             if poi == null continue;
             total_count += 1;
-            if poi->spawn_for_round() {
+            if poi->spawn_for_round(ref poi_rng) {
                 spawned_count += 1;
             }
         }
@@ -464,22 +618,56 @@ GameManager :: class : Component {
                 day_night_phase = .NIGHT;
                 day_night_phase_time_seconds = 0.0;
                 begin_day_night_blend_transition();
+                roll_and_apply_night_event();
+                if !Game.is_server() {
+                    game_sfx_play(.NIGHT_START);
+                }
                 log_info("Day/Night -> NIGHT", {});
             }
             return;
         }
 
         if day_night_phase_time_seconds >= NIGHT_DURATION_SECONDS {
+            clear_active_night_event();
             day_night_phase = .DAY;
             day_night_phase_time_seconds = 0.0;
             warned_player_user_ids_for_current_day->clear();
             warned_player_entities_for_current_day->clear();
             nights += 1;
             begin_day_night_blend_transition();
+            grant_night_survival_currency_rewards();
             revive_dead_players_for_day_start();
             notify_all_players_survived_night();
+            if !Game.is_server() {
+                game_sfx_play(.DAY_START);
+            }
             log_info("Day/Night -> DAY (Nights: %)", {nights});
         }
+    }
+
+    grant_night_survival_currency_rewards :: method() {
+        // Currency transactions should only execute on the server.
+        if !Game.is_server() return;
+
+        rewarded_count: s64 = 0;
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            if p.entity == null continue;
+            if p->is_dead_for_night_state() continue;
+
+            Economy.deposit_currency(p, SURVIVED_NIGHT_REWARD_CURRENCY, SURVIVED_NIGHT_REWARD_AMOUNT);
+            Notifier.notify(p, SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT, {
+                SURVIVED_NIGHT_REWARD_AMOUNT,
+                SURVIVED_NIGHT_REWARD_CURRENCY
+            });
+            rewarded_count += 1;
+        }
+
+        log_info("Granted % % currency to % night survivor(s).", {
+            SURVIVED_NIGHT_REWARD_AMOUNT,
+            SURVIVED_NIGHT_REWARD_CURRENCY,
+            rewarded_count
+        });
     }
 
     revive_dead_players_for_day_start :: method() {
@@ -510,6 +698,9 @@ GameManager :: class : Component {
         game_over_sequence_restart_done = false;
         game_over_sequence_start_time = get_time();
         game_over_nights_lasted = nights;
+        if !Game.is_server() {
+            game_sfx_play(.GAME_OVER);
+        }
         log_info("Game Over sequence started.", {});
     }
 
@@ -541,6 +732,8 @@ GameManager :: class : Component {
     run_game_over_restart :: method() {
         if !Game.is_server() return;
 
+        cleanup_world_for_game_restart();
+
         foreach p: component_iterator(Player) {
             if p == null continue;
             p->reset_for_game_restart();
@@ -552,6 +745,64 @@ GameManager :: class : Component {
         foreach p: component_iterator(Player) {
             if p == null continue;
             teleport_player_to_lobby_spawn(p);
+        }
+    }
+
+    cleanup_world_for_game_restart :: method() {
+        if !Game.is_server() return;
+
+        destroy_all_mobs_for_game_over();
+        despawn_all_dropped_items_for_game_over();
+    }
+
+    destroy_all_mobs_for_game_over :: method() {
+        removed_count: s64 = 0;
+
+        foreach spawner: component_iterator(MobSpawner) {
+            if spawner == null continue;
+            removed_count += spawner.spawned_mobs.count;
+            spawner->destroy_all_spawned_mobs();
+            spawner->clear_temporary_spawn_cap_bonus();
+        }
+
+        foreach mob: component_iterator(Mob) {
+            if mob == null continue;
+            if mob.entity == null continue;
+            if !#alive(mob.entity) continue;
+            mob.entity->destroy();
+            removed_count += 1;
+        }
+
+        if removed_count > 0 {
+            log_info("Game Over cleanup removed % mob(s).", {removed_count});
+        }
+    }
+
+    despawn_all_dropped_items_for_game_over :: method() {
+        removed_count: s64 = 0;
+
+        foreach dropped: component_iterator(Dropped_Item) {
+            if dropped == null continue;
+            if dropped.item != null {
+                Items.destroy_item_instance(dropped.item);
+                dropped.item = null;
+            }
+            if dropped.entity != null && #alive(dropped.entity) {
+                dropped.entity->destroy();
+                removed_count += 1;
+            }
+        }
+
+        foreach dropped: component_iterator(Item_Drop_Magnet) {
+            if dropped == null continue;
+            if dropped.entity != null && #alive(dropped.entity) {
+                dropped.entity->destroy();
+                removed_count += 1;
+            }
+        }
+
+        if removed_count > 0 {
+            log_info("Game Over cleanup despawned % dropped item(s).", {removed_count});
         }
     }
 
@@ -571,18 +822,23 @@ GameManager :: class : Component {
     }
 
     notify_all_players_night_warning :: method() {
+        sent_to_any_player := false;
         foreach p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
 
             if Game.is_server() {
                 Notifier.notify(p, NIGHT_WARNING_NOTIFICATION_TEXT);
+                sent_to_any_player = true;
             } else if p->is_local() {
                 Notifier.notify(NIGHT_WARNING_NOTIFICATION_TEXT);
+                sent_to_any_player = true;
             }
             log_info("Sent night warning to %", {p->get_username()});
         }
-        // play a warning horn sfx here.
+        if sent_to_any_player {
+            game_sfx_play(.NIGHT_WARNING);
+        }
     }
 
     was_player_warned_this_day :: method(user_id: string) -> bool {
@@ -616,6 +872,187 @@ GameManager :: class : Component {
             }
         }
         log_info("Broadcasted survived-night notification (remaining: %).", {remaining_nights});
+    }
+
+    roll_and_apply_night_event :: method() {
+        //if !Game.is_server() return;
+        clear_active_night_event();
+        current_night_event = .NONE;
+
+        none_weight := max(night_event_none_weight, 0.0);
+        raid_weight := max(night_event_raid_weight, 0.0);
+        supply_weight := max(night_event_supply_drop_weight, 0.0);
+        total_weight := none_weight + raid_weight + supply_weight;
+        if total_weight <= 0.0 return;
+
+        roll_rng := rng_seed_time();
+        roll := rng_range_float(ref roll_rng, 0.0, total_weight);
+        if roll < none_weight {
+            current_night_event = .NONE;
+        } else if roll < none_weight + raid_weight {
+            current_night_event = .RAID;
+        } else {
+            current_night_event = .SUPPLY_DROP;
+        }
+
+        if current_night_event == .NONE return;
+
+        apply_active_night_event();
+        notify_all_players_night_event_started();
+    }
+
+    apply_active_night_event :: method() {
+        if !Game.is_server() return;
+
+        switch current_night_event {
+            case .RAID: {
+                apply_raid_event();
+            }
+            case .SUPPLY_DROP: {
+                apply_supply_drop_event();
+            }
+            case .NONE: {
+            }
+        }
+    }
+
+    clear_active_night_event :: method() {
+        if Game.is_server() {
+            clear_raid_event();
+            clear_supply_drop_event();
+        }
+        current_night_event = .NONE;
+    }
+
+    apply_raid_event :: method() {
+        multiplier := max(raid_spawn_cap_multiplier, 2);
+        foreach spawner: component_iterator(MobSpawner) {
+            if spawner == null continue;
+            bonus := max(spawner.max_mobs * (multiplier - 1), 0);
+            spawner->set_temporary_spawn_cap_bonus(bonus);
+            spawner->force_fill_to_current_cap();
+        }
+        log_info("Night event started: RAID (spawn cap x%).", {multiplier});
+    }
+
+    clear_raid_event :: method() {
+        foreach spawner: component_iterator(MobSpawner) {
+            if spawner == null continue;
+            spawner->clear_temporary_spawn_cap_bonus();
+        }
+    }
+
+    apply_supply_drop_event :: method() {
+        if SupplyDropPrefab.count <= 0 {
+            log_info("Night event Supply Drop skipped: SupplyDropPrefab is empty.", {});
+            return;
+        }
+
+        prefab := get_asset(Prefab_Asset, SupplyDropPrefab);
+        if prefab == null {
+            log_info("Night event Supply Drop skipped: prefab missing at '%'.", {SupplyDropPrefab});
+            return;
+        }
+
+        spawn_pos := entity.world_position;
+        if supply_drop_spawn_point != null {
+            spawn_pos = supply_drop_spawn_point.world_position;
+        } else if island1_spawn != null {
+            spawn_pos = island1_spawn.world_position;
+        }
+
+        active_supply_drop_entity = Scene.instantiate(prefab);
+        if active_supply_drop_entity == null {
+            log_info("Night event Supply Drop failed to instantiate prefab '%'.", {SupplyDropPrefab});
+            return;
+        }
+
+        active_supply_drop_entity->set_local_position(spawn_pos);
+        log_info("Night event started: SUPPLY DROP at (%, %).", {spawn_pos.x, spawn_pos.y});
+    }
+
+    clear_supply_drop_event :: method() {
+        if active_supply_drop_entity != null && #alive(active_supply_drop_entity) {
+            active_supply_drop_entity->destroy();
+        }
+        active_supply_drop_entity = null;
+    }
+
+    notify_all_players_night_event_started :: method() {
+        if current_night_event == .NONE return;
+        if current_night_event == last_notified_night_event return;
+
+        event_name := night_event_type_to_text(current_night_event);
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            if p.entity == null continue;
+
+            if Game.is_server() {
+                Notifier.notify(p, NIGHT_EVENT_NOTIFICATION_TEXT, {event_name});
+            } else if p->is_local() {
+                Notifier.notify(NIGHT_EVENT_NOTIFICATION_TEXT, {event_name});
+            }
+        }
+        last_notified_night_event = current_night_event;
+        log_info("Broadcasted night event notification: %.", {event_name});
+    }
+
+    notify_all_players_player_downed :: method(downed_player: Player) {
+        if downed_player == null return;
+        name := downed_player->get_username();
+        if name.count <= 0 {
+            name = "A player";
+        }
+
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            if p.entity == null continue;
+
+            if Game.is_server() {
+                Notifier.notify(p, PLAYER_DOWNED_NOTIFICATION_TEXT, {name});
+            } else if p->is_local() {
+                Notifier.notify(PLAYER_DOWNED_NOTIFICATION_TEXT, {name});
+            }
+        }
+        log_info("Broadcasted downed notification for %.", {name});
+    }
+
+    update_night_event_notifications :: method() {
+        if current_night_event == .NONE {
+            last_notified_night_event = .NONE;
+            return;
+        }
+        notify_all_players_night_event_started();
+    }
+
+    is_raid_event_active :: method() -> bool {
+        return current_night_event == .RAID;
+    }
+
+    is_supply_drop_event_active :: method() -> bool {
+        return current_night_event == .SUPPLY_DROP;
+    }
+
+    should_mobs_ignore_beacon_safety :: method() -> bool {
+        return current_night_event == .RAID;
+    }
+
+    get_supply_drop_arrow_target :: method() -> v2, bool {
+        if current_night_event != .SUPPLY_DROP return {0.0, 0.0}, false;
+
+        if active_supply_drop_entity != null && #alive(active_supply_drop_entity) {
+            return active_supply_drop_entity.world_position, true;
+        }
+
+        if supply_drop_spawn_point != null {
+            return supply_drop_spawn_point.world_position, true;
+        }
+
+        if island1_spawn != null {
+            return island1_spawn.world_position, true;
+        }
+
+        return entity.world_position, true;
     }
 
     is_night_warning_window_active :: method() -> bool {

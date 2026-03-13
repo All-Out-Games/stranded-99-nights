@@ -19,18 +19,19 @@
   "component_type": "Internal_Component",
   "internal_component_type": "Mob",
   "data": {
-    "max_health": 500,
+    "max_health": 300,
     "move_speed": 300,
-    "attack_damage": 25,
+    "attack_damage": 20,
     "attack_speed": 2,
     "attack_range": 2,
-    "acquire_range": 50,
+    "acquire_range": 15,
     "despawn_delay_seconds": 3,
     "spine_animator": "187544843927176:1772751942122743400",
     "idle_animation_name": "Ilde_All_Fours",
     "move_animation_name": "Move_All_Fours",
     "attack_animation_name": "Slash_With_Hand_All_Fours_Dark",
-    "death_animation_name": "Die"
+    "death_animation_name": "Die",
+    "death_drop_item_id": "root.resin"
   }
 },
 {

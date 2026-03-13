@@ -19,7 +19,7 @@
   "component_type": "Internal_Component",
   "internal_component_type": "Mob",
   "data": {
-    "max_health": 50,
+    "max_health": 25,
     "move_speed": 265,
     "attack_damage": 10,
     "attack_speed": 2.5000000000000000,
@@ -30,7 +30,8 @@
     "idle_animation_name": "idle",
     "move_animation_name": "move",
     "attack_animation_name": "attack",
-    "death_animation_name": "death"
+    "death_animation_name": "death",
+    "death_drop_item_id": "fiber"
   }
 },
 {
