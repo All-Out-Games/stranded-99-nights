@@ -259,7 +259,7 @@ GameManager :: class : Component {
     NIGHT_DURATION_SECONDS :: 60.0;
     DAY_NIGHT_BLEND_TRANSITION_SECONDS :: 5.0;
     NIGHT_WARNING_LEAD_TIME_SECONDS :: 10.0;
-    PLAYERS_REQUIRED_TO_START :: 6;
+    PLAYERS_REQUIRED_TO_START :: 3;
     NIGHT_WARNING_NOTIFICATION_TEXT :: "Night is almost here! Get back to the Beacon!";
     SURVIVED_NIGHT_NOTIFICATION_TEXT :: "You Survived the Night! % more to go!";
     SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT :: "+% % for surviving the night!";
