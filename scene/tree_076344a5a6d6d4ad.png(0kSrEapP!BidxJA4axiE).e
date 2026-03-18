@@ -1,0 +1,26 @@
+13
+2529735737345
+231192369670735 1773789951954720900
+{
+  "name": "tree_076344a5a6d6d4ad.png",
+  "local_enabled": true,
+  "local_position": {
+
+  },
+  "local_rotation": 0,
+  "local_scale": {
+    "X": 2,
+    "Y": 2
+  },
+  "parent": "231192369635779:1773789951954704800"
+},
+{
+  "cid": 1,
+  "aoid": "231192369775878:1773789951954770700",
+  "component_type": "Internal_Component",
+  "internal_component_type": "Sprite_Renderer",
+  "data": {
+    "texture": "iron_deposit.png",
+    "depth_offset": -0.7055177688598633
+  }
+}

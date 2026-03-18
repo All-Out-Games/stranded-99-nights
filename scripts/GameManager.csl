@@ -157,21 +157,36 @@ ensure_game_manager_exists :: proc() -> GameManager {
     return g_game_manager;
 }
 
-start :: proc(player: Player) {
+try_force_start_game :: proc(player: Player, source: string) {
+    if !Game.is_server() return;
+
     manager := ensure_game_manager_exists();
     if manager == null {
-        Notifier.notify(player, "GameManager is unavailable.");
+        if player != null {
+            Notifier.notify(player, "GameManager is unavailable.");
+        }
         return;
     }
 
     if manager->is_round_active() {
-        Notifier.notify(player, "Round is already active.");
+        if player != null {
+            Notifier.notify(player, "Round is already active.");
+        }
         return;
     }
 
     manager->start_game();
-    Notifier.notify(player, "Forced game start.");
-    log_info("% forced start_game via /start", {player->get_username()});
+
+    if player != null {
+        Notifier.notify(player, "Forced game start.");
+        log_info("% forced start_game via %", {player->get_username(), source});
+    } else {
+        log_info("Forced start_game via %", {source});
+    }
+}
+
+start :: proc(player: Player) {
+    try_force_start_game(player, "/start");
 } @chat_command @youtuber
 
 g :: proc(player: Player, item_id: string, quantity: s64 = 1) {
@@ -234,6 +249,7 @@ GameManager :: class : Component {
     current_phase: Game_Phase;
     game_time_seconds: float;
     phase_time_seconds: float;
+    Island: int;
     day_night_phase: Day_Night_Phase;
     day_night_phase_time_seconds: float;
     day_night_blend: float;
@@ -251,9 +267,15 @@ GameManager :: class : Component {
     night_event_weight_scale_gain_per_completed_night: float @ao_serialize;
     night_event_weight_scale_cap: float @ao_serialize;
     SupplyDropPrefab: string @ao_serialize;
+    Island1BossMob: string @ao_serialize;
+    island1_boss_spawn_point: Entity @ao_serialize;
     supply_drop_spawn_point: Entity @ao_serialize;
     active_supply_drop_entity: Entity;
+    active_island1_boss_entity: Entity;
+    island1_boss_defeated_for_run: bool;
     last_notified_night_event: Night_Event_Type;
+    broadcast_notification_text: string;
+    broadcast_notification_end_time: float;
 
     DAY_DURATION_SECONDS :: 90.0;
     NIGHT_DURATION_SECONDS :: 60.0;
@@ -265,8 +287,12 @@ GameManager :: class : Component {
     SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT :: "+% % for surviving the night!";
     SURVIVED_NIGHT_REWARD_CURRENCY :: "Moons";
     SURVIVED_NIGHT_REWARD_AMOUNT :: 1;
+    MAX_TRACKED_SURVIVAL_NIGHT :: 99;
+    NON_NIGHT_ONLY_SPAWNER_DOUBLING_NIGHTS :: 5.0;
+    NIGHT_SURVIVAL_SAVE_KEY_FORMAT :: "night_survived_%";
     NIGHT_EVENT_NOTIFICATION_TEXT :: "Night Event: %!";
     PLAYER_DOWNED_NOTIFICATION_TEXT :: "% has been downed!";
+    BROADCAST_NOTIFICATION_DURATION_SECONDS :: 5.0;
     ROUND_START_FADE_OUT_SECONDS :: 1.0;
     ROUND_START_BLACK_HOLD_SECONDS :: 1.0;
     ROUND_START_FADE_IN_SECONDS :: 1.0;
@@ -275,6 +301,8 @@ GameManager :: class : Component {
     GAME_OVER_BLACK_HOLD_SECONDS :: 1.25;
     GAME_OVER_FADE_IN_SECONDS :: 1.0;
     GAME_OVER_TEXT_DURATION_SECONDS :: 10.0;
+    ISLAND1_BOSS_SPAWN_RADIUS :: 20.0;
+    ISLAND1_BOSS_SPAWN_SAMPLE_ATTEMPTS :: 8;
     DAY_MUSIC_ASSET_PATH :: "Music/WoP.wav";
     NIGHT_MUSIC_ASSET_PATH :: "Music/FtI.wav";
     LOBBY_MATCHMAKING_PRIORITY :: 1;
@@ -334,6 +362,7 @@ GameManager :: class : Component {
 
         game_time_seconds += dt;
         phase_time_seconds += dt;
+        update_island1_boss_state();
 
         switch current_phase {
             case .LOBBY: {
@@ -384,9 +413,13 @@ GameManager :: class : Component {
 
     reset_game_state :: method() {
         clear_active_night_event();
+        clear_island1_boss();
+        clear_broadcast_notification();
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;
+        Island = 1;
         nights = 0;
+        island1_boss_defeated_for_run = false;
         current_phase = .LOBBY;
         on_enter_phase(current_phase);
     }
@@ -453,6 +486,7 @@ GameManager :: class : Component {
             case .IN_ROUND: {
                 // Exit round hooks go here.
                 clear_active_night_event();
+                clear_island1_boss();
                 day_night_phase = .DAY;
                 day_night_phase_time_seconds = 0.0;
                 day_night_blend = 0.0;
@@ -490,12 +524,64 @@ GameManager :: class : Component {
         return phase_time_seconds;
     }
 
+    clear_broadcast_notification :: method() {
+        broadcast_notification_text = "";
+        broadcast_notification_end_time = 0.0;
+    }
+
+    show_broadcast_notification :: method(message: string) {
+        if message.count <= 0 return;
+        broadcast_notification_text = message;
+        broadcast_notification_end_time = get_time() + BROADCAST_NOTIFICATION_DURATION_SECONDS;
+    }
+
+    should_draw_broadcast_notification :: method() -> bool {
+        if broadcast_notification_text.count <= 0 return false;
+        return get_time() <= broadcast_notification_end_time;
+    }
+
+    get_broadcast_notification_text :: method() -> string {
+        if !should_draw_broadcast_notification() return "";
+        return broadcast_notification_text;
+    }
+
     get_game_time_seconds :: method() -> float {
         return game_time_seconds;
     }
 
     get_nights :: method() -> s64 {
         return nights;
+    }
+
+    get_non_night_only_spawner_spawn_scale :: method() -> float {
+        completed_nights := max(nights, 0);
+        if completed_nights <= 0 return 1.0;
+
+        return pow(2.0, completed_nights.(float) / NON_NIGHT_ONLY_SPAWNER_DOUBLING_NIGHTS);
+    }
+
+    is_tracked_survival_night :: method(night_number: s64) -> bool {
+        return night_number >= 1 && night_number <= MAX_TRACKED_SURVIVAL_NIGHT;
+    }
+
+    get_night_survival_save_key :: method(night_number: s64) -> string {
+        return format_string(NIGHT_SURVIVAL_SAVE_KEY_FORMAT, {night_number});
+    }
+
+    increment_global_night_survival_count :: method(night_number: s64) {
+        // Only the server should write global save state.
+        if !Game.is_server() return;
+        if !this->is_tracked_survival_night(night_number) return;
+
+        key := this->get_night_survival_save_key(night_number);
+        Save.increment_game_int(key, 1);
+    }
+
+    get_global_night_survival_count :: method(night_number: s64) -> s64 {
+        if !this->is_tracked_survival_night(night_number) return 0;
+
+        key := this->get_night_survival_save_key(night_number);
+        return Save.get_game_int(key, 0);
     }
 
     get_player_count :: method() -> s64 {
@@ -508,6 +594,18 @@ GameManager :: class : Component {
 
     get_required_players_to_start :: method() -> s64 {
         return PLAYERS_REQUIRED_TO_START;
+    }
+
+    is_private_server :: method() -> bool {
+        _, is_private := Server.get_private_server_host_id();
+        return is_private;
+    }
+
+    can_player_force_start_from_lobby :: method(player: Player) -> bool {
+        if player == null return false;
+        if current_phase != .LOBBY return false;
+        if game_over_sequence_active return false;
+        return true;
     }
 
     on_player_joined :: method(player: Player) {
@@ -627,6 +725,7 @@ GameManager :: class : Component {
                 day_night_phase_time_seconds = 0.0;
                 begin_day_night_blend_transition();
                 roll_and_apply_night_event();
+                spawn_island1_boss_for_night();
                 if !Game.is_server() {
                     game_sfx_play(.NIGHT_START);
                 }
@@ -637,11 +736,13 @@ GameManager :: class : Component {
 
         if day_night_phase_time_seconds >= NIGHT_DURATION_SECONDS {
             clear_active_night_event();
+            clear_island1_boss();
             day_night_phase = .DAY;
             day_night_phase_time_seconds = 0.0;
             warned_player_user_ids_for_current_day->clear();
             warned_player_entities_for_current_day->clear();
             nights += 1;
+            this->increment_global_night_survival_count(nights);
             begin_day_night_blend_transition();
             grant_night_survival_currency_rewards();
             revive_dead_players_for_day_start();
@@ -759,6 +860,7 @@ GameManager :: class : Component {
     cleanup_world_for_game_restart :: method() {
         if !Game.is_server() return;
 
+        clear_island1_boss();
         destroy_all_mobs_for_game_over();
         despawn_all_dropped_items_for_game_over();
     }
@@ -830,18 +932,13 @@ GameManager :: class : Component {
     }
 
     notify_all_players_night_warning :: method() {
+        show_broadcast_notification(NIGHT_WARNING_NOTIFICATION_TEXT);
         sent_to_any_player := false;
         foreach p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
 
-            if Game.is_server() {
-                Notifier.notify(p, NIGHT_WARNING_NOTIFICATION_TEXT);
-                sent_to_any_player = true;
-            } else if p->is_local() {
-                Notifier.notify(NIGHT_WARNING_NOTIFICATION_TEXT);
-                sent_to_any_player = true;
-            }
+            sent_to_any_player = true;
             log_info("Sent night warning to %", {p->get_username()});
         }
         if sent_to_any_player {
@@ -869,16 +966,8 @@ GameManager :: class : Component {
 
     notify_all_players_survived_night :: method() {
         remaining_nights := max(99 - nights, 0);
-        foreach p: component_iterator(Player) {
-            if p == null continue;
-            if p.entity == null continue;
-
-            if Game.is_server() {
-                Notifier.notify(p, SURVIVED_NIGHT_NOTIFICATION_TEXT, {remaining_nights});
-            } else if p->is_local() {
-                Notifier.notify(SURVIVED_NIGHT_NOTIFICATION_TEXT, {remaining_nights});
-            }
-        }
+        message := format_string(SURVIVED_NIGHT_NOTIFICATION_TEXT, {remaining_nights});
+        show_broadcast_notification(message);
         log_info("Broadcasted survived-night notification (remaining: %).", {remaining_nights});
     }
 
@@ -951,10 +1040,23 @@ GameManager :: class : Component {
 
     apply_raid_event :: method() {
         multiplier := max(raid_spawn_cap_multiplier, 2);
+
+        // Snapshot the spawners before force-filling so entity creation does not
+        // invalidate the live component iterator during the raid setup pass.
+        spawners: [..]MobSpawner;
         foreach spawner: component_iterator(MobSpawner) {
+            if spawner == null continue;
+            spawners->append(spawner);
+        }
+
+        for spawner: spawners {
             if spawner == null continue;
             bonus := max(spawner.max_mobs * (multiplier - 1), 0);
             spawner->set_temporary_spawn_cap_bonus(bonus);
+        }
+
+        for spawner: spawners {
+            if spawner == null continue;
             spawner->force_fill_to_current_cap();
         }
         log_info("Night event started: RAID (spawn cap x%).", {multiplier});
@@ -1003,21 +1105,115 @@ GameManager :: class : Component {
         active_supply_drop_entity = null;
     }
 
+    get_island1_boss_spawn_center :: method() -> v2 {
+        if island1_boss_spawn_point != null {
+            return island1_boss_spawn_point.world_position;
+        }
+        if island1_spawn != null {
+            return island1_spawn.world_position;
+        }
+        return entity.world_position;
+    }
+
+    sample_island1_boss_spawn_position :: method() -> v2, bool {
+        navmesh := player_navmesh;
+        if navmesh == null {
+            return get_island1_boss_spawn_center(), false;
+        }
+
+        center := get_island1_boss_spawn_center();
+        radius_sq := ISLAND1_BOSS_SPAWN_RADIUS * ISLAND1_BOSS_SPAWN_RADIUS;
+        rng := rng_seed_time();
+        hint_as_int: int = 0;
+
+        for attempt: 0..ISLAND1_BOSS_SPAWN_SAMPLE_ATTEMPTS-1 {
+            angle := rng_range_float(ref rng, 0.0, 6.2831853);
+            radius_t := sqrt(rng_range_float(ref rng, 0.0, 1.0));
+            dist := radius_t * ISLAND1_BOSS_SPAWN_RADIUS;
+            desired_pos := v2{
+                center.x + cos(angle) * dist,
+                center.y + sin(angle) * dist
+            };
+
+            spawn_pos: v2;
+            if !navmesh->try_find_closest_point_on_navmesh(desired_pos, ref spawn_pos, ref hint_as_int) {
+                continue;
+            }
+            if length_squared(spawn_pos - center) <= radius_sq {
+                return spawn_pos, true;
+            }
+        }
+
+        fallback_pos: v2;
+        if navmesh->try_find_closest_point_on_navmesh(center, ref fallback_pos, ref hint_as_int) {
+            return fallback_pos, true;
+        }
+
+        return center, false;
+    }
+
+    spawn_island1_boss_for_night :: method() {
+        if !Game.is_server() return;
+        if island1_boss_defeated_for_run return;
+        if Island1BossMob.count <= 0 return;
+        if active_island1_boss_entity != null && #alive(active_island1_boss_entity) return;
+
+        prefab := get_asset(Prefab_Asset, Island1BossMob);
+        if prefab == null {
+            log_info("Island 1 boss spawn skipped: prefab missing at '%'.", {Island1BossMob});
+            return;
+        }
+
+        active_island1_boss_entity = Scene.instantiate(prefab);
+        if active_island1_boss_entity == null {
+            log_info("Island 1 boss spawn failed for prefab '%'.", {Island1BossMob});
+            return;
+        }
+
+        spawn_pos, found_spawn_pos := sample_island1_boss_spawn_position();
+        if !found_spawn_pos {
+            log_info("Island 1 boss spawn failed: no valid navmesh position found near spawn point.", {});
+            active_island1_boss_entity->destroy();
+            active_island1_boss_entity = null;
+            return;
+        }
+
+        active_island1_boss_entity->set_local_position(spawn_pos);
+        log_info("Island 1 boss spawned at (%, %).", {spawn_pos.x, spawn_pos.y});
+    }
+
+    clear_island1_boss :: method() {
+        if active_island1_boss_entity != null && #alive(active_island1_boss_entity) {
+            active_island1_boss_entity->destroy();
+        }
+        active_island1_boss_entity = null;
+    }
+
+    update_island1_boss_state :: method() {
+        if !Game.is_server() return;
+        if active_island1_boss_entity == null return;
+
+        if !#alive(active_island1_boss_entity) {
+            active_island1_boss_entity = null;
+            return;
+        }
+
+        boss_mob := active_island1_boss_entity->get_component(Mob);
+        if boss_mob == null return;
+        if boss_mob->is_alive() return;
+
+        island1_boss_defeated_for_run = true;
+        active_island1_boss_entity = null;
+        log_info("Island 1 boss defeated for this run.", {});
+    }
+
     notify_all_players_night_event_started :: method() {
         if current_night_event == .NONE return;
         if current_night_event == last_notified_night_event return;
 
         event_name := night_event_type_to_text(current_night_event);
-        foreach p: component_iterator(Player) {
-            if p == null continue;
-            if p.entity == null continue;
-
-            if Game.is_server() {
-                Notifier.notify(p, NIGHT_EVENT_NOTIFICATION_TEXT, {event_name});
-            } else if p->is_local() {
-                Notifier.notify(NIGHT_EVENT_NOTIFICATION_TEXT, {event_name});
-            }
-        }
+        message := format_string(NIGHT_EVENT_NOTIFICATION_TEXT, {event_name});
+        show_broadcast_notification(message);
         last_notified_night_event = current_night_event;
         log_info("Broadcasted night event notification: %.", {event_name});
     }
@@ -1029,16 +1225,8 @@ GameManager :: class : Component {
             name = "A player";
         }
 
-        foreach p: component_iterator(Player) {
-            if p == null continue;
-            if p.entity == null continue;
-
-            if Game.is_server() {
-                Notifier.notify(p, PLAYER_DOWNED_NOTIFICATION_TEXT, {name});
-            } else if p->is_local() {
-                Notifier.notify(PLAYER_DOWNED_NOTIFICATION_TEXT, {name});
-            }
-        }
+        message := format_string(PLAYER_DOWNED_NOTIFICATION_TEXT, {name});
+        show_broadcast_notification(message);
         log_info("Broadcasted downed notification for %.", {name});
     }
 

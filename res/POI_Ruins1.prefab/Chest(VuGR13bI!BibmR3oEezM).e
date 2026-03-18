@@ -31,7 +31,7 @@
     "open_animation_name": "open",
     "despawn_delay_seconds": 1.7000000476837158,
     "loot_item_ids": [
-      "drift.resin",
+      "root.resin",
       "wood",
       "wood",
       "scrap",

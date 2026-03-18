@@ -107,7 +107,7 @@ Hydro_Cannon_Geyser :: class : Component {
                 hit_count += 1;
             }
 
-            mob_apply_damage(target_mob, GEYSER_DAMAGE);
+            mob_apply_damage_from_player(target_mob, GEYSER_DAMAGE, owner_id);
         }
     }
 }

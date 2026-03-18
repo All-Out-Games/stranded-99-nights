@@ -1,5 +1,5 @@
 // Line beam: damage mobs along a line from origin in direction
-beam_line_damage :: proc(origin: v2, direction: v2, range: float, width: float, damage: float) {
+beam_line_damage :: proc(origin: v2, direction: v2, range: float, width: float, damage: float, owner_id: u64) {
     nearby_mobs: [..]Mob;
     Scene.get_all_components_in_range(origin, range, ref nearby_mobs);
 
@@ -21,13 +21,13 @@ beam_line_damage :: proc(origin: v2, direction: v2, range: float, width: float, 
         perp_dist := length(perp);
 
         if perp_dist <= width {
-            mob_apply_damage(target_mob, damage);
+            mob_apply_damage_from_player(target_mob, damage, owner_id);
         }
     }
 }
 
 // Cone beam: damage mobs within a cone from origin
-beam_cone_damage :: proc(origin: v2, direction: v2, range: float, cone_angle_deg: float, damage: float) {
+beam_cone_damage :: proc(origin: v2, direction: v2, range: float, cone_angle_deg: float, damage: float, owner_id: u64) {
     nearby_mobs: [..]Mob;
     Scene.get_all_components_in_range(origin, range, ref nearby_mobs);
 
@@ -51,14 +51,14 @@ beam_cone_damage :: proc(origin: v2, direction: v2, range: float, cone_angle_deg
         cos_half := cos(half_angle);
 
         if dot >= cos_half {
-            mob_apply_damage(target_mob, damage);
+            mob_apply_damage_from_player(target_mob, damage, owner_id);
         }
     }
 }
 
 // Radius-based damage: damages all mobs within range (Octo Siphoner)
-beam_radius_damage :: proc(origin: v2, range: float, damage: float) -> s64 {
-    return mob_damage_all_in_range(origin, range, damage);
+beam_radius_damage :: proc(origin: v2, range: float, damage: float, owner_id: u64) -> s64 {
+    return mob_damage_all_in_range_from_player(origin, range, damage, owner_id);
 }
 
 // Beam visual entity - positions spine beam between source and target each frame

@@ -79,7 +79,7 @@ Melee_Ability :: class : Ability_Base {
                 for hit_mob: nearby_mobs {
                     if hit_mob == null continue;
                     if !hit_mob->is_alive() continue;
-                    mob_apply_damage(hit_mob, melee_damage);
+                    mob_apply_damage_from_player(hit_mob, melee_damage, p.entity.id);
                 }
             }
 

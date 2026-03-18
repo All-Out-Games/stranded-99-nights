@@ -1,5 +1,11 @@
 [
   {
+    "id": "TileTextures/platinum_tundra_1.png",
+    "texture": {
+      "wrap_repeat": true
+    }
+  },
+  {
     "id": "TileTextures/smoke.png",
     "texture": {
       "pixels_per_unit": 120,

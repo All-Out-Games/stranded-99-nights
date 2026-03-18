@@ -12,7 +12,7 @@
     "X": 1,
     "Y": 1
   },
-  "next_sibling": "2556402480927:1772055812420955700"
+  "next_sibling": "15042406194597:1772781983492266100"
 },
 {
   "cid": 1,
@@ -24,6 +24,8 @@
     "lobby_spawn": "17117361272975:1772235860915432700",
     "island1_spawn": "6275564276236:1772666114361071800",
     "SupplyDropPrefab": "SupplyDrop.prefab",
+    "Island1BossMob": "Mimicer.prefab",
+    "island1_boss_spawn_point": "96282698901151:1773179589928275700",
     "supply_drop_spawn_point": "8090774265938:1773422989667333400"
   }
 }

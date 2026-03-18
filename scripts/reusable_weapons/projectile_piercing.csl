@@ -44,7 +44,7 @@ Piercing_Projectile :: class : Component {
                     hit_count += 1;
                 }
 
-                mob_apply_damage(hit_mob, damage);
+                mob_apply_damage_from_player(hit_mob, damage, owner_id);
 
                 if !mute_hit_sound {
                     hit_sfx := get_asset(SFX_Asset, "reusable_weapons/sounds/reusable-weapons/bullet_hit.wav");

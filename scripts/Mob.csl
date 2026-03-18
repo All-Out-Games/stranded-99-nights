@@ -4,6 +4,12 @@ MOB_NIGHT_HEALTH_MULTIPLIER :: 2.0;
 MOB_NIGHT_MOVE_SPEED_BONUS :: 50.0;
 MOB_NIGHT_AGGRO_RADIUS_BONUS :: 10.0;
 MOB_DEATH_DROP_CHANCE :: 0.75;
+MOB_BOSS_MIN_KEEP_AWAY_DISTANCE :: 6.0;
+MOB_BOSS_KEEP_AWAY_ATTACK_RANGE_MULTIPLIER :: 3.5;
+MOB_BOSS_RETREAT_TRIGGER_RATIO :: 0.75;
+MOB_BOSS_REPATH_DELAY_SECONDS :: 1.0;
+MOB_BOSS_REPATH_TARGET_EPSILON_SQ :: 0.25;
+MOB_BOSS_PATH_ARRIVAL_EPSILON_SQ :: 0.01;
 
 Mob :: class : Component {
     max_health: float @ao_serialize;
@@ -22,6 +28,8 @@ Mob :: class : Component {
     attack_animation_name: string @ao_serialize;
     death_animation_name: string @ao_serialize;
     death_drop_item_id: string @ao_serialize;
+    Boss: bool @ao_serialize;
+    NightAggro: s64 @ao_serialize;
 
     health: float;
     is_dead: bool;
@@ -36,6 +44,12 @@ Mob :: class : Component {
     base_move_speed: float;
     base_acquire_range: float;
     night_stats_applied: bool;
+    damage_aggro_target_player_id: u64;
+    boss_is_provoked: bool;
+    boss_next_repath_time_seconds: float;
+    boss_last_repath_player_pos: v2;
+    boss_last_path_destination: v2;
+    boss_has_active_path_target: bool;
 
     ao_start :: method() {
         if max_health <= 0.0 { max_health = 100.0; }
@@ -50,6 +64,7 @@ Mob :: class : Component {
         }
         if separation_radius <= 0.0 { separation_radius = 1.0; }
         if separation_strength <= 0.0 { separation_strength = 0.75; }
+        if NightAggro < 0 { NightAggro = 0; }
 
         base_max_health = max_health;
         base_move_speed = move_speed;
@@ -57,6 +72,12 @@ Mob :: class : Component {
         night_stats_applied = false;
         health = max_health;
         target_player_id = 0;
+        damage_aggro_target_player_id = 0;
+        boss_is_provoked = false;
+        boss_next_repath_time_seconds = 0.0;
+        boss_last_repath_player_pos = entity.world_position;
+        boss_last_path_destination = entity.world_position;
+        boss_has_active_path_target = false;
         damage_pulse_elapsed_seconds = MOB_DAMAGE_PULSE_DURATION_SECONDS;
         base_local_scale = entity.local_scale;
         if base_local_scale.x == 0.0 { base_local_scale.x = 1.0; }
@@ -79,6 +100,7 @@ Mob :: class : Component {
         setup_animation_state_machine();
         lock_to_game_navmesh();
         sync_night_stats();
+        resolve_or_find_target_player();
     }
 
     ao_update :: method(dt: float) {
@@ -108,6 +130,7 @@ Mob :: class : Component {
 
         target := resolve_or_find_target_player();
         if target == null {
+            clear_boss_path_state();
             return;
         }
 
@@ -119,6 +142,8 @@ Mob :: class : Component {
         }
         if !ignore_beacon_safety && BeaconSystem.is_position_inside_active_safety_zone(target_pos) {
             target_player_id = 0;
+            damage_aggro_target_player_id = 0;
+            clear_boss_path_state();
             return;
         }
         destination := get_spread_destination(target_pos, target.entity.id);
@@ -129,6 +154,35 @@ Mob :: class : Component {
         to_target := v2{target_pos.x - self_pos.x, target_pos.y - self_pos.y};
         dist_sq := length_squared(to_target);
         attack_range_sq := attack_range * attack_range;
+        if Boss && !this->is_boss_fully_aggro() {
+            destination = get_boss_keep_away_destination(target);
+            if !ignore_beacon_safety {
+                destination = BeaconSystem.clamp_position_outside_safety_zones(destination, self_pos);
+            }
+
+            now := get_time();
+            if should_repath_boss_target(now, target_pos) {
+                boss_last_repath_player_pos = target_pos;
+                boss_last_path_destination = destination;
+                boss_has_active_path_target = true;
+                boss_next_repath_time_seconds = now + MOB_BOSS_REPATH_DELAY_SECONDS;
+            }
+
+            if length_squared(boss_last_path_destination - self_pos) <= MOB_BOSS_PATH_ARRIVAL_EPSILON_SQ {
+                movement_agent.velocity = {0.0, 0.0};
+                face_from_movement_direction(normalize(to_target));
+                return;
+            }
+
+            path_result := movement_agent->set_path_target(boss_last_path_destination, move_speed);
+            if path_result.success {
+                face_from_movement_direction(path_result.move_direction);
+            } else {
+                fallback_dir := v2{boss_last_path_destination.x - self_pos.x, boss_last_path_destination.y - self_pos.y};
+                face_from_movement_direction(normalize(fallback_dir));
+            }
+            return;
+        }
 
         now := get_time();
         if dist_sq <= attack_range_sq {
@@ -173,6 +227,7 @@ Mob :: class : Component {
             is_dead = true;
             death_time_seconds = get_time();
             target_player_id = 0;
+            damage_aggro_target_player_id = 0;
             try_spawn_death_drop();
             trigger_death_animation();
             game_sfx_play(.DEATH, entity);
@@ -187,20 +242,44 @@ Mob :: class : Component {
         return !is_dead && health > 0.0;
     }
 
+    set_damage_aggro_target :: method(player_id: u64) {
+        if player_id == 0 return;
+        if is_dead return;
+
+        boss_is_provoked = true;
+        damage_aggro_target_player_id = player_id;
+        target_player_id = player_id;
+    }
+
     resolve_or_find_target_player :: method() -> Player {
+        if Boss {
+            return resolve_boss_target_player();
+        }
+
         effective_acquire_range := get_effective_acquire_range();
         effective_acquire_range_sq := effective_acquire_range * effective_acquire_range;
+        ignore_beacon_safety := should_ignore_beacon_safety();
+
+        if damage_aggro_target_player_id != 0 {
+            forced_target_id := damage_aggro_target_player_id;
+            foreach p: component_iterator(Player) {
+                if p.entity.id != forced_target_id continue;
+                if !is_valid_target_player(p, ignore_beacon_safety) break;
+
+                target_player_id = p.entity.id;
+                return p;
+            }
+
+            if target_player_id == forced_target_id {
+                target_player_id = 0;
+            }
+            damage_aggro_target_player_id = 0;
+        }
 
         if target_player_id != 0 {
             foreach p: component_iterator(Player) {
                 if p.entity.id != target_player_id continue;
-                if p.health <= 0.0 break;
-                manager := get_game_manager();
-                ignore_beacon_safety := false;
-                if manager != null {
-                    ignore_beacon_safety = manager->should_mobs_ignore_beacon_safety();
-                }
-                if !ignore_beacon_safety && BeaconSystem.is_position_inside_active_safety_zone(p.entity.world_position) break;
+                if !is_valid_target_player(p, ignore_beacon_safety) break;
 
                 dist_sq := length_squared(p.entity.world_position - entity.world_position);
                 if dist_sq <= effective_acquire_range_sq {
@@ -214,13 +293,7 @@ Mob :: class : Component {
         closest: Player;
         closest_dist_sq := effective_acquire_range_sq;
         foreach p: component_iterator(Player) {
-            if p.health <= 0.0 continue;
-            manager := get_game_manager();
-            ignore_beacon_safety := false;
-            if manager != null {
-                ignore_beacon_safety = manager->should_mobs_ignore_beacon_safety();
-            }
-            if !ignore_beacon_safety && BeaconSystem.is_position_inside_active_safety_zone(p.entity.world_position) continue;
+            if !is_valid_target_player(p, ignore_beacon_safety) continue;
             diff := p.entity.world_position - entity.world_position;
             dist_sq := length_squared(diff);
             if dist_sq <= closest_dist_sq {
@@ -230,6 +303,7 @@ Mob :: class : Component {
         }
 
         if closest != null {
+            damage_aggro_target_player_id = 0;
             target_player_id = closest.entity.id;
             return closest;
         }
@@ -239,6 +313,96 @@ Mob :: class : Component {
 
     get_effective_acquire_range :: method() -> float {
         return acquire_range;
+    }
+
+    clear_boss_path_state :: method() {
+        boss_next_repath_time_seconds = 0.0;
+        boss_has_active_path_target = false;
+        boss_last_repath_player_pos = entity.world_position;
+        boss_last_path_destination = entity.world_position;
+    }
+
+    should_repath_boss_target :: method(now: float, target_pos: v2) -> bool {
+        if !boss_has_active_path_target return true;
+        if now < boss_next_repath_time_seconds return false;
+        return length_squared(target_pos - boss_last_repath_player_pos) > MOB_BOSS_REPATH_TARGET_EPSILON_SQ;
+    }
+
+    should_ignore_beacon_safety :: method() -> bool {
+        manager := get_game_manager();
+        if manager == null return false;
+        return manager->should_mobs_ignore_beacon_safety();
+    }
+
+    is_valid_target_player :: method(player: Player, ignore_beacon_safety: bool) -> bool {
+        if player == null return false;
+        if player.entity == null return false;
+        if player.health <= 0.0 return false;
+        if player->is_dead_for_night_state() return false;
+        if !ignore_beacon_safety && BeaconSystem.is_position_inside_active_safety_zone(player.entity.world_position) {
+            return false;
+        }
+        return true;
+    }
+
+    resolve_boss_target_player :: method() -> Player {
+        ignore_beacon_safety := should_ignore_beacon_safety();
+        closest: Player;
+        closest_dist_sq: float;
+        found_closest := false;
+
+        foreach p: component_iterator(Player) {
+            if !is_valid_target_player(p, ignore_beacon_safety) continue;
+
+            dist_sq := length_squared(p.entity.world_position - entity.world_position);
+            if !found_closest || dist_sq < closest_dist_sq {
+                closest = p;
+                closest_dist_sq = dist_sq;
+                found_closest = true;
+            }
+        }
+
+        if closest == null {
+            target_player_id = 0;
+            return null;
+        }
+
+        target_player_id = closest.entity.id;
+        return closest;
+    }
+
+    is_boss_fully_aggro :: method() -> bool {
+        if !Boss return true;
+        if boss_is_provoked return true;
+
+        manager := get_game_manager();
+        if manager == null return false;
+        if !manager->is_night_time() return false;
+
+        current_night := manager->get_nights() + 1;
+        return current_night >= NightAggro;
+    }
+
+    get_boss_keep_away_distance :: method() -> float {
+        return max(MOB_BOSS_MIN_KEEP_AWAY_DISTANCE, max(attack_range * MOB_BOSS_KEEP_AWAY_ATTACK_RANGE_MULTIPLIER, destination_spread_radius + attack_range));
+    }
+
+    get_boss_keep_away_destination :: method(target: Player) -> v2 {
+        target_pos := target.entity.world_position;
+        self_pos := entity.world_position;
+        keep_away_distance := get_boss_keep_away_distance();
+        to_self := self_pos - target_pos;
+        radial_dir := normalize(to_self);
+        if length_squared(radial_dir) <= 0.0001 {
+            radial_dir = v2{1.0, 0.0};
+        }
+        base_destination := target_pos + radial_dir * keep_away_distance;
+
+        separation := get_mob_separation_vector();
+        return v2{
+            base_destination.x + separation.x,
+            base_destination.y + separation.y
+        };
     }
 
     sync_night_stats :: method() {
@@ -513,6 +677,12 @@ mob_apply_damage :: proc(mob: Mob, damage: float) -> bool {
     return mob->take_damage(damage);
 }
 
+mob_apply_damage_from_player :: proc(mob: Mob, damage: float, attacker_player_id: u64) -> bool {
+    if mob == null return false;
+    mob->set_damage_aggro_target(attacker_player_id);
+    return mob->take_damage(damage);
+}
+
 mob_damage_all_in_range :: proc(pos: v2, range: float, damage: float) -> s64 {
     if !Game.is_server() return 0;
 
@@ -528,6 +698,21 @@ mob_damage_all_in_range :: proc(pos: v2, range: float, damage: float) -> s64 {
     return hit_count;
 }
 
+mob_damage_all_in_range_from_player :: proc(pos: v2, range: float, damage: float, attacker_player_id: u64) -> s64 {
+    if !Game.is_server() return 0;
+
+    nearby: [..]Mob;
+    Scene.get_all_components_in_range(pos, range, ref nearby);
+    hit_count: s64 = 0;
+    for mob: nearby {
+        if mob == null continue;
+        if !mob->is_alive() continue;
+        mob_apply_damage_from_player(mob, damage, attacker_player_id);
+        hit_count += 1;
+    }
+    return hit_count;
+}
+
 mob_damage_closest_in_range :: proc(pos: v2, range: float, damage: float) -> Mob, bool {
     if !Game.is_server() return null, false;
 
@@ -536,5 +721,16 @@ mob_damage_closest_in_range :: proc(pos: v2, range: float, damage: float) -> Mob
     if !mob->is_alive() return null, false;
 
     mob->take_damage(damage);
+    return mob, true;
+}
+
+mob_damage_closest_in_range_from_player :: proc(pos: v2, range: float, damage: float, attacker_player_id: u64) -> Mob, bool {
+    if !Game.is_server() return null, false;
+
+    mob, found := Scene.get_closest_component_in_range(pos, range, Mob);
+    if !found || mob == null return null, false;
+    if !mob->is_alive() return null, false;
+
+    mob_apply_damage_from_player(mob, damage, attacker_player_id);
     return mob, true;
 }

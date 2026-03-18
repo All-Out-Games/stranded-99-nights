@@ -1,0 +1,51 @@
+
+draw_ability_name_label :: proc(button_rect: Rect, label: string) {
+	if label.count <= 0 return;
+
+	bg := get_asset(Texture_Asset, "$AO/white.png");
+
+	// Draw a small strip at the bottom of the button for readability.
+	label_rect := button_rect->inset(8)->cut_bottom(30);
+	UI.quad(label_rect, bg, v4.{0, 0, 0, 0.55});
+
+	ts := UI.default_text_settings();
+	ts.size = 22;
+	ts.color = v4.{1, 1, 1, 1};
+	ts.halign = .CENTER;
+	ts.valign = .CENTER;
+	ts.do_outline = true;
+	ts.outline_thickness = 2;
+	ts.outline_color = v4.{0, 0, 0, 1};
+	UI.text(label_rect, ts, label);
+}
+
+Private_Server_Start_Ability :: class : Ability_Base {
+    on_init :: proc(ability: Ability_Base) {
+        ability.name = "Start Run";
+        ability.icon = get_asset(Texture_Asset, "UI/BeaconImage.png");
+        ability.disable_keybind = true;
+    }
+
+    can_use :: proc(ability: Ability_Base) -> bool {
+        p := ability.player.(Player);
+        manager := get_game_manager();
+        if manager == null return false;
+        return manager->can_player_force_start_from_lobby(p);
+    }
+
+    on_update :: proc(ability: Ability_Base, params: ref Ability_Update_Params) {
+        if !(params.clicked && params.can_use && ability.current_cooldown <= 0.0) return;
+
+        p := ability.player.(Player);
+        ability.current_cooldown = 0.5;
+
+        if Game.is_server() {
+            try_force_start_game(p, "private lobby ability");
+        }
+    }
+
+    on_draw_button :: proc(instance: Private_Server_Start_Ability, rect: Rect) {
+		draw_ability_name_label(rect, "Start Run");
+	}
+
+}

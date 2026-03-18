@@ -108,7 +108,23 @@ MobSpawner :: class : Component {
     }
 
     get_target_mob_cap :: method() -> s64 {
-        return max(max_mobs + temporary_spawn_cap_bonus, 0);
+        scaled_base_cap := get_scaled_base_mob_cap();
+        return max(scaled_base_cap + temporary_spawn_cap_bonus, 0);
+    }
+
+    get_scaled_base_mob_cap :: method() -> s64 {
+        base_cap := max(max_mobs, 0);
+        if base_cap <= 0 return 0;
+        if NightOnly return base_cap;
+
+        manager := get_game_manager();
+        if manager == null return base_cap;
+
+        scale := manager->get_non_night_only_spawner_spawn_scale();
+        if scale <= 1.0 return base_cap;
+
+        scaled_cap := (base_cap.(float) * scale + 0.5).(s64);
+        return max(scaled_cap, base_cap);
     }
 
     set_temporary_spawn_cap_bonus :: method(bonus: s64) {

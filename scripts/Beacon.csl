@@ -314,13 +314,17 @@ Beacon :: class : Interactable {
 
         seen_upgrade_feedback_sequence = upgrade_feedback_sequence;
 
+        manager := get_game_manager();
+        if manager != null {
+            manager->show_broadcast_notification(UPGRADE_NOTIFICATION_TEXT);
+        }
+
         sent_to_any_player := false;
         foreach p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
 
             if p->is_local_or_server() {
-                Notifier.notify(p, UPGRADE_NOTIFICATION_TEXT);
                 sent_to_any_player = true;
             }
         }
@@ -481,15 +485,6 @@ BeaconSystem :: struct {
         beacon->apply_level_world_state();
         beacon->refresh_prompt_text();
         beacon.upgrade_feedback_sequence += 1;
-
-        foreach p: component_iterator(Player) {
-            if p == null continue;
-            if p.entity == null continue;
-            if p->is_local() {
-                Notifier.notify("Beacon upgraded! The Map has Expanded!");
-            }
-        }
-        
 
         if beacon.level == 2 {
             beacon->rebuild_game_navmesh();

@@ -36,9 +36,10 @@ MOON_CURRENCY :: "Moons";
 
 
 PLAYER_LIGHT_BASE_INNER_RADIUS :: 12;
-PLAYER_LIGHT_BASE_OUTER_RADIUS :: 15;
+PLAYER_LIGHT_BASE_OUTER_RADIUS :: 14;
 PLAYER_LIGHT_MIN_INNER_RADIUS :: 5;
 PLAYER_LIGHT_MIN_OUTER_RADIUS :: 7;
+PLAYER_LIGHT_RADIUS_Y_PADDING :: 2.0;
 PLAYER_LIGHT_FIXED_RADIUS :: 40.0;
 PLAYER_LIGHT_INTENSITY :: 1.0;
 PLAYER_LIGHT_COLOR := v4.{1.0, 1.0, 1.0, 1.0};
@@ -437,9 +438,14 @@ Player :: class : Player_Base {
         // Always-available secondary movement ability.
         draw_ability_button(this, Dodge_Roll_Ability, 1);
 
+        manager := get_game_manager();
+        if manager != null && manager->can_player_force_start_from_lobby(this) {
+            draw_ability_button(this, Private_Server_Start_Ability, 5);
+        }
+
         dropped_item: Dropped_Item;
         if Dropped_Item.handle_dropped_item(hotbar, entity.world_position, ref dropped_item) {
-            manager := get_game_manager();
+            manager = get_game_manager();
             drop_navmesh: Navmesh;
             if manager != null {
                 drop_navmesh = manager.player_navmesh;
@@ -472,6 +478,7 @@ Player :: class : Player_Base {
     if this->is_local_or_server() {
         this->draw_lobby_waiting_text();
         this->draw_round_start_intro();
+        draw_global_notification_banner(this);
     }
    }
 
@@ -572,6 +579,64 @@ Player :: class : Player_Base {
     ts.outline_thickness = 3;
     ts.outline_color = {0, 0, 0, 1};
     UI.text(inner, ts, "%", {balance});
+    }
+
+    draw_global_notification_banner :: proc(player: Player) {
+    if player == null return;
+    if !player->is_local_or_server() return;
+
+    manager := get_game_manager();
+    if manager == null return;
+    if !manager->should_draw_broadcast_notification() return;
+
+    message := manager->get_broadcast_notification_text();
+    if message.count <= 0 return;
+
+    UI.push_screen_draw_context();
+    defer UI.pop_draw_context();
+    UI.push_layer(10000);
+    defer UI.pop_layer();
+
+    screen_rect := UI.get_screen_rect();
+    top_third_rect := screen_rect->subrect(0.0, 0.6667, 1.0, 1.0);
+    banner_rect := top_third_rect->center_rect()->offset_unscaled(0, -screen_rect->height() * 0.15);
+
+    #static notif_ribbon := get_asset(Texture_Asset, "UI/NotifRibbon.png");
+    if notif_ribbon != null {
+        banner_width := screen_rect->width();
+        banner_height := min(banner_width / notif_ribbon->get_aspect(), top_third_rect->height() * 0.9);
+        banner_rect = banner_rect->grow_unscaled(
+            banner_height * 0.5,
+            banner_width * 0.5,
+            banner_height * 0.5,
+            banner_width * 0.5
+        );
+        UI.quad(banner_rect, notif_ribbon);
+    } else {
+        banner_height := min(screen_rect->height() * 0.14, top_third_rect->height() * 0.9);
+        banner_rect = banner_rect->grow_unscaled(
+            banner_height * 0.5,
+            screen_rect->width() * 0.5,
+            banner_height * 0.5,
+            screen_rect->width() * 0.5
+        );
+        UI.quad(banner_rect, core_globals.white_sprite, {0.95, 0.1, 0.1, 1.0});
+    }
+
+    text_rect := banner_rect->inset(28, 180, 28, 180);
+    ts := UI.default_text_settings();
+    ts.size = 44;
+    ts.color = {1, 1, 1, 1};
+    ts.halign = .CENTER;
+    ts.valign = .CENTER;
+    ts.do_outline = true;
+    ts.outline_thickness = 3;
+    ts.outline_color = {0, 0, 0, 1};
+    ts.word_wrap = true;
+    ts.do_autofit = true;
+    ts.autofit_min_size = 24;
+    ts.autofit_max_size = 52;
+    UI.text(text_rect, ts, message);
     }
 
     drive_resource_gather_feedback :: method(node: ResourceNode) {
@@ -965,22 +1030,16 @@ Player :: class : Player_Base {
 		}
 
 		base_inner := PLAYER_LIGHT_BASE_INNER_RADIUS.(float);
-		base_outer := PLAYER_LIGHT_BASE_OUTER_RADIUS.(float);
 		min_inner := PLAYER_LIGHT_MIN_INNER_RADIUS.(float);
 		min_outer := PLAYER_LIGHT_MIN_OUTER_RADIUS.(float);
 
-		radii := v2.{
-			lerp(base_inner, min_inner, night_blend),
-			lerp(base_outer, min_outer, night_blend)
-		};
+		inner_radius := lerp(base_inner, min_inner, night_blend);
+		inner_radius = max(inner_radius, min_inner);
 
-		// Clamp to avoid a zero/negative radius.
-		radii.x = max(radii.x, min_inner);
-		radii.y = max(radii.y, min_outer);
-		if radii.x > radii.y {
-			radii.x = radii.y;
-		}
-		return radii;
+		outer_radius := inner_radius + PLAYER_LIGHT_RADIUS_Y_PADDING;
+		outer_radius = max(outer_radius, min_outer);
+
+		return v2.{inner_radius, outer_radius};
 	}
 
 	ensure_local_vision_light :: proc(using this: Player) {
@@ -996,7 +1055,7 @@ Player :: class : Player_Base {
 		local_light = local_light_entity->add_component(Light);
 		local_light.color = PLAYER_LIGHT_COLOR;
 		local_light.intensity = PLAYER_LIGHT_INTENSITY;
-		local_light.radii = v2.{PLAYER_LIGHT_FIXED_RADIUS, PLAYER_LIGHT_FIXED_RADIUS};
+		local_light.radii = v2.{PLAYER_LIGHT_FIXED_RADIUS, PLAYER_LIGHT_FIXED_RADIUS + PLAYER_LIGHT_RADIUS_Y_PADDING};
 
 		local_light_caster = local_light_entity->add_component(LOS_Caster);
 		local_light_caster.radii = local_light.radii;
@@ -1017,7 +1076,7 @@ Player :: class : Player_Base {
 		if local_light == null || local_light_caster == null return;
 
 		radii := this->get_local_light_radii();
-		local_light.radii = v2.{PLAYER_LIGHT_FIXED_RADIUS, PLAYER_LIGHT_FIXED_RADIUS};
+		local_light.radii = v2.{PLAYER_LIGHT_FIXED_RADIUS, PLAYER_LIGHT_FIXED_RADIUS + PLAYER_LIGHT_RADIUS_Y_PADDING};
 		local_light_caster.radii = radii;
 	}
 
@@ -1076,6 +1135,92 @@ Player :: class : Player_Base {
         }
     }
 
+    // Port of the provided C# DrawArrowToPosition.
+    // Draws a screen-space arrow pointing toward a world-space `position`.
+    DrawArrowToPosition :: proc(using this: Player, position: v2) {
+        if this == null return;
+        if entity == null || entity.self == null return;
+
+        // Screen-space overlay so it can't be occluded by world sprites.
+        UI.push_screen_draw_context();
+        defer UI.pop_draw_context();
+
+        // Above almost everything else in the HUD.
+        UI.push_layer(800);
+        defer UI.pop_layer();
+
+        safe := UI.get_safe_screen_rect();
+        h := 1080.0;
+        if h <= 0 {
+            return;
+        }
+        aspect := 1920.0 / h;
+        if aspect <= 0 {
+            aspect = 1.0;
+        }
+
+        world_offset := position - entity.world_position;
+        distance := length(world_offset);
+
+        target_screen := world_to_screen(position + v2{0, 1.5});
+        player_screen := world_to_screen(entity.world_position + v2{0, 1.5});
+
+        delta_screen := target_screen - player_screen;
+        dir := normalize(delta_screen);
+        if length_squared(dir) < 0.00001 {
+            dir = {1, 0};
+        }
+
+        arrow_size_px :: 40.0;
+        anim := pow(abs(sin(PI * get_time())), 0.75);
+
+        // distanceThreshold = ((dir * threshold) / (1, aspect)).Length
+        distance_threshold_world :: 8.5;
+        dvec := v2{dir.x * distance_threshold_world, dir.y * distance_threshold_world};
+        scaled := v2{dvec.x, dvec.y / aspect};
+        distance_threshold := length(scaled);
+
+        #static arrow_tex := get_asset(Texture_Asset, "UI/Arrow.png");
+        if arrow_tex == null {
+            return;
+        }
+
+        if distance >= (distance_threshold + 0.5) {
+            t := 1.0 - Ease.T(distance - distance_threshold, 1.0);
+            t = clamp(t, 0.0, 1.0);
+
+            arrow_screen := Rect{player_screen, player_screen}->offset_unscaled(dir.x * 300.0, dir.y * 300.0)->center();
+            arrow_screen = lerp(arrow_screen, target_screen, t);
+
+            rect := Rect{arrow_screen, arrow_screen}->grow(arrow_size_px);
+            rotation := to_degrees(atan2(dir.y, dir.x));
+
+            // Rotate around rect center via UI matrix.
+            c := rect->center();
+            UI.push_matrix(Matrix4.translate(v3{c.x, c.y, 0}));
+            defer UI.pop_matrix();
+            UI.push_matrix(Matrix4.rotate(rotation, v3{0, 0, 1}));
+            defer UI.pop_matrix();
+            UI.push_matrix(Matrix4.translate(v3{-c.x, -c.y, 0}));
+            defer UI.pop_matrix();
+            UI.quad(rect, arrow_tex, {1, 1, 1, 1});
+        }
+        else {
+            rect := Rect{target_screen, target_screen}->grow(arrow_size_px);
+            rect = rect->offset_unscaled(0, anim * 50.0);
+
+            // Near target: fixed "down" arrow (270 degrees).
+            c := rect->center();
+            UI.push_matrix(Matrix4.translate(v3{c.x, c.y, 0}));
+            defer UI.pop_matrix();
+            UI.push_matrix(Matrix4.rotate(270, v3{0, 0, 1}));
+            defer UI.pop_matrix();
+            UI.push_matrix(Matrix4.translate(v3{-c.x, -c.y, 0}));
+            defer UI.pop_matrix();
+            UI.quad(rect, arrow_tex, {1, 1, 1, 1});
+        }
+    }
+
     draw_pre_night_beacon_arrow :: method() {
         manager := get_game_manager();
         if manager == null return;
@@ -1087,14 +1232,7 @@ Player :: class : Player_Base {
         hide_dist_sq := PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE * PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE;
         if length_squared(to_spawn) <= hide_dist_sq return;
 
-        options := Tutorial_Arrow.default_options();
-        options.alpha = 1.0;
-        options.far = true;
-        options.near = true;
-        options.bob_scale = 0.5;
-        options.bob_bias = 1.5;
-
-        Tutorial_Arrow.draw(this, manager.island1_spawn.world_position, options);
+        DrawArrowToPosition(this, manager.island1_spawn.world_position);
     }
 
     draw_supply_drop_arrow :: method() {
@@ -1110,13 +1248,7 @@ Player :: class : Player_Base {
         hide_dist_sq := SUPPLY_DROP_ARROW_HIDE_DISTANCE * SUPPLY_DROP_ARROW_HIDE_DISTANCE;
         if length_squared(to_target) <= hide_dist_sq return;
 
-        options := Tutorial_Arrow.default_options();
-        options.alpha = 1.0;
-        options.far = true;
-        options.near = true;
-        options.bob_scale = 0.5;
-        options.bob_bias = 1.5;
-        Tutorial_Arrow.draw(this, target_pos, options);
+        DrawArrowToPosition(this, target_pos);
     }
 
     draw_lobby_waiting_text :: method() {

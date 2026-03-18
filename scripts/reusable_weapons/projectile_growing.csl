@@ -52,7 +52,7 @@ Growing_Projectile :: class : Component {
                     hit_id_count += 1;
                 }
 
-                mob_apply_damage(hit_mob, damage);
+                mob_apply_damage_from_player(hit_mob, damage, owner_id);
 
                 hit_count += 1;
                 damage = damage * 1.25;
