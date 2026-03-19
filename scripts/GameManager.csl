@@ -43,6 +43,13 @@ Music_Track :: enum {
     NIGHT;
 }
 
+Voyage_State :: enum {
+    NONE;
+    TO_VOYAGE;
+    VOYAGING;
+    TO_ISLAND;
+}
+
 g_start_music_sound_id: u64;
 
 Game_Sfx_Event :: enum {
@@ -163,14 +170,14 @@ try_force_start_game :: proc(player: Player, source: string) {
     manager := ensure_game_manager_exists();
     if manager == null {
         if player != null {
-            Notifier.notify(player, "GameManager is unavailable.");
+            //Notifier.notify(player, "GameManager is unavailable.");
         }
         return;
     }
 
     if manager->is_round_active() {
         if player != null {
-            Notifier.notify(player, "Round is already active.");
+            //Notifier.notify(player, "Round is already active.");
         }
         return;
     }
@@ -178,7 +185,7 @@ try_force_start_game :: proc(player: Player, source: string) {
     manager->start_game();
 
     if player != null {
-        Notifier.notify(player, "Forced game start.");
+       // Notifier.notify(player, "Forced game start.");
         log_info("% forced start_game via %", {player->get_username(), source});
     } else {
         log_info("Forced start_game via %", {source});
@@ -193,7 +200,7 @@ g :: proc(player: Player, item_id: string, quantity: s64 = 1) {
     if player == null return;
 
     if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
-        Notifier.notify(player, "Inventory is unavailable.");
+       // Notifier.notify(player, "Inventory is unavailable.");
         return;
     }
 
@@ -202,18 +209,18 @@ g :: proc(player: Player, item_id: string, quantity: s64 = 1) {
         defn = try_find_reusable_weapon_item_def_by_id(item_id);
     }
     if defn == null {
-        Notifier.notify(player, "Unknown item id: %", {item_id});
+        //Notifier.notify(player, "Unknown item id: %", {item_id});
         return;
     }
 
     if quantity <= 0 {
-        Notifier.notify(player, "Quantity must be greater than 0.");
+        //Notifier.notify(player, "Quantity must be greater than 0.");
         return;
     }
 
     room := Items.calculate_room_in_inventory_for_item(defn, player.default_inventory);
     if room <= 0 {
-        Notifier.notify(player, "No room for %", {defn->get_name()});
+       // Notifier.notify(player, "No room for %", {defn->get_name()});
         return;
     }
 
@@ -224,17 +231,37 @@ g :: proc(player: Player, item_id: string, quantity: s64 = 1) {
 
     item := Items.create_item_instance(defn, give_count);
     if item == null || item.self == null {
-        Notifier.notify(player, "Failed to create item.");
+       // Notifier.notify(player, "Failed to create item.");
         return;
     }
 
     Items.move_item_to_inventory(item, player.default_inventory);
     if give_count < quantity {
-        Notifier.notify(player, "Given % x% (requested: %, limited by room)", {defn->get_name(), give_count, quantity});
+       // Notifier.notify(player, "Given % x% (requested: %, limited by room)", {defn->get_name(), give_count, quantity});
         return;
     }
 
-    Notifier.notify(player, "Given % x%", {defn->get_name(), give_count});
+    //Notifier.notify(player, "Given % x%", {defn->get_name(), give_count});
+} @chat_command @youtuber
+
+island :: proc(player: Player, island_index: int) {
+    if !Game.is_server() return;
+    if player == null return;
+
+    if island_index <= 0 {
+        Notifier.notify(player, "Island must be greater than 0.");
+        return;
+    }
+
+    manager := ensure_game_manager_exists();
+    if manager == null {
+        Notifier.notify(player, "GameManager is unavailable.");
+        return;
+    }
+
+    manager.Island = island_index;
+    //Notifier.notify(player, "Set island to %.", {island_index});
+    log_info("% set island to % via /island", {player->get_username(), island_index});
 } @chat_command @youtuber
 
 GameManager :: class : Component {
@@ -243,6 +270,8 @@ GameManager :: class : Component {
     player_navmesh: Navmesh @ao_serialize;
     lobby_spawn: Entity @ao_serialize;
     island1_spawn: Entity @ao_serialize;
+    Islands: [..]Entity @ao_serialize;
+    VoyageScene: Entity @ao_serialize;
     damage_number_lifetime_seconds: float @ao_serialize;
     damage_number_rise_speed: float @ao_serialize;
     
@@ -250,6 +279,7 @@ GameManager :: class : Component {
     game_time_seconds: float;
     phase_time_seconds: float;
     Island: int;
+    loaded_island: int;
     day_night_phase: Day_Night_Phase;
     day_night_phase_time_seconds: float;
     day_night_blend: float;
@@ -297,6 +327,14 @@ GameManager :: class : Component {
     ROUND_START_BLACK_HOLD_SECONDS :: 1.0;
     ROUND_START_FADE_IN_SECONDS :: 1.0;
     ROUND_START_TEXT_DURATION_SECONDS :: 5.0;
+    ISLAND_TRANSITION_FADE_OUT_SECONDS :: 0.5;
+    ISLAND_TRANSITION_BLACK_HOLD_SECONDS :: 0.75;
+    ISLAND_TRANSITION_FADE_IN_SECONDS :: 0.5;
+    ISLAND_TRANSITION_PLAYER_SPAWN_RADIUS :: 4.0;
+    ISLAND_TRANSITION_PLAYER_SPAWN_SAMPLE_ATTEMPTS :: 8;
+    ISLAND_TRANSITION_FREEZE_REASON :: "island_transition";
+    VOYAGE_DURATION_SECONDS :: 90.0;
+    VOYAGE_STARTING_HEALTH :: 300.0;
     GAME_OVER_FADE_OUT_SECONDS :: 1.0;
     GAME_OVER_BLACK_HOLD_SECONDS :: 1.25;
     GAME_OVER_FADE_IN_SECONDS :: 1.0;
@@ -310,6 +348,15 @@ GameManager :: class : Component {
     warned_player_user_ids_for_current_day: [..]string;
     warned_player_entities_for_current_day: [..]Entity;
     round_start_teleport_done: bool;
+    island_transition_active: bool;
+    island_transition_disable_done: bool;
+    island_transition_applied: bool;
+    island_transition_freeze_applied: bool;
+    island_transition_start_time: float;
+    island_transition_target_island: int;
+    voyage_state: Voyage_State;
+    voyage_timer_start_time: float;
+    VoyageHealth: float;
     game_over_sequence_active: bool;
     game_over_sequence_restart_done: bool;
     game_over_sequence_start_time: float;
@@ -335,6 +382,16 @@ GameManager :: class : Component {
         if night_event_weight_scale_cap <= 0.0 { night_event_weight_scale_cap = 1.0; }
         last_notified_night_event = .NONE;
         reset_game_state();
+        loaded_island = Island;
+        island_transition_target_island = Island;
+        island_transition_active = false;
+        island_transition_disable_done = false;
+        island_transition_applied = false;
+        island_transition_freeze_applied = false;
+        island_transition_start_time = 0.0;
+        voyage_state = .NONE;
+        voyage_timer_start_time = 0.0;
+        sync_scene_visibility();
         apply_navmesh_lock_to_all_players();
         if !Game.is_server() {
             if g_start_music_sound_id == 0 {
@@ -359,6 +416,13 @@ GameManager :: class : Component {
 
         // Keep core game state authoritative on the server.
         // Music playback is client-side so each player always hears it.
+
+        try_start_island_transition_if_needed();
+        update_island_transition();
+        sync_island_transition_freeze_state();
+        sync_scene_visibility();
+        if island_transition_active return;
+        update_voyage_timer();
 
         game_time_seconds += dt;
         phase_time_seconds += dt;
@@ -418,8 +482,19 @@ GameManager :: class : Component {
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;
         Island = 1;
+        loaded_island = Island;
+        island_transition_target_island = Island;
+        island_transition_active = false;
+        island_transition_disable_done = false;
+        island_transition_applied = false;
+        island_transition_freeze_applied = false;
+        island_transition_start_time = 0.0;
+        voyage_state = .NONE;
+        voyage_timer_start_time = 0.0;
+        VoyageHealth = VOYAGE_STARTING_HEALTH;
         nights = 0;
         island1_boss_defeated_for_run = false;
+        sync_scene_visibility();
         current_phase = .LOBBY;
         on_enter_phase(current_phase);
     }
@@ -553,6 +628,35 @@ GameManager :: class : Component {
         return nights;
     }
 
+    is_voyage_damage_redirect_active :: method() -> bool {
+        return current_phase == .IN_ROUND && voyage_state == .VOYAGING;
+    }
+
+    apply_voyage_damage :: method(amount: float) -> float {
+        if amount <= 0.0 return 0.0;
+        if !is_voyage_damage_redirect_active() return 0.0;
+
+        absorbed := min(amount, VoyageHealth);
+        VoyageHealth = max(VoyageHealth - amount, 0.0);
+        return absorbed;
+    }
+
+    should_draw_voyage_health_bar :: method() -> bool {
+        return is_voyage_damage_redirect_active();
+    }
+
+    get_voyage_health_fill_t :: method() -> float {
+        return clamp(VoyageHealth / VOYAGE_STARTING_HEALTH, 0.0, 1.0);
+    }
+
+    get_voyage_mob_damage :: method() -> float {
+        return max((Island * 5 - 5).(float), 0.0);
+    }
+
+    should_mobs_path_to_closest_reachable_target_point :: method() -> bool {
+        return current_phase == .IN_ROUND && voyage_state == .VOYAGING;
+    }
+
     get_non_night_only_spawner_spawn_scale :: method() -> float {
         completed_nights := max(nights, 0);
         if completed_nights <= 0 return 1.0;
@@ -610,6 +714,9 @@ GameManager :: class : Component {
 
     on_player_joined :: method(player: Player) {
         lock_player_to_navmesh(player);
+        if island_transition_active && player != null {
+            player->add_freeze_reason(ISLAND_TRANSITION_FREEZE_REASON);
+        }
         teleport_player_to_phase_spawn(player);
     }
 
@@ -618,7 +725,11 @@ GameManager :: class : Component {
         if player.entity == null return;
 
         if current_phase == .IN_ROUND {
-            teleport_player_to_island1_spawn(player);
+            if should_player_spawn_in_voyage_scene() {
+                teleport_player_to_voyage_scene(player);
+                return;
+            }
+            teleport_player_near_beacon_for_round(player);
             return;
         }
 
@@ -645,6 +756,16 @@ GameManager :: class : Component {
         foreach player: component_iterator(Player) {
             teleport_player_to_island1_spawn(player);
         }
+    }
+
+    teleport_player_near_beacon_for_round :: method(player: Player) {
+        if player == null || player.entity == null return;
+        player.entity->set_local_position(sample_island_transition_player_position(player));
+    }
+
+    teleport_player_to_voyage_scene :: method(player: Player) {
+        if player == null || player.entity == null return;
+        player.entity->set_local_position(v2{0.0, 0.0});
     }
 
     reset_beacons_for_round :: method() {
@@ -687,6 +808,20 @@ GameManager :: class : Component {
         }
     }
 
+    rebuild_player_navmesh_for_scene_transition :: method() {
+        if player_navmesh == null return;
+
+        // Schedule a follow-up rebuild after visibility/collider changes settle.
+        player_navmesh->mark_for_rebuild();
+
+        ok := player_navmesh->rebuild_immediately();
+        if !ok {
+            log_info("Scene transition navmesh immediate rebuild failed; deferred rebuild scheduled.", {});
+        }
+
+        player_navmesh->mark_for_rebuild();
+    }
+
     lock_player_to_navmesh :: method(player: Player) {
         if player == null return;
 
@@ -703,6 +838,310 @@ GameManager :: class : Component {
         }
     }
 
+    get_island_entity :: method(island_number: int) -> Entity {
+        island_index := island_number - 1;
+        if island_index < 0 return null;
+        if island_index >= Islands.count return null;
+        return Islands[island_index];
+    }
+
+    should_show_voyage_scene :: method() -> bool {
+        switch voyage_state {
+            case .NONE: {
+                return false;
+            }
+            case .TO_VOYAGE: {
+                return island_transition_applied;
+            }
+            case .VOYAGING: {
+                return true;
+            }
+            case .TO_ISLAND: {
+                return !island_transition_disable_done;
+            }
+        }
+        return false;
+    }
+
+    should_player_spawn_in_voyage_scene :: method() -> bool {
+        return should_show_voyage_scene();
+    }
+
+    sync_scene_visibility :: method() {
+        show_island_number: int = 0;
+        switch voyage_state {
+            case .NONE: {
+                show_island_number = loaded_island;
+            }
+            case .TO_VOYAGE: {
+                if !island_transition_disable_done {
+                    show_island_number = loaded_island;
+                }
+            }
+            case .VOYAGING: {
+            }
+            case .TO_ISLAND: {
+                if island_transition_applied {
+                    show_island_number = loaded_island;
+                }
+            }
+        }
+
+        island_index: int = 0;
+        while island_index < Islands.count {
+            island_entity := Islands[island_index];
+            if island_entity != null {
+                island_entity->set_local_enabled(island_index == show_island_number - 1);
+            }
+            island_index += 1;
+        }
+
+        if VoyageScene != null {
+            VoyageScene->set_local_enabled(should_show_voyage_scene());
+        }
+    }
+
+    try_start_island_transition_if_needed :: method() {
+        if Island == loaded_island return;
+        if island_transition_active return;
+        if voyage_state != .NONE return;
+
+        target_island_entity := get_island_entity(Island);
+        if target_island_entity == null {
+            log_info("Island transition skipped: island % is not assigned in Islands.", {Island});
+            Island = loaded_island;
+            return;
+        }
+
+        island_transition_active = true;
+        island_transition_disable_done = false;
+        island_transition_applied = false;
+        island_transition_start_time = get_time();
+        island_transition_target_island = Island;
+        voyage_state = .TO_VOYAGE;
+        log_info("Island transition started: % -> %.", {loaded_island, island_transition_target_island});
+    }
+
+    update_island_transition :: method() {
+        if !island_transition_active return;
+
+        elapsed := get_time() - island_transition_start_time;
+        if !island_transition_disable_done && elapsed >= ISLAND_TRANSITION_FADE_OUT_SECONDS {
+            switch voyage_state {
+                case .TO_VOYAGE: {
+                    if Game.is_server() {
+                        despawn_all_pois_for_transition();
+                        destroy_all_mobs_for_game_over();
+                        despawn_all_dropped_items_for_game_over();
+                    }
+                }
+                case .TO_ISLAND: {
+                }
+                case .VOYAGING: {
+                }
+                case .NONE: {
+                }
+            }
+            island_transition_disable_done = true;
+            return;
+        }
+
+        if island_transition_disable_done && !island_transition_applied {
+            switch voyage_state {
+                case .TO_VOYAGE: {
+                    island_transition_applied = true;
+                    sync_scene_visibility();
+                    rebuild_player_navmesh_for_scene_transition();
+                    teleport_all_players_to_voyage_scene();
+                }
+                case .TO_ISLAND: {
+                    loaded_island = island_transition_target_island;
+                    island_transition_applied = true;
+                    sync_scene_visibility();
+                    rebuild_player_navmesh_for_scene_transition();
+                    teleport_all_players_near_beacon_for_island_transition();
+                }
+                case .VOYAGING: {
+                    island_transition_applied = true;
+                }
+                case .NONE: {
+                    island_transition_applied = true;
+                }
+            }
+        }
+
+        total_time := ISLAND_TRANSITION_FADE_OUT_SECONDS +
+            ISLAND_TRANSITION_BLACK_HOLD_SECONDS +
+            ISLAND_TRANSITION_FADE_IN_SECONDS;
+        if elapsed < total_time return;
+
+        island_transition_active = false;
+        island_transition_disable_done = false;
+        island_transition_applied = false;
+        island_transition_start_time = 0.0;
+        switch voyage_state {
+            case .TO_VOYAGE: {
+                voyage_state = .VOYAGING;
+                voyage_timer_start_time = get_time();
+                VoyageHealth = VOYAGE_STARTING_HEALTH;
+            }
+            case .TO_ISLAND: {
+                voyage_state = .NONE;
+                island_transition_target_island = loaded_island;
+            }
+            case .VOYAGING: {
+            }
+            case .NONE: {
+            }
+        }
+        log_info("Island transition finished on island %.", {loaded_island});
+    }
+
+    sync_island_transition_freeze_state :: method() {
+        if island_transition_freeze_applied == island_transition_active return;
+
+        island_transition_freeze_applied = island_transition_active;
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            if island_transition_active {
+                player->add_freeze_reason(ISLAND_TRANSITION_FREEZE_REASON);
+            } else {
+                player->remove_freeze_reason(ISLAND_TRANSITION_FREEZE_REASON);
+            }
+        }
+    }
+
+    get_island_transition_beacon_position :: method() -> v2 {
+        foreach beacon_spawn: component_iterator(BeaconSpawn) {
+            if beacon_spawn == null continue;
+            if beacon_spawn.entity == null continue;
+            return beacon_spawn.entity.world_position;
+        }
+
+        foreach beacon: component_iterator(Beacon) {
+            if beacon == null continue;
+            if beacon.entity == null continue;
+            return beacon.entity.world_position;
+        }
+
+        island_entity := get_island_entity(loaded_island);
+        if island_entity != null {
+            return island_entity.world_position;
+        }
+        return entity.world_position;
+    }
+
+    sample_island_transition_player_position :: method(player: Player) -> v2 {
+        center := get_island_transition_beacon_position();
+        rng: u64 = rng_seed(player.entity.id);
+        advance_count := max(island_transition_target_island, 1);
+        angle: float = 0.0;
+        radius_t: float = 0.0;
+        advance_step: int = 0;
+        while advance_step < advance_count {
+            angle = rng_range_float(ref rng, 0.0, 6.2831853);
+            radius_t = sqrt(rng_range_float(ref rng, 0.0, 1.0));
+            advance_step += 1;
+        }
+
+        desired_pos := v2{
+            center.x + cos(angle) * radius_t * ISLAND_TRANSITION_PLAYER_SPAWN_RADIUS,
+            center.y + sin(angle) * radius_t * ISLAND_TRANSITION_PLAYER_SPAWN_RADIUS
+        };
+
+        navmesh := player_navmesh;
+        if navmesh == null {
+            return desired_pos;
+        }
+
+        hint_as_int: int = 0;
+        attempt: int = 0;
+        while attempt < ISLAND_TRANSITION_PLAYER_SPAWN_SAMPLE_ATTEMPTS {
+            spawn_pos: v2;
+            if navmesh->try_find_closest_point_on_navmesh(desired_pos, ref spawn_pos, ref hint_as_int) {
+                return spawn_pos;
+            }
+
+            angle = rng_range_float(ref rng, 0.0, 6.2831853);
+            radius_t = sqrt(rng_range_float(ref rng, 0.0, 1.0));
+            desired_pos = v2{
+                center.x + cos(angle) * radius_t * ISLAND_TRANSITION_PLAYER_SPAWN_RADIUS,
+                center.y + sin(angle) * radius_t * ISLAND_TRANSITION_PLAYER_SPAWN_RADIUS
+            };
+            attempt += 1;
+        }
+
+        snapped_center: v2;
+        if navmesh->try_find_closest_point_on_navmesh(center, ref snapped_center, ref hint_as_int) {
+            return snapped_center;
+        }
+        return center;
+    }
+
+    teleport_all_players_near_beacon_for_island_transition :: method() {
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            if player.entity == null continue;
+            player.entity->set_local_position(sample_island_transition_player_position(player));
+        }
+    }
+
+    teleport_all_players_to_voyage_scene :: method() {
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            if player.entity == null continue;
+            teleport_player_to_voyage_scene(player);
+        }
+    }
+
+    update_voyage_timer :: method() {
+        if voyage_state != .VOYAGING return;
+        if get_time() - voyage_timer_start_time < VOYAGE_DURATION_SECONDS return;
+
+        island_transition_active = true;
+        island_transition_disable_done = false;
+        island_transition_applied = false;
+        island_transition_start_time = get_time();
+        voyage_state = .TO_ISLAND;
+    }
+
+    should_draw_voyage_timer :: method() -> bool {
+        return current_phase == .IN_ROUND && voyage_state == .VOYAGING;
+    }
+
+    should_use_voyage_camera_zoom :: method() -> bool {
+        return current_phase == .IN_ROUND && should_show_voyage_scene();
+    }
+
+    should_pause_day_night_for_voyage :: method() -> bool {
+        return current_phase == .IN_ROUND && should_show_voyage_scene();
+    }
+
+    force_day_start_for_voyage :: method() {
+        if day_night_phase == .DAY &&
+            day_night_phase_time_seconds == 0.0 &&
+            day_night_blend == 0.0 &&
+            day_night_blend_from == 0.0 &&
+            day_night_blend_to == 0.0 &&
+            day_night_blend_transition_time_seconds == 0.0 {
+            return;
+        }
+
+        day_night_phase = .DAY;
+        day_night_phase_time_seconds = 0.0;
+        day_night_blend = 0.0;
+        day_night_blend_from = 0.0;
+        day_night_blend_to = 0.0;
+        day_night_blend_transition_time_seconds = 0.0;
+    }
+
+    get_voyage_progress_t :: method() -> float {
+        if voyage_state != .VOYAGING return 0.0;
+        elapsed := get_time() - voyage_timer_start_time;
+        return clamp(elapsed / VOYAGE_DURATION_SECONDS, 0.0, 1.0);
+    }
+
+
     reset_day_night_cycle :: method() {
         day_night_phase = .DAY;
         day_night_phase_time_seconds = 0.0;
@@ -716,6 +1155,11 @@ GameManager :: class : Component {
     }
 
     update_day_night_cycle :: method(dt: float) {
+        if should_pause_day_night_for_voyage() {
+            force_day_start_for_voyage();
+            return;
+        }
+
         day_night_phase_time_seconds += dt;
 
         if day_night_phase == .DAY {
@@ -765,10 +1209,10 @@ GameManager :: class : Component {
             if p->is_dead_for_night_state() continue;
 
             Economy.deposit_currency(p, SURVIVED_NIGHT_REWARD_CURRENCY, SURVIVED_NIGHT_REWARD_AMOUNT);
-            Notifier.notify(p, SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT, {
-                SURVIVED_NIGHT_REWARD_AMOUNT,
-                SURVIVED_NIGHT_REWARD_CURRENCY
-            });
+            //Notifier.notify(p, SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT, {
+              //  SURVIVED_NIGHT_REWARD_AMOUNT,
+              //  SURVIVED_NIGHT_REWARD_CURRENCY
+            //});
             rewarded_count += 1;
         }
 
@@ -861,8 +1305,25 @@ GameManager :: class : Component {
         if !Game.is_server() return;
 
         clear_island1_boss();
+        despawn_all_pois_for_transition();
         destroy_all_mobs_for_game_over();
         despawn_all_dropped_items_for_game_over();
+    }
+
+    despawn_all_pois_for_transition :: method() {
+        removed_count: s64 = 0;
+
+        foreach poi: component_iterator(POI) {
+            if poi == null continue;
+            if poi.spawned_entity == null continue;
+
+            poi->destroy_spawned_entity();
+            removed_count += 1;
+        }
+
+        if removed_count > 0 {
+            log_info("Transition cleanup despawned % POI spawn(s).", {removed_count});
+        }
     }
 
     destroy_all_mobs_for_game_over :: method() {
@@ -1294,20 +1755,26 @@ GameManager :: class : Component {
     }
 
     is_night_time :: method() -> bool {
+        if should_pause_day_night_for_voyage() return false;
         return day_night_phase == .NIGHT;
     }
 
     get_night_blend :: method() -> float {
+        if should_pause_day_night_for_voyage() return 0.0;
         return day_night_blend;
     }
 
     get_day_alpha_target :: method() -> float {
         if current_phase != .IN_ROUND return 1.0;
+        if should_pause_day_night_for_voyage() return 1.0;
         return 1.0 - day_night_blend;
     }
 
     get_day_night_clock_hours :: method() -> float {
         if current_phase != .IN_ROUND {
+            return 0.0;
+        }
+        if should_pause_day_night_for_voyage() {
             return 0.0;
         }
 
@@ -1370,6 +1837,30 @@ GameManager :: class : Component {
 
         if elapsed <= fade_in_end {
             fade_in_t := clamp((elapsed - black_hold_end) / GAME_OVER_FADE_IN_SECONDS, 0.0, 1.0);
+            return 1.0 - fade_in_t;
+        }
+
+        return 0.0;
+    }
+
+    get_island_transition_overlay_alpha :: method() -> float {
+        if !island_transition_active return 0.0;
+
+        elapsed := get_time() - island_transition_start_time;
+        fade_out_end := ISLAND_TRANSITION_FADE_OUT_SECONDS;
+        black_hold_end := fade_out_end + ISLAND_TRANSITION_BLACK_HOLD_SECONDS;
+        fade_in_end := black_hold_end + ISLAND_TRANSITION_FADE_IN_SECONDS;
+
+        if elapsed <= fade_out_end {
+            return clamp(elapsed / ISLAND_TRANSITION_FADE_OUT_SECONDS, 0.0, 1.0);
+        }
+
+        if elapsed <= black_hold_end {
+            return 1.0;
+        }
+
+        if elapsed <= fade_in_end {
+            fade_in_t := clamp((elapsed - black_hold_end) / ISLAND_TRANSITION_FADE_IN_SECONDS, 0.0, 1.0);
             return 1.0 - fade_in_t;
         }
 

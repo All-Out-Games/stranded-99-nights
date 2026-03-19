@@ -1,0 +1,23 @@
+tentacle.png
+	size: 1572, 1572
+	filter: Linear, Linear
+kraken/tentacle_down
+	bounds: 2, 2, 321, 861
+	rotate: 90
+kraken/tentacle_up
+	bounds: 2, 325, 535, 1245
+smash_effect/smash_effect_1
+	bounds: 865, 151, 203, 172
+	offsets: 1, 1, 205, 174
+smash_effect/smash_effect_2
+	bounds: 539, 490, 276, 259
+	offsets: 1, 1, 278, 261
+	rotate: 90
+smash_effect/smash_effect_3
+	bounds: 865, 325, 441, 414
+	offsets: 1, 2, 443, 417
+	rotate: 90
+smash_effect/smash_effect_4
+	bounds: 539, 768, 802, 770
+	offsets: 1, 1, 804, 772
+	rotate: 90

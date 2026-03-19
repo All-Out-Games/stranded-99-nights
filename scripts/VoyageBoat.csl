@@ -1,0 +1,35 @@
+VoyageBoat :: class : Component {
+    attack_point_offset: v2 @ao_serialize;
+    VoyageTargets: [..]Entity @ao_serialize;
+
+    resolve_attack_target_entity :: method(mob_entity_id: u64) -> Entity {
+        valid_target_count: s64 = 0;
+        for target: VoyageTargets {
+            if target == null continue;
+            if !#alive(target) continue;
+            valid_target_count += 1;
+        }
+
+        if valid_target_count <= 0 return null;
+
+        selected_index := (mob_entity_id % valid_target_count.(u64)).(s64);
+        current_index: s64 = 0;
+
+        for target: VoyageTargets {
+            if target == null continue;
+            if !#alive(target) continue;
+
+            if current_index == selected_index {
+                return target;
+            }
+            current_index += 1;
+        }
+
+        return null;
+    }
+
+    get_attack_position :: method() -> v2 {
+        if entity == null return attack_point_offset;
+        return entity.world_position + attack_point_offset;
+    }
+}

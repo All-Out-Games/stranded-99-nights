@@ -27,7 +27,7 @@ BoatSway :: class : Component {
     }
 
     ao_update :: method(dt: float) {
-        if !Game.is_server() return;
+       // if !Game.is_server() return;
 
         t := get_time() + time_offset;
 

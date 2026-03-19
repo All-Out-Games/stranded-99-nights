@@ -59,6 +59,7 @@ Beacon :: class : Interactable {
 
         this->set_hold_text("Accessing...");
         stockpile->clear();
+        sync_to_beacon_spawn();
         apply_level_world_state();
         apply_fuel_animation_state();
         apply_dynamic_safety_radius_state();
@@ -80,12 +81,24 @@ Beacon :: class : Interactable {
     }
 
     ao_update :: method(dt: float) {
+        sync_to_beacon_spawn();
+
         if Game.is_server() {
             tick_fuel_consumption();
             apply_dynamic_safety_radius_state();
         }
         apply_fuel_animation_state();
         flush_upgrade_feedback();
+    }
+
+    sync_to_beacon_spawn :: method() {
+        foreach beacon_spawn: component_iterator(BeaconSpawn) {
+            if beacon_spawn == null continue;
+            if beacon_spawn.entity == null continue;
+
+            entity->set_local_position(beacon_spawn.entity.world_position);
+            return;
+        }
     }
 
     ao_late_update :: method(dt: float) {
@@ -502,11 +515,11 @@ BeaconSystem :: struct {
         if player == null return false;
         if beacon == null return false;
         if beacon.level >= Beacon.MAX_LEVEL {
-            Notifier.notify(player, "Beacon is already max level.");
+            //Notifier.notify(player, "Beacon is already max level.");
             return false;
         }
         if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
-            Notifier.notify(player, "Inventory is unavailable.");
+            //Notifier.notify(player, "Inventory is unavailable.");
             return false;
         }
 
@@ -522,31 +535,31 @@ BeaconSystem :: struct {
         }
 
         if !has_cost {
-            Notifier.notify(player, "That resource is not needed right now.");
+            //Notifier.notify(player, "That resource is not needed right now.");
             return false;
         }
 
         already := beacon->get_stockpile_count(item_id);
         if already >= found_cost.count {
-            Notifier.notify(player, "That requirement is already filled.");
+            //Notifier.notify(player, "That requirement is already filled.");
             return false;
         }
 
         defn := ItemManager.TryFindItem(item_id);
         if defn == null {
-            Notifier.notify(player, "Unknown item: %", {item_id});
+            //Notifier.notify(player, "Unknown item: %", {item_id});
             return false;
         }
 
         ok := CraftingSystem.consume_item_from_inventory(player.default_inventory, defn, 1);
         if !ok {
-            Notifier.notify(player, "You need 1 % to deposit.", {defn->get_name()});
+           // Notifier.notify(player, "You need 1 % to deposit.", {defn->get_name()});
             return false;
         }
 
         beacon->add_stockpile_item(item_id, 1);
         now_count := beacon->get_stockpile_count(item_id);
-        Notifier.notify(player, "Deposited 1 % (%/%).", {defn->get_name(), now_count, found_cost.count});
+        //Notifier.notify(player, "Deposited 1 % (%/%).", {defn->get_name(), now_count, found_cost.count});
         _ := BeaconSystem.try_auto_upgrade(beacon);
         return true;
     }
@@ -556,24 +569,24 @@ BeaconSystem :: struct {
         if player == null return false;
         if beacon == null return false;
         if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
-            Notifier.notify(player, "Inventory is unavailable.");
+            //Notifier.notify(player, "Inventory is unavailable.");
             return false;
         }
 
         wood := ItemManager.TryFindItem("wood");
         if wood == null {
-            Notifier.notify(player, "Wood item is unavailable.");
+            //Notifier.notify(player, "Wood item is unavailable.");
             return false;
         }
 
         ok := CraftingSystem.consume_item_from_inventory(player.default_inventory, wood, 1);
         if !ok {
-            Notifier.notify(player, "You need 1 Wood to add Beacon fuel.");
+            //Notifier.notify(player, "You need 1 Wood to add Beacon fuel.");
             return false;
         }
 
         beacon->add_fuel(1);
-        Notifier.notify(player, "Added 1 Wood to Beacon fuel. Fuel: %", {beacon.fuel});
+        //Notifier.notify(player, "Added 1 Wood to Beacon fuel. Fuel: %", {beacon.fuel});
         return true;
     }
 

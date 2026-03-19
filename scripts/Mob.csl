@@ -128,37 +128,79 @@ Mob :: class : Component {
         sync_night_stats();
         movement_agent.movement_speed = move_speed;
 
-        target := resolve_or_find_target_player();
-        if target == null {
-            clear_boss_path_state();
-            return;
-        }
-
-        target_pos := target.entity.world_position;
         ignore_beacon_safety := false;
         manager := get_game_manager();
         if manager != null {
             ignore_beacon_safety = manager->should_mobs_ignore_beacon_safety();
         }
-        if !ignore_beacon_safety && BeaconSystem.is_position_inside_active_safety_zone(target_pos) {
-            target_player_id = 0;
-            damage_aggro_target_player_id = 0;
-            clear_boss_path_state();
-            return;
+
+        target: Player;
+        attack_target_entity_id: u64;
+        target_pos: v2;
+        path_target_pos: v2;
+        attack_distance_target_pos: v2;
+        attacking_voyage_boat := false;
+
+        if manager != null && manager->is_voyage_damage_redirect_active() {
+            voyage_boat := resolve_voyage_boat_target();
+            if voyage_boat == null {
+                movement_agent.velocity = {0.0, 0.0};
+                clear_boss_path_state();
+                return;
+            }
+
+            voyage_target_entity := voyage_boat->resolve_attack_target_entity(entity.id);
+            if voyage_target_entity != null {
+                target_pos = voyage_target_entity.world_position;
+                attack_target_entity_id = voyage_target_entity.id;
+            } else {
+                target_pos = voyage_boat->get_attack_position();
+                attack_target_entity_id = voyage_boat.entity.id;
+            }
+            path_target_pos = get_path_target_position(target_pos);
+            attack_distance_target_pos = target_pos;
+            attacking_voyage_boat = true;
+        } else {
+            target = resolve_or_find_target_player();
+            if target == null {
+                clear_boss_path_state();
+                return;
+            }
+
+            target_pos = target.entity.world_position;
+            if !ignore_beacon_safety && BeaconSystem.is_position_inside_active_safety_zone(target_pos) {
+                target_player_id = 0;
+                damage_aggro_target_player_id = 0;
+                clear_boss_path_state();
+                return;
+            }
+
+            path_target_pos = get_path_target_position(target_pos);
+            attack_distance_target_pos = target_pos;
+            attack_target_entity_id = target.entity.id;
         }
-        destination := get_spread_destination(target_pos, target.entity.id);
+
+        destination := get_spread_destination(path_target_pos, attack_target_entity_id);
+        if attacking_voyage_boat {
+            destination = path_target_pos;
+        }
         self_pos := entity.world_position;
         if !ignore_beacon_safety {
             destination = BeaconSystem.clamp_position_outside_safety_zones(destination, self_pos);
         }
-        to_target := v2{target_pos.x - self_pos.x, target_pos.y - self_pos.y};
+        destination = get_reachable_destination(destination, path_target_pos);
+        to_target := v2{
+            attack_distance_target_pos.x - self_pos.x,
+            attack_distance_target_pos.y - self_pos.y
+        };
         dist_sq := length_squared(to_target);
         attack_range_sq := attack_range * attack_range;
-        if Boss && !this->is_boss_fully_aggro() {
-            destination = get_boss_keep_away_destination(target);
+        if !attacking_voyage_boat && Boss && !this->is_boss_fully_aggro() {
+            destination = get_boss_keep_away_destination(path_target_pos);
             if !ignore_beacon_safety {
                 destination = BeaconSystem.clamp_position_outside_safety_zones(destination, self_pos);
             }
+            destination = get_reachable_destination(destination, path_target_pos);
 
             now := get_time();
             if should_repath_boss_target(now, target_pos) {
@@ -187,7 +229,11 @@ Mob :: class : Component {
         now := get_time();
         if dist_sq <= attack_range_sq {
             if now >= next_attack_time_seconds {
-                target->apply_mob_damage(attack_damage);
+                if attacking_voyage_boat {
+                    manager->apply_voyage_damage(manager->get_voyage_mob_damage());
+                } else {
+                    target->apply_mob_damage(attack_damage);
+                }
                 trigger_attack_animation();
                 next_attack_time_seconds = now + attack_speed;
             }
@@ -311,6 +357,27 @@ Mob :: class : Component {
         return null;
     }
 
+    resolve_voyage_boat_target :: method() -> VoyageBoat {
+        closest: VoyageBoat;
+        closest_dist_sq: float;
+        found_closest := false;
+
+        foreach boat: component_iterator(VoyageBoat) {
+            if boat == null continue;
+            if boat.entity == null continue;
+            if !#alive(boat.entity) continue;
+
+            dist_sq := length_squared(boat->get_attack_position() - entity.world_position);
+            if !found_closest || dist_sq < closest_dist_sq {
+                closest = boat;
+                closest_dist_sq = dist_sq;
+                found_closest = true;
+            }
+        }
+
+        return closest;
+    }
+
     get_effective_acquire_range :: method() -> float {
         return acquire_range;
     }
@@ -332,6 +399,52 @@ Mob :: class : Component {
         manager := get_game_manager();
         if manager == null return false;
         return manager->should_mobs_ignore_beacon_safety();
+    }
+
+    should_path_to_closest_reachable_target_point :: method() -> bool {
+        manager := get_game_manager();
+        if manager == null return false;
+        return manager->should_mobs_path_to_closest_reachable_target_point();
+    }
+
+    get_path_target_position :: method(target_pos: v2) -> v2 {
+        if !should_path_to_closest_reachable_target_point() return target_pos;
+
+        manager := get_game_manager();
+        if manager == null return target_pos;
+
+        navmesh := manager.player_navmesh;
+        if navmesh == null return target_pos;
+
+        hint_as_int: int = 0;
+        snapped_pos: v2;
+        if navmesh->try_find_closest_point_on_navmesh(target_pos, ref snapped_pos, ref hint_as_int) {
+            return snapped_pos;
+        }
+
+        return target_pos;
+    }
+
+    get_reachable_destination :: method(desired_pos: v2, fallback_pos: v2) -> v2 {
+        if !should_path_to_closest_reachable_target_point() return desired_pos;
+
+        manager := get_game_manager();
+        if manager == null return desired_pos;
+
+        navmesh := manager.player_navmesh;
+        if navmesh == null return desired_pos;
+
+        hint_as_int: int = 0;
+        snapped_pos: v2;
+        if navmesh->try_find_closest_point_on_navmesh(desired_pos, ref snapped_pos, ref hint_as_int) {
+            return snapped_pos;
+        }
+
+        if navmesh->try_find_closest_point_on_navmesh(fallback_pos, ref snapped_pos, ref hint_as_int) {
+            return snapped_pos;
+        }
+
+        return desired_pos;
     }
 
     is_valid_target_player :: method(player: Player, ignore_beacon_safety: bool) -> bool {
@@ -387,8 +500,7 @@ Mob :: class : Component {
         return max(MOB_BOSS_MIN_KEEP_AWAY_DISTANCE, max(attack_range * MOB_BOSS_KEEP_AWAY_ATTACK_RANGE_MULTIPLIER, destination_spread_radius + attack_range));
     }
 
-    get_boss_keep_away_destination :: method(target: Player) -> v2 {
-        target_pos := target.entity.world_position;
+    get_boss_keep_away_destination :: method(target_pos: v2) -> v2 {
         self_pos := entity.world_position;
         keep_away_distance := get_boss_keep_away_distance();
         to_self := self_pos - target_pos;

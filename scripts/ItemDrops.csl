@@ -206,7 +206,7 @@ Item_Drop_Magnet :: class : Component {
             count = 0;
             claimed = true;
             time_claimed = get_time();
-            Notifier.notify(player, "Picked up Coins x%", {safe_count});
+           // Notifier.notify(player, "Picked up Coins x%", {safe_count});
             game_sfx_play(.ITEM_PICKUP, player.entity);
             entity->queue_for_destruction(1);
             return true;
@@ -285,7 +285,7 @@ Item_Drop_Magnet :: class : Component {
             time_claimed = get_time();
 
             // Small pickup feedback
-            Notifier.notify(player, "Picked up % x%", {item_name, give_count});
+           // Notifier.notify(player, "Picked up % x%", {item_name, give_count});
             game_sfx_play(.ITEM_PICKUP, player.entity);
 
             // Let the pickup animation play before destroying.
@@ -293,7 +293,7 @@ Item_Drop_Magnet :: class : Component {
         } else {
             // Partial pickup: keep the drop around for later.
             // Avoid spamming by only notifying on successful transfer.
-            Notifier.notify(player, "Picked up % x% (remaining: %)", {item_name, give_count, count});
+           // Notifier.notify(player, "Picked up % x% (remaining: %)", {item_name, give_count, count});
             game_sfx_play(.ITEM_PICKUP, player.entity);
         }
         return true;

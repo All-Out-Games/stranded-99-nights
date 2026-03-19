@@ -272,7 +272,7 @@ CraftingSystem :: struct {
         for input: recipe.inputs {
             input_def := CraftingSystem.resolve_item_def(input.item_id);
             if input_def == null {
-                Notifier.notify(player, "Recipe item is missing: %", {input.item_id});
+                //Notifier.notify(player, "Recipe item is missing: %", {input.item_id});
                 return false;
             }
 
@@ -286,7 +286,7 @@ CraftingSystem :: struct {
         for output: recipe.outputs {
             output_def := CraftingSystem.resolve_item_def(output.item_id);
             if output_def == null {
-                Notifier.notify(player, "Recipe output is missing: %", {output.item_id});
+                //Notifier.notify(player, "Recipe output is missing: %", {output.item_id});
                 return false;
             }
 
@@ -301,7 +301,7 @@ CraftingSystem :: struct {
             input_def := CraftingSystem.resolve_item_def(input.item_id);
             ok := CraftingSystem.consume_item_from_inventory(inv, input_def, input.count);
             if !ok {
-                Notifier.notify(player, "Craft failed while consuming materials.", {});
+               // Notifier.notify(player, "Craft failed while consuming materials.", {});
                 return false;
             }
         }
@@ -316,7 +316,7 @@ CraftingSystem :: struct {
             Items.move_item_to_inventory(new_item, inv);
         }
 
-        Notifier.notify(player, "Crafted: %", {recipe.name});
+        //Notifier.notify(player, "Crafted: %", {recipe.name});
         return true;
     }
 

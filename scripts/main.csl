@@ -40,10 +40,12 @@ PLAYER_LIGHT_BASE_OUTER_RADIUS :: 14;
 PLAYER_LIGHT_MIN_INNER_RADIUS :: 5;
 PLAYER_LIGHT_MIN_OUTER_RADIUS :: 7;
 PLAYER_LIGHT_RADIUS_Y_PADDING :: 2.0;
+PLAYER_VOYAGE_LOS_RADIUS_BONUS :: 3.0;
 PLAYER_LIGHT_FIXED_RADIUS :: 40.0;
 PLAYER_LIGHT_INTENSITY :: 1.0;
 PLAYER_LIGHT_COLOR := v4.{1.0, 1.0, 1.0, 1.0};
-PLAYER_CAMERA_ZOOM_OUT_MULTIPLIER :: 1.35;
+PLAYER_CAMERA_NORMAL_ZOOM_OUT_MULTIPLIER :: 1.35;
+PLAYER_CAMERA_VOYAGE_ZOOM_OUT_MULTIPLIER :: 1.65;
 PLAYER_DAMAGE_PULSE_DURATION_SECONDS :: 0.65;
 PLAYER_DAMAGE_PULSE_OSCILLATIONS :: 7.0;
 
@@ -335,6 +337,7 @@ Player :: class : Player_Base {
 	local_light_caster: LOS_Caster;
 	clock_cur_alpha: float;
 	clock_cur_rotation: float;
+    default_camera_size: float;
     damage_pulse_elapsed_seconds: float;
 
     ao_start :: method() {
@@ -354,7 +357,8 @@ Player :: class : Player_Base {
         ghost_last_world_position = entity.world_position;
         ghost_last_world_position_initialized = true;
         damage_pulse_elapsed_seconds = PLAYER_DAMAGE_PULSE_DURATION_SECONDS;
-        camera.size = max(camera.size * PLAYER_CAMERA_ZOOM_OUT_MULTIPLIER, 1.0);
+        default_camera_size = max(camera.size, 1.0);
+        camera.size = max(default_camera_size * PLAYER_CAMERA_NORMAL_ZOOM_OUT_MULTIPLIER, 1.0);
 
         if Game.is_server() {
             init_weapon_items();
@@ -371,12 +375,24 @@ Player :: class : Player_Base {
         this->update_damage_pulse(dt);
         this->update_ghost_mode_animation();
         this->update_ghost_visibility_for_local_view();
+        if this->is_local() {
+            this->update_voyage_camera_zoom();
+        }
         if this->is_local_or_server() {
 			if this->is_local() {
 				this->update_local_vision_light();
 			}
             this->update_melee_weapon_idle_aim();
         }
+    }
+
+    update_voyage_camera_zoom :: method() {
+        manager := get_game_manager();
+        if manager != null && manager->should_use_voyage_camera_zoom() {
+            camera.size = max(default_camera_size * PLAYER_CAMERA_VOYAGE_ZOOM_OUT_MULTIPLIER, 1.0);
+            return;
+        }
+        camera.size = max(default_camera_size * PLAYER_CAMERA_NORMAL_ZOOM_OUT_MULTIPLIER, 1.0);
     }
 
     update_melee_weapon_idle_aim :: method() {
@@ -674,6 +690,15 @@ Player :: class : Player_Base {
             raid_active = manager->should_mobs_ignore_beacon_safety();
         }
         if !raid_active && BeaconSystem.is_position_inside_active_safety_zone(entity.world_position) return;
+
+        if manager != null && manager->is_voyage_damage_redirect_active() {
+            absorbed_damage := manager->apply_voyage_damage(amount);
+            if absorbed_damage > 0.0 {
+                this->trigger_damage_feedback(absorbed_damage);
+                game_sfx_play(.DAMAGE_HIT, entity);
+            }
+            return;
+        }
 
         health -= amount;
         if health < 0.0 {
@@ -1077,7 +1102,13 @@ Player :: class : Player_Base {
 
 		radii := this->get_local_light_radii();
 		local_light.radii = v2.{PLAYER_LIGHT_FIXED_RADIUS, PLAYER_LIGHT_FIXED_RADIUS + PLAYER_LIGHT_RADIUS_Y_PADDING};
-		local_light_caster.radii = radii;
+	caster_radii := radii;
+	manager := get_game_manager();
+	if manager != null && manager->should_use_voyage_camera_zoom() {
+		caster_radii.x += PLAYER_VOYAGE_LOS_RADIUS_BONUS;
+		caster_radii.y += PLAYER_VOYAGE_LOS_RADIUS_BONUS;
+	}
+	local_light_caster.radii = caster_radii;
 	}
 
     draw_day_night_clock :: method() {
@@ -1132,6 +1163,41 @@ Player :: class : Player_Base {
             ts.outline_thickness = 2;
             ts.outline_color = {1, 1, 1, 0.85};
             UI.text(moon_draw_rect, ts, "%", {manager->get_nights()});
+        }
+
+        if manager->should_draw_voyage_timer() {
+            voyage_bar_rect := clock_rect->bottom_center_rect()->grow(10, 145, 10, 145)->offset(0, -55);
+            voyage_fill_t := manager->get_voyage_progress_t();
+            voyage_fill_rect := voyage_bar_rect->inset(3)->subrect(0.0, 0.0, voyage_fill_t, 1.0);
+
+            UI.quad(voyage_bar_rect, core_globals.white_sprite, {0.05, 0.07, 0.10, 0.85});
+            UI.quad(voyage_bar_rect->inset(1), core_globals.white_sprite, {0.16, 0.20, 0.28, 0.95});
+            if voyage_fill_t > 0.0 {
+                UI.quad(voyage_fill_rect, core_globals.white_sprite, {0.35, 0.80, 1.0, 1.0});
+            }
+        }
+
+        if manager->should_draw_voyage_health_bar() {
+            voyage_health_bar_rect := clock_rect->bottom_center_rect()->grow(12, 145, 12, 145)->offset(0, -90);
+            voyage_health_fill_t := manager->get_voyage_health_fill_t();
+            voyage_health_fill_rect := voyage_health_bar_rect->inset(3)->subrect(0.0, 0.0, voyage_health_fill_t, 1.0);
+            voyage_health_text_rect := voyage_health_bar_rect->grow(18, 0, 18, 0);
+
+            UI.quad(voyage_health_bar_rect, core_globals.white_sprite, {0.10, 0.04, 0.04, 0.90});
+            UI.quad(voyage_health_bar_rect->inset(1), core_globals.white_sprite, {0.24, 0.08, 0.08, 0.95});
+            if voyage_health_fill_t > 0.0 {
+                UI.quad(voyage_health_fill_rect, core_globals.white_sprite, {0.95, 0.32, 0.24, 1.0});
+            }
+
+            voyage_health_ts := UI.default_text_settings();
+            voyage_health_ts.size = 22;
+            voyage_health_ts.halign = .CENTER;
+            voyage_health_ts.valign = .CENTER;
+            voyage_health_ts.color = {1, 1, 1, 1};
+            voyage_health_ts.do_outline = true;
+            voyage_health_ts.outline_thickness = 2;
+            voyage_health_ts.outline_color = {0, 0, 0, 1};
+            UI.text(voyage_health_text_rect, voyage_health_ts, "Voyage Health % / 300", {manager.VoyageHealth.(int)});
         }
     }
 
@@ -1279,7 +1345,10 @@ Player :: class : Player_Base {
         manager := get_game_manager();
         if manager == null return;
 
-        overlay_alpha := max(manager->get_round_start_overlay_alpha(), manager->get_game_over_overlay_alpha());
+        overlay_alpha := max(
+            manager->get_round_start_overlay_alpha(),
+            max(manager->get_game_over_overlay_alpha(), manager->get_island_transition_overlay_alpha())
+        );
         should_draw_text := manager->should_draw_round_start_text();
         should_draw_game_over_text := manager->should_draw_game_over_text();
         if overlay_alpha <= 0.0 && !should_draw_text && !should_draw_game_over_text return;

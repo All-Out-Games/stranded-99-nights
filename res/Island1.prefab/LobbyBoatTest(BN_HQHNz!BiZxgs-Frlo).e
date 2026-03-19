@@ -9,8 +9,8 @@
   },
   "local_rotation": 0,
   "local_scale": {
-    "X": 5,
-    "Y": 5
+    "X": 2,
+    "Y": 2
   },
   "previous_sibling": "216089299951551:1773349045489529300",
   "next_sibling": "104355654693733:1772712553284816700",
@@ -22,9 +22,8 @@
   "component_type": "Internal_Component",
   "internal_component_type": "Sprite_Renderer",
   "data": {
-    "texture": "boat_1_5bfc09196e8408af.png",
-    "depth_offset": -0.4875117838382721,
-    "layer": -1
+    "texture": "Sea_Big_Drakkar.png",
+    "depth_offset": 0.7510492205619812
   }
 },
 {
