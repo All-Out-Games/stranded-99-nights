@@ -30,6 +30,8 @@
     "idle_animation_name": "idle",
     "move_animation_name": "idle",
     "attack_animation_name": "slam player",
+    "attack_sfx_path": "tentacle_attack.wav",
+    "attack_sfx_volume_scale": 1,
     "death_animation_name": "shoot into water"
   }
 }

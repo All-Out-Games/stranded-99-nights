@@ -1,6 +1,25 @@
+VOYAGE_BOAT_DAMAGE_PULSE_DURATION_SECONDS :: 0.65;
+VOYAGE_BOAT_DAMAGE_PULSE_OSCILLATIONS :: 7.0;
+
 VoyageBoat :: class : Component {
     attack_point_offset: v2 @ao_serialize;
     VoyageTargets: [..]Entity @ao_serialize;
+    sprite_renderer: Sprite_Renderer;
+    base_sprite_color: v4;
+    damage_pulse_elapsed_seconds: float;
+
+    ao_start :: method() {
+        damage_pulse_elapsed_seconds = VOYAGE_BOAT_DAMAGE_PULSE_DURATION_SECONDS;
+        sprite_renderer = entity->get_component(Sprite_Renderer);
+        base_sprite_color = {1, 1, 1, 1};
+        if sprite_renderer != null {
+            base_sprite_color = sprite_renderer.color;
+        }
+    }
+
+    ao_update :: method(dt: float) {
+        update_damage_pulse(dt);
+    }
 
     resolve_attack_target_entity :: method(mob_entity_id: u64) -> Entity {
         valid_target_count: s64 = 0;
@@ -31,5 +50,35 @@ VoyageBoat :: class : Component {
     get_attack_position :: method() -> v2 {
         if entity == null return attack_point_offset;
         return entity.world_position + attack_point_offset;
+    }
+
+    trigger_damage_feedback :: method() {
+        damage_pulse_elapsed_seconds = 0.0;
+    }
+
+    update_damage_pulse :: method(dt: float) {
+        if sprite_renderer == null return;
+
+        if damage_pulse_elapsed_seconds >= VOYAGE_BOAT_DAMAGE_PULSE_DURATION_SECONDS {
+            sprite_renderer.color = base_sprite_color;
+            return;
+        }
+
+        damage_pulse_elapsed_seconds += dt;
+        if damage_pulse_elapsed_seconds >= VOYAGE_BOAT_DAMAGE_PULSE_DURATION_SECONDS {
+            sprite_renderer.color = base_sprite_color;
+            return;
+        }
+
+        t := clamp(damage_pulse_elapsed_seconds / VOYAGE_BOAT_DAMAGE_PULSE_DURATION_SECONDS, 0.0, 1.0);
+        phase := t * VOYAGE_BOAT_DAMAGE_PULSE_OSCILLATIONS * 6.2831853;
+        white_mix := 0.5 + 0.5 * sin(phase - 1.5707963);
+        white_mix = clamp(white_mix, 0.0, 1.0);
+        sprite_renderer.color = {
+            base_sprite_color.x,
+            base_sprite_color.y * white_mix,
+            base_sprite_color.z * white_mix,
+            base_sprite_color.w
+        };
     }
 }

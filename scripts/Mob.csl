@@ -26,6 +26,8 @@ Mob :: class : Component {
     idle_animation_name: string @ao_serialize;
     move_animation_name: string @ao_serialize;
     attack_animation_name: string @ao_serialize;
+    attack_sfx_path: string @ao_serialize;
+    attack_sfx_volume_scale: float @ao_serialize;
     death_animation_name: string @ao_serialize;
     death_drop_item_id: string @ao_serialize;
     Boss: bool @ao_serialize;
@@ -50,6 +52,7 @@ Mob :: class : Component {
     boss_last_repath_player_pos: v2;
     boss_last_path_destination: v2;
     boss_has_active_path_target: bool;
+    attack_sfx_asset: SFX_Asset;
 
     ao_start :: method() {
         if max_health <= 0.0 { max_health = 100.0; }
@@ -96,6 +99,9 @@ Mob :: class : Component {
         if move_animation_name == "" { move_animation_name = "move"; }
         if attack_animation_name == "" { attack_animation_name = "attack"; }
         if death_animation_name == "" { death_animation_name = "death"; }
+        if attack_sfx_path.count > 0 {
+            attack_sfx_asset = get_asset(SFX_Asset, attack_sfx_path);
+        }
 
         setup_animation_state_machine();
         lock_to_game_navmesh();
@@ -683,6 +689,24 @@ Mob :: class : Component {
         if animation_state_machine == null return;
         if is_dead return;
         animation_state_machine->set_trigger("mob_attack");
+        play_attack_sfx();
+    }
+
+    play_attack_sfx :: method() {
+        if attack_sfx_asset != null {
+            volume_scale := attack_sfx_volume_scale;
+            if volume_scale <= 0.0 {
+                volume_scale = 1.0;
+            }
+
+            desc := SFX.default_sfx_desc();
+            desc.channel = .SFX;
+            desc.entity_to_follow = entity.id;
+            desc.volume = clamp(game_sfx_default_volume_for_event(.MOB_ATTACK) * volume_scale, 0.0, 1.0);
+            SFX.play(attack_sfx_asset, desc);
+            return;
+        }
+
         game_sfx_play(.MOB_ATTACK, entity);
     }
 

@@ -1,0 +1,34 @@
+IslandFramework :: class : Component {
+    IslandTerrain: string @ao_serialize;
+
+    spawned_terrain_entity: Entity;
+
+    ao_end :: method() {
+        DespawnTerrain();
+    }
+
+    SpawnTerrain :: method() {
+        DespawnTerrain();
+
+        if IslandTerrain == "" return;
+
+        prefab := get_asset(Prefab_Asset, IslandTerrain);
+        if prefab == null return;
+
+        spawned_terrain_entity = Scene.instantiate(prefab);
+        if spawned_terrain_entity == null return;
+
+        spawned_terrain_entity->set_parent(entity, false);
+        spawned_terrain_entity->set_local_position(v2.{0.0, 0.0});
+    }
+
+    DespawnTerrain :: method() {
+        if spawned_terrain_entity == null return;
+
+        if #alive(spawned_terrain_entity) {
+            spawned_terrain_entity->destroy();
+        }
+
+        spawned_terrain_entity = null;
+    }
+}

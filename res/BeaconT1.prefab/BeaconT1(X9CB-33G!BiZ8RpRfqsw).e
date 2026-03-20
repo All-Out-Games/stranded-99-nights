@@ -3,7 +3,7 @@
 105349138841030 1772713023685700400
 {
   "name": "BeaconT1",
-  "local_enabled": false,
+  "local_enabled": true,
   "local_position": {
 
   },
@@ -11,10 +11,7 @@
   "local_scale": {
     "X": 1,
     "Y": 1
-  },
-  "previous_sibling": "388719380784885:1773864538634440200",
-  "next_sibling": "5104239815947:1773249148278177400",
-  "parent": "385227790221607:1773862885418537200"
+  }
 },
 {
   "cid": 1,

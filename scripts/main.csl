@@ -1118,10 +1118,7 @@ Player :: class : Player_Base {
 
         clock_rect := UI.get_safe_screen_rect()->top_center_rect()->grow(75)->offset(0, -140);
         moon_rect := clock_rect->right_center_rect()->grow(68)->offset(120, 0);
-        night := get_asset(Texture_Asset, "UI/Clock_Night.png");
-        day := get_asset(Texture_Asset, "UI/Clock_Day.png");
-        overlay := get_asset(Texture_Asset, "UI/Clock_OL.png");
-        moon := get_asset(Texture_Asset, "UI/Moon.png");
+        hide_day_night_ui_for_voyage := manager->should_pause_day_night_for_voyage();
 
         target_rotation := -90.0 + (360.0 * (manager->get_day_night_clock_hours() / 24.0));
         // Keep the target on a forward-only unwrapped timeline so the hand never rotates backward.
@@ -1133,55 +1130,74 @@ Player :: class : Player_Base {
         clock_cur_rotation = lerp_towards(clock_cur_rotation, target_rotation, CLOCK_ROTATION_LERP_STEP);
         clock_cur_alpha = lerp_towards(clock_cur_alpha, target_alpha, CLOCK_ALPHA_LERP_STEP);
 
-        // Fallback baseline in case clock textures are not imported yet.
-        if night == null || day == null || overlay == null {
-            UI.quad(clock_rect, core_globals.white_sprite, {0.05, 0.05, 0.08, 0.85});
-            return;
+        if !hide_day_night_ui_for_voyage {
+            night := get_asset(Texture_Asset, "UI/Clock_Night.png");
+            day := get_asset(Texture_Asset, "UI/Clock_Day.png");
+            overlay := get_asset(Texture_Asset, "UI/Clock_OL.png");
+            moon := get_asset(Texture_Asset, "UI/Moon.png");
+
+            // Fallback baseline in case clock textures are not imported yet.
+            if night == null || day == null || overlay == null {
+                UI.quad(clock_rect, core_globals.white_sprite, {0.05, 0.05, 0.08, 0.85});
+            } else {
+                base_rect := clock_rect->inset(5)->fit_aspect(night->get_aspect());
+
+                {
+                    UI.push_matrix(Matrix4.rotate_about_point(base_rect->center(), clock_cur_rotation));
+                    defer UI.pop_matrix();
+                    UI.quad(base_rect, night);
+                    UI.quad(base_rect, day, {1, 1, 1, clock_cur_alpha});
+                }
+
+                UI.quad(clock_rect->fit_aspect(overlay->get_aspect()), overlay);
+            }
+
+            if moon != null {
+                moon_draw_rect := moon_rect->fit_aspect(moon->get_aspect());
+                UI.quad(moon_draw_rect, moon);
+
+                ts := UI.default_text_settings();
+                ts.size = 60;
+                ts.halign = .CENTER;
+                ts.valign = .CENTER;
+                ts.color = {0.07, 0.07, 0.07, 1.0};
+                ts.do_outline = true;
+                ts.outline_thickness = 2;
+                ts.outline_color = {1, 1, 1, 0.85};
+                UI.text(moon_draw_rect, ts, "%", {manager->get_nights()});
+            }
         }
 
-        base_rect := clock_rect->inset(5)->fit_aspect(night->get_aspect());
-
-        {
-            UI.push_matrix(Matrix4.rotate_about_point(base_rect->center(), clock_cur_rotation));
-            defer UI.pop_matrix();
-            UI.quad(base_rect, night);
-            UI.quad(base_rect, day, {1, 1, 1, clock_cur_alpha});
-        }
-
-        UI.quad(clock_rect->fit_aspect(overlay->get_aspect()), overlay);
-
-        if moon != null {
-            moon_draw_rect := moon_rect->fit_aspect(moon->get_aspect());
-            UI.quad(moon_draw_rect, moon);
-
-            ts := UI.default_text_settings();
-            ts.size = 60;
-            ts.halign = .CENTER;
-            ts.valign = .CENTER;
-            ts.color = {0.07, 0.07, 0.07, 1.0};
-            ts.do_outline = true;
-            ts.outline_thickness = 2;
-            ts.outline_color = {1, 1, 1, 0.85};
-            UI.text(moon_draw_rect, ts, "%", {manager->get_nights()});
+        voyage_bar_offset_y: float = -55.0;
+        voyage_health_bar_offset_y: float = -90.0;
+        if hide_day_night_ui_for_voyage {
+            voyage_bar_offset_y = -10.0;
+            voyage_health_bar_offset_y = -45.0;
         }
 
         if manager->should_draw_voyage_timer() {
-            voyage_bar_rect := clock_rect->bottom_center_rect()->grow(10, 145, 10, 145)->offset(0, -55);
+            voyage_bar_rect := clock_rect->bottom_center_rect()->grow(15, 218, 15, 218)->offset(0, voyage_bar_offset_y);
             voyage_fill_t := manager->get_voyage_progress_t();
             voyage_fill_rect := voyage_bar_rect->inset(3)->subrect(0.0, 0.0, voyage_fill_t, 1.0);
+            voyage_tracker := get_asset(Texture_Asset, "UI/VoyageTracker.png");
 
             UI.quad(voyage_bar_rect, core_globals.white_sprite, {0.05, 0.07, 0.10, 0.85});
             UI.quad(voyage_bar_rect->inset(1), core_globals.white_sprite, {0.16, 0.20, 0.28, 0.95});
             if voyage_fill_t > 0.0 {
                 UI.quad(voyage_fill_rect, core_globals.white_sprite, {0.35, 0.80, 1.0, 1.0});
             }
+            if voyage_tracker != null {
+                tracker_anchor_rect := voyage_bar_rect->inset(3)->subrect(voyage_fill_t, 0.0, voyage_fill_t, 1.0);
+                tracker_rect := tracker_anchor_rect->center_rect()->grow(49);
+                UI.quad(tracker_rect->fit_aspect(voyage_tracker->get_aspect()), voyage_tracker);
+            }
         }
 
         if manager->should_draw_voyage_health_bar() {
-            voyage_health_bar_rect := clock_rect->bottom_center_rect()->grow(12, 145, 12, 145)->offset(0, -90);
+            voyage_health_bar_rect := clock_rect->bottom_center_rect()->grow(18, 218, 18, 218)->offset(0, voyage_health_bar_offset_y);
             voyage_health_fill_t := manager->get_voyage_health_fill_t();
             voyage_health_fill_rect := voyage_health_bar_rect->inset(3)->subrect(0.0, 0.0, voyage_health_fill_t, 1.0);
-            voyage_health_text_rect := voyage_health_bar_rect->grow(18, 0, 18, 0);
+            voyage_health_text_rect := voyage_health_bar_rect->grow(27, 0, 27, 0);
 
             UI.quad(voyage_health_bar_rect, core_globals.white_sprite, {0.10, 0.04, 0.04, 0.90});
             UI.quad(voyage_health_bar_rect->inset(1), core_globals.white_sprite, {0.24, 0.08, 0.08, 0.95});

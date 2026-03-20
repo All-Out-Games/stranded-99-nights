@@ -26,6 +26,7 @@ Beacon :: class : Interactable {
     seen_upgrade_feedback_sequence: s64;
 
     MAX_LEVEL :: 3;
+    FOG3_DISABLE_LEVEL :: 4;
     DEFAULT_STARTING_FUEL :: 3;
     DEFAULT_FUEL_BURN_INTERVAL_SECONDS :: 15.0;
     MAX_FUEL_ANIMATION_BUCKET :: 5;
@@ -119,7 +120,7 @@ Beacon :: class : Interactable {
             fog2->set_local_enabled(level < 2);
         }
         if fog3 != null {
-            fog3->set_local_enabled(level < 3);
+            fog3->set_local_enabled(level < FOG3_DISABLE_LEVEL);
         }
         apply_safety_zone_visual_scale();
     }

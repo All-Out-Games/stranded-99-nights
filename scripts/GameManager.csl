@@ -322,6 +322,7 @@ GameManager :: class : Component {
     NIGHT_SURVIVAL_SAVE_KEY_FORMAT :: "night_survived_%";
     NIGHT_EVENT_NOTIFICATION_TEXT :: "Night Event: %!";
     PLAYER_DOWNED_NOTIFICATION_TEXT :: "% has been downed!";
+    VOYAGE_FAILED_NOTIFICATION_TEXT :: "Voyage Failed! Try Again!";
     BROADCAST_NOTIFICATION_DURATION_SECONDS :: 5.0;
     ROUND_START_FADE_OUT_SECONDS :: 1.0;
     ROUND_START_BLACK_HOLD_SECONDS :: 1.0;
@@ -356,7 +357,9 @@ GameManager :: class : Component {
     island_transition_target_island: int;
     voyage_state: Voyage_State;
     voyage_timer_start_time: float;
+    voyage_returning_after_destruction: bool;
     VoyageHealth: float;
+    last_enabled_island_number: int;
     game_over_sequence_active: bool;
     game_over_sequence_restart_done: bool;
     game_over_sequence_start_time: float;
@@ -391,8 +394,10 @@ GameManager :: class : Component {
         island_transition_start_time = 0.0;
         voyage_state = .NONE;
         voyage_timer_start_time = 0.0;
-        sync_scene_visibility();
+        voyage_returning_after_destruction = false;
+        last_enabled_island_number = -1;
         apply_navmesh_lock_to_all_players();
+        sync_active_island_entity();
         if !Game.is_server() {
             if g_start_music_sound_id == 0 {
                 music_asset := get_asset(SFX_Asset, DAY_MUSIC_ASSET_PATH);
@@ -417,10 +422,10 @@ GameManager :: class : Component {
         // Keep core game state authoritative on the server.
         // Music playback is client-side so each player always hears it.
 
+        sync_active_island_entity();
         try_start_island_transition_if_needed();
         update_island_transition();
         sync_island_transition_freeze_state();
-        sync_scene_visibility();
         if island_transition_active return;
         update_voyage_timer();
 
@@ -491,10 +496,12 @@ GameManager :: class : Component {
         island_transition_start_time = 0.0;
         voyage_state = .NONE;
         voyage_timer_start_time = 0.0;
+        voyage_returning_after_destruction = false;
         VoyageHealth = VOYAGE_STARTING_HEALTH;
+        last_enabled_island_number = -1;
         nights = 0;
         island1_boss_defeated_for_run = false;
-        sync_scene_visibility();
+        sync_active_island_entity();
         current_phase = .LOBBY;
         on_enter_phase(current_phase);
     }
@@ -637,7 +644,18 @@ GameManager :: class : Component {
         if !is_voyage_damage_redirect_active() return 0.0;
 
         absorbed := min(amount, VoyageHealth);
+        if absorbed > 0.0 {
+            foreach voyage_boat: component_iterator(VoyageBoat) {
+                voyage_boat->trigger_damage_feedback();
+            }
+        }
         VoyageHealth = max(VoyageHealth - amount, 0.0);
+        if VoyageHealth <= 0.0 {
+            if Game.is_server() {
+                show_broadcast_notification(VOYAGE_FAILED_NOTIFICATION_TEXT);
+            }
+            start_voyage_return_transition(loaded_island, true);
+        }
         return absorbed;
     }
 
@@ -765,7 +783,13 @@ GameManager :: class : Component {
 
     teleport_player_to_voyage_scene :: method(player: Player) {
         if player == null || player.entity == null return;
-        player.entity->set_local_position(v2{0.0, 0.0});
+
+        voyage_pos := v2{0.0, 0.0};
+        if VoyageScene != null {
+            voyage_pos = VoyageScene.world_position;
+        }
+
+        player.entity->set_local_position(voyage_pos);
     }
 
     reset_beacons_for_round :: method() {
@@ -778,8 +802,6 @@ GameManager :: class : Component {
     }
 
     run_round_start_poi_setup :: method() {
-        if !Game.is_server() return;
-
         poi_rng := rng_seed_time();
         spawned_count: s64 = 0;
         total_count: s64 = 0;
@@ -845,6 +867,21 @@ GameManager :: class : Component {
         return Islands[island_index];
     }
 
+    sync_active_island_entity :: method() {
+        if last_enabled_island_number == Island return;
+
+        island_index: int = 0;
+        while island_index < Islands.count {
+            island_entity := Islands[island_index];
+            if island_entity != null {
+                island_entity->set_local_enabled(island_index == Island - 1);
+            }
+            island_index += 1;
+        }
+
+        last_enabled_island_number = Island;
+    }
+
     should_show_voyage_scene :: method() -> bool {
         switch voyage_state {
             case .NONE: {
@@ -865,40 +902,6 @@ GameManager :: class : Component {
 
     should_player_spawn_in_voyage_scene :: method() -> bool {
         return should_show_voyage_scene();
-    }
-
-    sync_scene_visibility :: method() {
-        show_island_number: int = 0;
-        switch voyage_state {
-            case .NONE: {
-                show_island_number = loaded_island;
-            }
-            case .TO_VOYAGE: {
-                if !island_transition_disable_done {
-                    show_island_number = loaded_island;
-                }
-            }
-            case .VOYAGING: {
-            }
-            case .TO_ISLAND: {
-                if island_transition_applied {
-                    show_island_number = loaded_island;
-                }
-            }
-        }
-
-        island_index: int = 0;
-        while island_index < Islands.count {
-            island_entity := Islands[island_index];
-            if island_entity != null {
-                island_entity->set_local_enabled(island_index == show_island_number - 1);
-            }
-            island_index += 1;
-        }
-
-        if VoyageScene != null {
-            VoyageScene->set_local_enabled(should_show_voyage_scene());
-        }
     }
 
     try_start_island_transition_if_needed :: method() {
@@ -930,12 +933,14 @@ GameManager :: class : Component {
             switch voyage_state {
                 case .TO_VOYAGE: {
                     if Game.is_server() {
-                        despawn_all_pois_for_transition();
                         destroy_all_mobs_for_game_over();
                         despawn_all_dropped_items_for_game_over();
                     }
                 }
                 case .TO_ISLAND: {
+                    if Game.is_server() && voyage_returning_after_destruction {
+                        destroy_all_mobs_for_game_over();
+                    }
                 }
                 case .VOYAGING: {
                 }
@@ -950,14 +955,12 @@ GameManager :: class : Component {
             switch voyage_state {
                 case .TO_VOYAGE: {
                     island_transition_applied = true;
-                    sync_scene_visibility();
                     rebuild_player_navmesh_for_scene_transition();
                     teleport_all_players_to_voyage_scene();
                 }
                 case .TO_ISLAND: {
                     loaded_island = island_transition_target_island;
                     island_transition_applied = true;
-                    sync_scene_visibility();
                     rebuild_player_navmesh_for_scene_transition();
                     teleport_all_players_near_beacon_for_island_transition();
                 }
@@ -988,6 +991,7 @@ GameManager :: class : Component {
             case .TO_ISLAND: {
                 voyage_state = .NONE;
                 island_transition_target_island = loaded_island;
+                voyage_returning_after_destruction = false;
             }
             case .VOYAGING: {
             }
@@ -1094,15 +1098,26 @@ GameManager :: class : Component {
         }
     }
 
-    update_voyage_timer :: method() {
+    start_voyage_return_transition :: method(target_island: int, caused_by_destruction: bool) {
+        if current_phase != .IN_ROUND return;
         if voyage_state != .VOYAGING return;
-        if get_time() - voyage_timer_start_time < VOYAGE_DURATION_SECONDS return;
+        if island_transition_active return;
 
+        Island = target_island;
+        island_transition_target_island = target_island;
         island_transition_active = true;
         island_transition_disable_done = false;
         island_transition_applied = false;
         island_transition_start_time = get_time();
         voyage_state = .TO_ISLAND;
+        voyage_returning_after_destruction = caused_by_destruction;
+    }
+
+    update_voyage_timer :: method() {
+        if voyage_state != .VOYAGING return;
+        if get_time() - voyage_timer_start_time < VOYAGE_DURATION_SECONDS return;
+
+        start_voyage_return_transition(island_transition_target_island, false);
     }
 
     should_draw_voyage_timer :: method() -> bool {
