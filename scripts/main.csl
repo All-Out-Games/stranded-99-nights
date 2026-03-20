@@ -325,6 +325,8 @@ Player :: class : Player_Base {
     selected_crafting_recipe_index: s64;
     beacon_ui_open: bool;
     active_beacon: Beacon;
+    voyage_prep_ui_open: bool;
+    active_voyage_prep: VoyagePrep;
     death_drop_pickup_blocks: [..]Death_Drop_Pickup_Block;
     is_ghost_mode: bool;
     ghost_current_animation_name: string;
@@ -352,6 +354,8 @@ Player :: class : Player_Base {
         selected_crafting_recipe_index = 0;
         beacon_ui_open = false;
         active_beacon = null;
+        voyage_prep_ui_open = false;
+        active_voyage_prep = null;
         is_ghost_mode = false;
         ghost_current_animation_name = "";
         ghost_last_world_position = entity.world_position;
@@ -419,6 +423,8 @@ Player :: class : Player_Base {
         crafting_ui_open = false;
         beacon_ui_open = false;
         active_beacon = null;
+        voyage_prep_ui_open = false;
+        active_voyage_prep = null;
     }
 
     this->draw_night_tint_overlay();
@@ -476,13 +482,14 @@ Player :: class : Player_Base {
         // Crafting UI and actions are player-scoped state.
         CraftingSystem.draw_ui(this);
         BeaconSystem.draw_ui(this);
+        VoyagePrepSystem.draw_ui(this);
     }
 
     if !Game.is_server() {
         draw_health_bar(this); // from weapons_ui_helpers.csl
     }
 
-    if this->is_local_or_server() && !crafting_ui_open && !beacon_ui_open {
+    if this->is_local_or_server() && !crafting_ui_open && !beacon_ui_open && !voyage_prep_ui_open {
         this->draw_day_night_clock();
     }
 
@@ -1000,6 +1007,8 @@ Player :: class : Player_Base {
         crafting_ui_open = false;
         beacon_ui_open = false;
         active_beacon = null;
+        voyage_prep_ui_open = false;
+        active_voyage_prep = null;
         death_drop_pickup_blocks->clear();
         this->clear_inventory_for_restart();
     }

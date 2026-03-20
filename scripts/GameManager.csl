@@ -303,6 +303,7 @@ GameManager :: class : Component {
     active_supply_drop_entity: Entity;
     active_island1_boss_entity: Entity;
     island1_boss_defeated_for_run: bool;
+    island1_boss_spawns_enabled_for_run: bool;
     last_notified_night_event: Night_Event_Type;
     broadcast_notification_text: string;
     broadcast_notification_end_time: float;
@@ -423,6 +424,7 @@ GameManager :: class : Component {
         // Music playback is client-side so each player always hears it.
 
         sync_active_island_entity();
+        disable_island1_boss_spawns_for_current_run();
         try_start_island_transition_if_needed();
         update_island_transition();
         sync_island_transition_freeze_state();
@@ -501,6 +503,7 @@ GameManager :: class : Component {
         last_enabled_island_number = -1;
         nights = 0;
         island1_boss_defeated_for_run = false;
+        island1_boss_spawns_enabled_for_run = true;
         sync_active_island_entity();
         current_phase = .LOBBY;
         on_enter_phase(current_phase);
@@ -532,6 +535,7 @@ GameManager :: class : Component {
                 reset_day_night_cycle();
                 current_night_event = .NONE;
                 reset_beacons_for_round();
+                reset_voyage_preps_for_round();
                 round_start_teleport_done = false;
                 game_over_sequence_active = false;
                 game_over_sequence_restart_done = false;
@@ -801,6 +805,13 @@ GameManager :: class : Component {
         }
     }
 
+    reset_voyage_preps_for_round :: method() {
+        foreach prep: component_iterator(VoyagePrep) {
+            if prep == null continue;
+            prep->reset_for_round();
+        }
+    }
+
     run_round_start_poi_setup :: method() {
         poi_rng := rng_seed_time();
         spawned_count: s64 = 0;
@@ -865,6 +876,21 @@ GameManager :: class : Component {
         if island_index < 0 return null;
         if island_index >= Islands.count return null;
         return Islands[island_index];
+    }
+
+    try_start_next_island_voyage :: method() -> bool {
+        if current_phase != .IN_ROUND return false;
+        if island_transition_active return false;
+        if voyage_state != .NONE return false;
+
+        next_island := Island + 1;
+        if get_island_entity(next_island) == null {
+            log_info("Voyage start skipped: island % is not assigned in Islands.", {next_island});
+            return false;
+        }
+
+        Island = next_island;
+        return true;
     }
 
     sync_active_island_entity :: method() {
@@ -1103,6 +1129,10 @@ GameManager :: class : Component {
         if voyage_state != .VOYAGING return;
         if island_transition_active return;
 
+        if caused_by_destruction {
+            reset_voyage_preps_for_round();
+        }
+
         Island = target_island;
         island_transition_target_island = target_island;
         island_transition_active = true;
@@ -1308,6 +1338,7 @@ GameManager :: class : Component {
         }
 
         reset_beacons_for_full_restart();
+        reset_voyage_preps_for_full_restart();
         reset_game_state();
 
         foreach p: component_iterator(Player) {
@@ -1400,6 +1431,13 @@ GameManager :: class : Component {
             beacon->set_fuel_for_round(Beacon.DEFAULT_STARTING_FUEL);
             beacon->apply_level_world_state();
             beacon->refresh_prompt_text();
+        }
+    }
+
+    reset_voyage_preps_for_full_restart :: method() {
+        foreach prep: component_iterator(VoyagePrep) {
+            if prep == null continue;
+            prep->reset_for_round();
         }
     }
 
@@ -1628,8 +1666,18 @@ GameManager :: class : Component {
         return center, false;
     }
 
+    disable_island1_boss_spawns_for_current_run :: method() {
+        if !island1_boss_spawns_enabled_for_run return;
+        if Island <= 1 && loaded_island <= 1 && island_transition_target_island <= 1 return;
+
+        island1_boss_spawns_enabled_for_run = false;
+        clear_island1_boss();
+        log_info("Island 1 boss spawns disabled until the next full reset.", {});
+    }
+
     spawn_island1_boss_for_night :: method() {
         if !Game.is_server() return;
+        if !island1_boss_spawns_enabled_for_run return;
         if island1_boss_defeated_for_run return;
         if Island1BossMob.count <= 0 return;
         if active_island1_boss_entity != null && #alive(active_island1_boss_entity) return;

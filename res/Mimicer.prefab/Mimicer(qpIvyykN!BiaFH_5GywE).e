@@ -33,7 +33,7 @@
     "death_animation_name": "Die",
     "death_drop_item_id": "root.resin",
     "Boss": true,
-    "NightAggro": 12
+    "NightAggro": 50
   }
 },
 {

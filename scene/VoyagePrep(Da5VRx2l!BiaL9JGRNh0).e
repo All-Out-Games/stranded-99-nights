@@ -2,19 +2,19 @@
 670014898177
 15042406194597 1772781983492266100
 {
-  "name": "GroupStorage",
-  "local_enabled": false,
+  "name": "VoyagePrep",
+  "local_enabled": true,
   "local_position": {
-    "X": -58.8358573913574219,
-    "Y": 16.4932632446289062
+    "X": -1.7707672119140625,
+    "Y": -2.4047784805297852
   },
   "local_rotation": 0,
   "local_scale": {
     "X": 1,
     "Y": 1
   },
-  "previous_sibling": "15163878474055:1772234935970487500",
-  "next_sibling": "104696838183043:1772712714830439100"
+  "previous_sibling": "50832151082115:1772798929396753100",
+  "parent": "104696838183043:1772712714830439100"
 },
 {
   "cid": 1,
@@ -28,12 +28,12 @@
 },
 {
   "cid": 2,
-  "aoid": "15199469539710:1772782057859391500",
+  "aoid": "66453575776811:1773977261778627500",
   "component_type": "Internal_Component",
-  "internal_component_type": "GroupStorage",
+  "internal_component_type": "VoyagePrep",
   "data": {
-    "radius": 1,
-    "required_hold_time": 0.3000000119209290,
+    "radius": 1.5000000000000000,
+    "required_hold_time": 0.6000000238418579,
     "prompt_offset": {
       "Y": 1
     }

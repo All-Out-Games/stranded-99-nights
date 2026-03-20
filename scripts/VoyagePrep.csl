@@ -1,0 +1,506 @@
+import "core:ao"
+
+VoyagePrep_Requirement :: struct {
+    item_id: string;
+    count: s64;
+}
+
+VoyagePrep_Stockpile_Entry :: struct {
+    item_id: string;
+    count: s64;
+}
+
+VoyagePrep :: class : Interactable {
+    stockpile: [..]VoyagePrep_Stockpile_Entry;
+    ready_player_user_ids: [..]string;
+    completion_feedback_sent: bool;
+
+    COMPLETION_NOTIFICATION_TEXT :: "Voyage Preperation Complete! Queue up to take a Voyage!";
+
+    ao_start :: method() {
+        this->set_listener(this);
+
+        if radius <= 0.0 {
+            radius = 2.0;
+        }
+
+        this->set_hold_text("Preparing...");
+        reset_for_round();
+    }
+
+    ao_update :: method(dt: float) {
+        trim_ready_player_user_ids();
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if player == null return false;
+        return !player.crafting_ui_open && !player.beacon_ui_open && !player.voyage_prep_ui_open;
+    }
+
+    on_interact :: method(player: Player) {
+        if player == null return;
+
+        player.crafting_ui_open = false;
+        player.beacon_ui_open = false;
+        player.active_beacon = null;
+        player.voyage_prep_ui_open = true;
+        player.active_voyage_prep = this;
+        game_sfx_play(.UI_CLICK, player.entity);
+    }
+
+    reset_for_round :: method() {
+        stockpile->clear();
+        ready_player_user_ids->clear();
+        completion_feedback_sent = false;
+        refresh_prompt_text();
+    }
+
+    refresh_prompt_text :: method() {
+        if is_complete() {
+            this->set_text("Queue Voyage");
+            return;
+        }
+        this->set_text("Prepare Voyage");
+    }
+
+    get_requirements :: method() -> [..]VoyagePrep_Requirement {
+        #static island1_requirements: [..]VoyagePrep_Requirement;
+        #static initted: bool;
+
+        if !initted {
+            initted = true;
+            island1_requirements->append({"scrap", 10});
+            island1_requirements->append({"root.resin", 3});
+            island1_requirements->append({"fish", 15});
+        }
+
+        manager := get_game_manager();
+        if manager != null && manager.Island == 1 {
+            return island1_requirements;
+        }
+
+        empty: [..]VoyagePrep_Requirement;
+        return empty;
+    }
+
+    get_stockpile_count :: method(item_id: string) -> s64 {
+        for entry: stockpile {
+            if entry.item_id == item_id {
+                return entry.count;
+            }
+        }
+        return 0;
+    }
+
+    add_stockpile_item :: method(item_id: string, amount: s64) {
+        if amount <= 0 return;
+
+        i: s64 = 0;
+        while i < stockpile.count {
+            entry := stockpile[i];
+            if entry.item_id == item_id {
+                entry.count += amount;
+                stockpile[i] = entry;
+                return;
+            }
+            i += 1;
+        }
+
+        stockpile->append({item_id, amount});
+    }
+
+    is_complete :: method() -> bool {
+        requirements := get_requirements();
+        if requirements.count <= 0 return false;
+
+        for requirement: requirements {
+            if get_stockpile_count(requirement.item_id) < requirement.count {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    handle_completion_if_needed :: method() {
+        if completion_feedback_sent return;
+        if !is_complete() return;
+
+        completion_feedback_sent = true;
+        refresh_prompt_text();
+
+        manager := get_game_manager();
+        if manager != null && Game.is_server() {
+            manager->show_broadcast_notification(COMPLETION_NOTIFICATION_TEXT);
+        }
+    }
+
+    has_ready_player_user_id :: method(user_id: string) -> bool {
+        if user_id.count <= 0 return false;
+
+        for ready_user_id: ready_player_user_ids {
+            if ready_user_id == user_id {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    is_player_ready :: method(player: Player) -> bool {
+        if player == null return false;
+        return has_ready_player_user_id(player->get_user_id());
+    }
+
+    set_player_ready :: method(player: Player) {
+        if player == null return;
+
+        user_id := player->get_user_id();
+        if user_id.count <= 0 return;
+        if has_ready_player_user_id(user_id) return;
+
+        ready_player_user_ids->append(user_id);
+    }
+
+    clear_ready_players :: method() {
+        ready_player_user_ids->clear();
+    }
+
+    has_current_player_user_id :: method(user_id: string) -> bool {
+        if user_id.count <= 0 return false;
+
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            if player->get_user_id() == user_id {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    trim_ready_player_user_ids :: method() {
+        i: s64 = 0;
+        while i < ready_player_user_ids.count {
+            user_id := ready_player_user_ids[i];
+            if has_current_player_user_id(user_id) {
+                i += 1;
+                continue;
+            }
+
+            ready_player_user_ids->ordered_remove_by_index(i);
+        }
+    }
+
+    get_current_player_count :: method() -> s64 {
+        count: s64 = 0;
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            count += 1;
+        }
+        return count;
+    }
+
+    get_ready_player_count :: method() -> s64 {
+        ready_count: s64 = 0;
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            if is_player_ready(player) {
+                ready_count += 1;
+            }
+        }
+        return ready_count;
+    }
+
+    are_all_players_ready :: method() -> bool {
+        if !is_complete() return false;
+
+        player_count := get_current_player_count();
+        if player_count <= 0 return false;
+
+        return get_ready_player_count() >= player_count;
+    }
+}
+
+VoyagePrepSystem :: struct {
+    try_deposit_item :: proc(player: Player, prep: VoyagePrep, item_id: string) -> bool {
+        if player == null return false;
+        if prep == null return false;
+        if prep->is_complete() return false;
+        if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
+            return false;
+        }
+
+        requirements := prep->get_requirements();
+        found_requirement: VoyagePrep_Requirement;
+        has_requirement := false;
+        for requirement: requirements {
+            if requirement.item_id == item_id {
+                found_requirement = requirement;
+                has_requirement = true;
+                break;
+            }
+        }
+
+        if !has_requirement {
+            return false;
+        }
+
+        already_stockpiled := prep->get_stockpile_count(item_id);
+        if already_stockpiled >= found_requirement.count {
+            return false;
+        }
+
+        defn := ItemManager.TryFindItem(item_id);
+        if defn == null {
+            return false;
+        }
+
+        ok := CraftingSystem.consume_item_from_inventory(player.default_inventory, defn, 1);
+        if !ok {
+            return false;
+        }
+
+        prep->add_stockpile_item(item_id, 1);
+        prep->handle_completion_if_needed();
+        return true;
+    }
+
+    try_ready_player :: proc(player: Player, prep: VoyagePrep) -> bool {
+        if player == null return false;
+        if prep == null return false;
+        if !prep->is_complete() return false;
+
+        prep->set_player_ready(player);
+        if prep->are_all_players_ready() {
+            return VoyagePrepSystem.try_start_voyage(prep);
+        }
+        return true;
+    }
+
+    try_start_voyage :: proc(prep: VoyagePrep) -> bool {
+        if prep == null return false;
+
+        manager := get_game_manager();
+        if manager == null return false;
+        if !prep->are_all_players_ready() return false;
+        if !manager->try_start_next_island_voyage() return false;
+
+        prep->clear_ready_players();
+        VoyagePrepSystem.close_modal_for_component(prep);
+        return true;
+    }
+
+    close_modal :: proc(player: Player) {
+        if player == null return;
+        player.voyage_prep_ui_open = false;
+        player.active_voyage_prep = null;
+    }
+
+    close_modal_for_component :: proc(prep: VoyagePrep) {
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            if player.active_voyage_prep != prep continue;
+            VoyagePrepSystem.close_modal(player);
+        }
+    }
+
+    draw_ui :: proc(player: Player) {
+        if player == null return;
+        if !player.voyage_prep_ui_open return;
+
+        prep := player.active_voyage_prep;
+        if prep == null || prep.entity == null || !prep.entity->get_local_enabled() {
+            VoyagePrepSystem.close_modal(player);
+            return;
+        }
+
+        ts := UI.default_text_settings();
+        ts.do_outline = true;
+        ts.outline_color = {0, 0, 0, 1};
+        ts.outline_thickness = 2;
+
+        bs := UI.default_button_settings();
+        bs.press_scaling = 0.35;
+
+        UI.push_layer(1000);
+        defer UI.pop_layer();
+
+        UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {0, 0, 0, 0.6});
+
+        panel_rect := UI.get_safe_screen_rect()->center_rect()->grow(330, 560, 330, 560);
+        UI.quad(panel_rect, core_globals.white_sprite, {0.05, 0.06, 0.08, 0.95});
+        UI.quad(panel_rect->inset(5), core_globals.white_sprite, {0.12, 0.13, 0.18, 0.95});
+
+        content := panel_rect->inset(20);
+        header := content->cut_top(70);
+        body := content;
+
+        title_ts := ts;
+        title_ts.size = 52;
+        title_ts.halign = .LEFT;
+        title_ts.valign = .CENTER;
+        UI.text(header, title_ts, "Voyage Prep");
+
+        body_bg := body->inset(4);
+        UI.quad(body_bg, core_globals.white_sprite, {0.08, 0.09, 0.12, 0.8});
+
+        section_ts := ts;
+        section_ts.size = 34;
+        section_ts.halign = .LEFT;
+        section_ts.offset.x = 8;
+
+        info_rect := body_bg->cut_top(82)->inset(4, 8, 8, 8);
+        info_ts := ts;
+        info_ts.size = 28;
+        info_ts.halign = .LEFT;
+        info_ts.valign = .TOP;
+        info_ts.word_wrap = true;
+        UI.text(
+            info_rect,
+            info_ts,
+            "Bring together the resources needed to launch the next voyage."
+        );
+
+        requirements := prep->get_requirements();
+        ready_count := prep->get_ready_player_count();
+        player_count := prep->get_current_player_count();
+
+        ready_line := body_bg->cut_top(36)->inset(2, 8, 2, 8);
+        ready_ts := ts;
+        ready_ts.size = 26;
+        ready_ts.halign = .LEFT;
+        ready_ts.valign = .CENTER;
+        ready_ts.color = {0.82, 0.9, 1.0, 1.0};
+        UI.text(ready_line, ready_ts, "Crew Ready: %/%", {ready_count, player_count});
+
+        req_title := body_bg->cut_top(44);
+        UI.text(req_title, section_ts, "Required Supplies");
+
+        if requirements.count <= 0 {
+            unavailable_rect := body_bg->cut_top(70)->inset(2, 8, 2, 8);
+            unavailable_ts := ts;
+            unavailable_ts.size = 28;
+            unavailable_ts.halign = .LEFT;
+            unavailable_ts.valign = .CENTER;
+            unavailable_ts.color = {1.0, 0.55, 0.55, 1.0};
+            UI.text(unavailable_rect, unavailable_ts, "No voyage prep requirements are configured here yet.");
+        }
+
+        for requirement: requirements {
+            line := body_bg->cut_top(70)->inset(2, 2, 2, 8);
+            defn := ItemManager.TryFindItem(requirement.item_id);
+            stockpiled := prep->get_stockpile_count(requirement.item_id);
+            have: s64 = 0;
+            display_name := requirement.item_id;
+            icon: Texture_Asset;
+
+            if defn != null {
+                display_name = defn->get_name();
+                have = BeaconSystem.get_item_count_in_inventory(player.default_inventory, defn);
+                icon = defn->get_icon();
+            }
+
+            line_ts := ts;
+            line_ts.size = 28;
+            line_ts.halign = .LEFT;
+            line_ts.valign = .CENTER;
+            line_ts.color = {1, 0.5, 0.5, 1};
+            if stockpiled >= requirement.count {
+                line_ts.color = {0.65, 1, 0.65, 1};
+            }
+
+            deposit_button_rect := line->cut_right(270)->inset(4, 4, 4, 12);
+            text_rect := line->inset(0, 8, 0, 0);
+            if icon != null {
+                icon_rect := text_rect->cut_left(40)->fit_aspect(icon->get_aspect());
+                UI.quad(icon_rect, icon);
+                text_rect->cut_left(8);
+            }
+            UI.text(text_rect, line_ts, "% Stockpile: %/% (You: %)", {display_name, stockpiled, requirement.count, have});
+
+            button_bs := bs;
+            button_ts := ts;
+            button_ts.size = 25;
+            button_ts.halign = .CENTER;
+            button_ts.valign = .CENTER;
+
+            requirement_met := stockpiled >= requirement.count;
+            can_deposit := have > 0 && !requirement_met;
+            button_label := format_string("Deposit 1 %", {display_name});
+            if requirement_met {
+                button_label = "MAX";
+                button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_8.png");
+            }
+            else if have <= 0 {
+                button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
+            }
+            else {
+                button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_2.png");
+            }
+            UI.push_id("voyage_prep_deposit_%", {requirement.item_id});
+            UI.push_disabled(!can_deposit);
+            if UI.button(deposit_button_rect, button_bs, button_ts, button_label).clicked {
+                if VoyagePrepSystem.try_deposit_item(player, prep, requirement.item_id) {
+                    game_sfx_play(.CRAFT_SUCCESS, player.entity);
+                } else {
+                    game_sfx_play(.UI_ERROR, player.entity);
+                }
+            }
+            UI.pop_disabled();
+            UI.pop_id();
+        }
+
+        status_title := body_bg->cut_top(44);
+        UI.text(status_title, section_ts, "Voyage Status");
+
+        status_rect := body_bg->cut_top(84)->inset(4, 8, 4, 8);
+        status_ts := ts;
+        status_ts.size = 28;
+        status_ts.halign = .LEFT;
+        status_ts.valign = .TOP;
+        status_ts.word_wrap = true;
+        status_ts.color = {1.0, 0.88, 0.7, 1.0};
+        if prep->is_complete() {
+            status_ts.color = {0.65, 1.0, 0.65, 1.0};
+            UI.text(status_rect, status_ts, "Voyage prep complete. Queue up with the crew to launch.");
+        } else {
+            UI.text(status_rect, status_ts, "Fill every supply category before the crew can ready up.");
+        }
+
+        action_row := body_bg->bottom_center_rect()->grow(36, 180, 36, 180)->offset(0, 46);
+        close_rect := action_row->offset(-200, 0);
+        ready_rect := action_row->offset(200, 0);
+
+        close_ts := ts;
+        close_ts.size = 30;
+        close_ts.halign = .CENTER;
+
+        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
+        if UI.button(close_rect, bs, close_ts, "Close").clicked {
+            game_sfx_play(.UI_CLICK, player.entity);
+            VoyagePrepSystem.close_modal(player);
+            return;
+        }
+
+        if prep->is_complete() {
+            ready_button_bs := bs;
+            ready_button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_5.png");
+            ready_button_ts := close_ts;
+
+            already_ready := prep->is_player_ready(player);
+            button_label := "Ready?";
+            if already_ready {
+                button_label = "Ready!";
+                ready_button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_2.png");
+            }
+
+            UI.push_disabled(already_ready);
+            if UI.button(ready_rect, ready_button_bs, ready_button_ts, button_label).clicked {
+                if VoyagePrepSystem.try_ready_player(player, prep) {
+                    game_sfx_play(.CRAFT_SUCCESS, player.entity);
+                } else {
+                    game_sfx_play(.UI_ERROR, player.entity);
+                }
+            }
+            UI.pop_disabled();
+        }
+    }
+}

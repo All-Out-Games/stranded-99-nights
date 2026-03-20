@@ -26,7 +26,7 @@
     "mob_prefab_path": "MobTentacle.prefab",
     "spawn_radius": 10,
     "max_mobs": 2,
-    "spawn_rate_seconds": 8
+    "spawn_rate_seconds": 12
   }
 },
 {
