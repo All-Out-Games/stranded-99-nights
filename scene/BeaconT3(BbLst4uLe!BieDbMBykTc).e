@@ -3,7 +3,7 @@
 401026161238750 1773870365710894300
 {
   "name": "BeaconT3",
-  "local_enabled": true,
+  "local_enabled": false,
   "local_position": {
     "X": 260
   },

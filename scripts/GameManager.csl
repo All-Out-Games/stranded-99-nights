@@ -264,6 +264,33 @@ island :: proc(player: Player, island_index: int) {
     log_info("% set island to % via /island", {player->get_username(), island_index});
 } @chat_command @youtuber
 
+beacon :: proc(player: Player, beacon_level: int) {
+    if !Game.is_server() return;
+    if player == null return;
+
+    if beacon_level < 1 || beacon_level > Beacon.MAX_LEVEL {
+        Notifier.notify(player, "Beacon level must be between 1 and %.", {Beacon.MAX_LEVEL});
+        return;
+    }
+
+    updated_count: s64 = 0;
+    next_level := beacon_level.(s64);
+    foreach active_beacon: component_iterator(Beacon) {
+        if active_beacon == null continue;
+
+        active_beacon->set_beacon_level(next_level);
+        updated_count += 1;
+    }
+
+    if updated_count <= 0 {
+        Notifier.notify(player, "Beacon is unavailable.");
+        return;
+    }
+
+    Notifier.notify(player, "Set Beacon level to %.", {next_level});
+    log_info("% set beacon level to % via /beacon", {player->get_username(), next_level});
+} @chat_command @youtuber
+
 GameManager :: class : Component {
 
     damage_numbers: [..]DamageNumbers;
@@ -335,7 +362,7 @@ GameManager :: class : Component {
     ISLAND_TRANSITION_PLAYER_SPAWN_RADIUS :: 4.0;
     ISLAND_TRANSITION_PLAYER_SPAWN_SAMPLE_ATTEMPTS :: 8;
     ISLAND_TRANSITION_FREEZE_REASON :: "island_transition";
-    VOYAGE_DURATION_SECONDS :: 90.0;
+    VOYAGE_DURATION_SECONDS :: 45.0;
     VOYAGE_STARTING_HEALTH :: 300.0;
     GAME_OVER_FADE_OUT_SECONDS :: 1.0;
     GAME_OVER_BLACK_HOLD_SECONDS :: 1.25;
@@ -365,6 +392,7 @@ GameManager :: class : Component {
     game_over_sequence_restart_done: bool;
     game_over_sequence_start_time: float;
     game_over_nights_lasted: s64;
+    picked_up_log_page_indices: [..]int;
 
     ao_start :: method() {
         if g_game_manager != null && g_game_manager != this {
@@ -639,6 +667,29 @@ GameManager :: class : Component {
         return nights;
     }
 
+    get_night_survival_credit_amount :: method() -> s64 {
+        if Island == 2 return 2;
+        return 1;
+    }
+
+    get_night_survival_reward_amount :: method() -> s64 {
+        return this->get_night_survival_credit_amount();
+    }
+
+    apply_night_survival_progress :: method() {
+        credit_amount := this->get_night_survival_credit_amount();
+        if credit_amount <= 0 return;
+
+        previous_nights := nights;
+        nights += credit_amount;
+
+        survived_night := previous_nights + 1;
+        while survived_night <= nights {
+            this->increment_global_night_survival_count(survived_night);
+            survived_night += 1;
+        }
+    }
+
     is_voyage_damage_redirect_active :: method() -> bool {
         return current_phase == .IN_ROUND && voyage_state == .VOYAGING;
     }
@@ -742,6 +793,56 @@ GameManager :: class : Component {
         teleport_player_to_phase_spawn(player);
     }
 
+    has_log_page_for_run :: method(log_index: int) -> bool {
+        if log_index <= 0 return false;
+
+        for acquired_index: picked_up_log_page_indices {
+            if acquired_index == log_index {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    acquire_log_page_for_run :: method(log_index: int) -> bool {
+        if log_index <= 0 return false;
+        if this->has_log_page_for_run(log_index) return false;
+
+        picked_up_log_page_indices->append(log_index);
+        i := picked_up_log_page_indices.count - 1;
+        while i > 0 {
+            prev_index := i - 1;
+            if picked_up_log_page_indices[prev_index] <= picked_up_log_page_indices[i] {
+                break;
+            }
+
+            swap := picked_up_log_page_indices[prev_index];
+            picked_up_log_page_indices[prev_index] = picked_up_log_page_indices[i];
+            picked_up_log_page_indices[i] = swap;
+            i = prev_index;
+        }
+        return true;
+    }
+
+    get_picked_up_log_page_count :: method() -> int {
+        return picked_up_log_page_indices.count;
+    }
+
+    get_picked_up_log_page_at :: method(display_index: int) -> int, bool {
+        if display_index < 0 return 0, false;
+        if display_index >= picked_up_log_page_indices.count return 0, false;
+        return picked_up_log_page_indices[display_index], true;
+    }
+
+    reset_log_pages_for_full_restart :: method() {
+        picked_up_log_page_indices->clear();
+
+        foreach log_page: component_iterator(LogPage) {
+            if log_page == null continue;
+            log_page->reset_for_run_restart();
+        }
+    }
+
     teleport_player_to_phase_spawn :: method(player: Player) {
         if player == null return;
         if player.entity == null return;
@@ -756,6 +857,25 @@ GameManager :: class : Component {
         }
 
         teleport_player_to_lobby_spawn(player);
+    }
+
+    get_respawn_position_for_player :: method(player: Player) -> v2 {
+        if current_phase == .IN_ROUND {
+            if should_player_spawn_in_voyage_scene() {
+                return get_voyage_scene_position();
+            }
+            if player != null && player.entity != null {
+                return sample_player_position_near_beacon(player);
+            }
+        }
+
+        if lobby_spawn != null {
+            return lobby_spawn.world_position;
+        }
+        if island1_spawn != null {
+            return island1_spawn.world_position;
+        }
+        return entity.world_position;
     }
 
     teleport_player_to_lobby_spawn :: method(player: Player) {
@@ -782,18 +902,20 @@ GameManager :: class : Component {
 
     teleport_player_near_beacon_for_round :: method(player: Player) {
         if player == null || player.entity == null return;
-        player.entity->set_local_position(sample_island_transition_player_position(player));
+        player.entity->set_local_position(sample_player_position_near_beacon(player));
     }
 
-    teleport_player_to_voyage_scene :: method(player: Player) {
-        if player == null || player.entity == null return;
-
+    get_voyage_scene_position :: method() -> v2 {
         voyage_pos := v2{0.0, 0.0};
         if VoyageScene != null {
             voyage_pos = VoyageScene.world_position;
         }
+        return voyage_pos;
+    }
 
-        player.entity->set_local_position(voyage_pos);
+    teleport_player_to_voyage_scene :: method(player: Player) {
+        if player == null || player.entity == null return;
+        player.entity->set_local_position(get_voyage_scene_position());
     }
 
     reset_beacons_for_round :: method() {
@@ -1041,6 +1163,40 @@ GameManager :: class : Component {
         }
     }
 
+    get_beacon_arrow_target :: method() -> v2, bool {
+        foreach beacon: component_iterator(Beacon) {
+            if beacon == null continue;
+            if beacon.entity == null continue;
+            return beacon.entity.world_position, true;
+        }
+
+        if island1_spawn != null {
+            return island1_spawn.world_position, true;
+        }
+
+        return {0.0, 0.0}, false;
+    }
+
+    get_current_beacon_position :: method() -> v2 {
+        foreach beacon: component_iterator(Beacon) {
+            if beacon == null continue;
+            if beacon.entity == null continue;
+            return beacon.entity.world_position;
+        }
+
+        foreach beacon_spawn: component_iterator(BeaconSpawn) {
+            if beacon_spawn == null continue;
+            if beacon_spawn.entity == null continue;
+            return beacon_spawn.entity.world_position;
+        }
+
+        island_entity := get_island_entity(loaded_island);
+        if island_entity != null {
+            return island_entity.world_position;
+        }
+        return entity.world_position;
+    }
+
     get_island_transition_beacon_position :: method() -> v2 {
         foreach beacon_spawn: component_iterator(BeaconSpawn) {
             if beacon_spawn == null continue;
@@ -1059,6 +1215,53 @@ GameManager :: class : Component {
             return island_entity.world_position;
         }
         return entity.world_position;
+    }
+
+    sample_player_position_near_beacon :: method(player: Player) -> v2 {
+        center := get_current_beacon_position();
+        rng: u64 = rng_seed(player.entity.id);
+        advance_count := max(loaded_island, 1);
+        angle: float = 0.0;
+        radius_t: float = 0.0;
+        advance_step: int = 0;
+        while advance_step < advance_count {
+            angle = rng_range_float(ref rng, 0.0, 6.2831853);
+            radius_t = sqrt(rng_range_float(ref rng, 0.0, 1.0));
+            advance_step += 1;
+        }
+
+        desired_pos := v2{
+            center.x + cos(angle) * radius_t * ISLAND_TRANSITION_PLAYER_SPAWN_RADIUS,
+            center.y + sin(angle) * radius_t * ISLAND_TRANSITION_PLAYER_SPAWN_RADIUS
+        };
+
+        navmesh := player_navmesh;
+        if navmesh == null {
+            return desired_pos;
+        }
+
+        hint_as_int: int = 0;
+        attempt: int = 0;
+        while attempt < ISLAND_TRANSITION_PLAYER_SPAWN_SAMPLE_ATTEMPTS {
+            spawn_pos: v2;
+            if navmesh->try_find_closest_point_on_navmesh(desired_pos, ref spawn_pos, ref hint_as_int) {
+                return spawn_pos;
+            }
+
+            angle = rng_range_float(ref rng, 0.0, 6.2831853);
+            radius_t = sqrt(rng_range_float(ref rng, 0.0, 1.0));
+            desired_pos = v2{
+                center.x + cos(angle) * radius_t * ISLAND_TRANSITION_PLAYER_SPAWN_RADIUS,
+                center.y + sin(angle) * radius_t * ISLAND_TRANSITION_PLAYER_SPAWN_RADIUS
+            };
+            attempt += 1;
+        }
+
+        snapped_center: v2;
+        if navmesh->try_find_closest_point_on_navmesh(center, ref snapped_center, ref hint_as_int) {
+            return snapped_center;
+        }
+        return center;
     }
 
     sample_island_transition_player_position :: method(player: Player) -> v2 {
@@ -1230,8 +1433,7 @@ GameManager :: class : Component {
             day_night_phase_time_seconds = 0.0;
             warned_player_user_ids_for_current_day->clear();
             warned_player_entities_for_current_day->clear();
-            nights += 1;
-            this->increment_global_night_survival_count(nights);
+            apply_night_survival_progress();
             begin_day_night_blend_transition();
             grant_night_survival_currency_rewards();
             revive_dead_players_for_day_start();
@@ -1247,22 +1449,25 @@ GameManager :: class : Component {
         // Currency transactions should only execute on the server.
         if !Game.is_server() return;
 
+        reward_amount := this->get_night_survival_reward_amount();
+        if reward_amount <= 0 return;
+
         rewarded_count: s64 = 0;
         foreach p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
             if p->is_dead_for_night_state() continue;
 
-            Economy.deposit_currency(p, SURVIVED_NIGHT_REWARD_CURRENCY, SURVIVED_NIGHT_REWARD_AMOUNT);
+            Economy.deposit_currency(p, SURVIVED_NIGHT_REWARD_CURRENCY, reward_amount);
             //Notifier.notify(p, SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT, {
-              //  SURVIVED_NIGHT_REWARD_AMOUNT,
+              //  reward_amount,
               //  SURVIVED_NIGHT_REWARD_CURRENCY
             //});
             rewarded_count += 1;
         }
 
         log_info("Granted % % currency to % night survivor(s).", {
-            SURVIVED_NIGHT_REWARD_AMOUNT,
+            reward_amount,
             SURVIVED_NIGHT_REWARD_CURRENCY,
             rewarded_count
         });
@@ -1337,6 +1542,7 @@ GameManager :: class : Component {
             p->reset_for_game_restart();
         }
 
+        reset_log_pages_for_full_restart();
         reset_beacons_for_full_restart();
         reset_voyage_preps_for_full_restart();
         reset_game_state();
@@ -1750,8 +1956,20 @@ GameManager :: class : Component {
         }
 
         message := format_string(PLAYER_DOWNED_NOTIFICATION_TEXT, {name});
-        show_broadcast_notification(message);
-        log_info("Broadcasted downed notification for %.", {name});
+        if Game.is_server() {
+            sent_to_any_player := false;
+            foreach p: component_iterator(Player) {
+                if p == null continue;
+                if p.entity == null continue;
+
+                Notifier.notify(p, message);
+                sent_to_any_player = true;
+            }
+
+            if sent_to_any_player {
+                log_info("Sent downed notification for %.", {name});
+            }
+        }
     }
 
     update_night_event_notifications :: method() {

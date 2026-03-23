@@ -1,0 +1,103 @@
+INTERIOR_FADE_ALPHA :: 0.2;
+INTERIOR_DEFAULT_RADIUS :: 6.0;
+
+Interior :: class : Component {
+    sprite_renderers: [..]Sprite_Renderer @ao_serialize;
+    radius: float @ao_serialize;
+    center_offset: v2 @ao_serialize;
+
+    base_alphas: [..]float;
+    is_faded: bool;
+
+    ao_start :: method() {
+        if radius <= 0.0 {
+            radius = INTERIOR_DEFAULT_RADIUS;
+        }
+
+        cache_base_alphas();
+        update_local_fade_state();
+    }
+
+    ao_update :: method(dt: float) {
+        update_local_fade_state();
+    }
+
+    ao_on_state_sync :: method() {
+        update_local_fade_state();
+    }
+
+    ao_end :: method() {
+        restore_base_alphas();
+    }
+
+    cache_base_alphas :: method() {
+        base_alphas->clear();
+
+        for sprite_renderer: sprite_renderers {
+            alpha := 1.0;
+            if sprite_renderer != null {
+                alpha = sprite_renderer.color.w;
+            }
+            base_alphas->append(alpha);
+        }
+    }
+
+    update_local_fade_state :: method() {
+        if Game.is_server() return;
+        if entity == null return;
+
+        should_fade := false;
+        if local_player, ok := Game.get_local_player(); ok {
+            if local_player != null && local_player.entity != null {
+                fade_center := entity.world_position + center_offset;
+                to_player := local_player.entity.world_position - fade_center;
+                radius_sq := radius * radius;
+                should_fade = length_squared(to_player) <= radius_sq;
+            }
+        }
+
+        if should_fade {
+            apply_fade_alpha();
+        } else if is_faded {
+            restore_base_alphas();
+        }
+    }
+
+    apply_fade_alpha :: method() {
+        i: s64 = 0;
+        while i < sprite_renderers.count {
+            sprite_renderer := sprite_renderers[i];
+            if sprite_renderer != null && i < base_alphas.count {
+                sprite_renderer.color = {
+                    sprite_renderer.color.x,
+                    sprite_renderer.color.y,
+                    sprite_renderer.color.z,
+                    min(base_alphas[i], INTERIOR_FADE_ALPHA)
+                };
+                sprite_renderer.layer = 1;
+            }
+            i += 1;
+        }
+
+        is_faded = true;
+    }
+
+    restore_base_alphas :: method() {
+        i: s64 = 0;
+        while i < sprite_renderers.count {
+            sprite_renderer := sprite_renderers[i];
+            if sprite_renderer != null && i < base_alphas.count {
+                sprite_renderer.color = {
+                    sprite_renderer.color.x,
+                    sprite_renderer.color.y,
+                    sprite_renderer.color.z,
+                    base_alphas[i]
+                };
+                sprite_renderer.layer = 0;
+            }
+            i += 1;
+        }
+
+        is_faded = false;
+    }
+}

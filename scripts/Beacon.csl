@@ -26,7 +26,7 @@ Beacon :: class : Interactable {
     upgrade_feedback_sequence: s64;
     seen_upgrade_feedback_sequence: s64;
 
-    MAX_LEVEL :: 3;
+    MAX_LEVEL :: 4;
     FOG4_DISABLE_LEVEL :: 4;
     DEFAULT_STARTING_FUEL :: 3;
     DEFAULT_FUEL_BURN_INTERVAL_SECONDS :: 15.0;
@@ -214,6 +214,17 @@ Beacon :: class : Interactable {
         apply_dynamic_safety_radius_state();
     }
 
+    set_beacon_level :: method(new_level: s64) {
+        next_level := clamp(new_level, 1, MAX_LEVEL).(s64);
+        if level == next_level return;
+
+        level = next_level;
+        apply_level_world_state();
+        apply_dynamic_safety_radius_state();
+        refresh_prompt_text();
+        rebuild_game_navmesh();
+    }
+
     tick_fuel_consumption :: method() {
         if fuel <= 0 {
             fuel = 0;
@@ -357,6 +368,7 @@ Beacon :: class : Interactable {
     get_upgrade_costs :: method() -> [..]Beacon_Upgrade_Cost {
         #static level2_costs: [..]Beacon_Upgrade_Cost;
         #static level3_costs: [..]Beacon_Upgrade_Cost;
+        #static level4_costs: [..]Beacon_Upgrade_Cost;
         #static initted: bool;
 
         if !initted {
@@ -364,13 +376,18 @@ Beacon :: class : Interactable {
             level2_costs->append(Beacon_Upgrade_Cost{"wood", 30});
             level2_costs->append(Beacon_Upgrade_Cost{"scrap", 15});
 
-            level3_costs->append(Beacon_Upgrade_Cost{"wood", 100});
-            level3_costs->append(Beacon_Upgrade_Cost{"scrap", 50});
-            level3_costs->append(Beacon_Upgrade_Cost{"fiber", 25});
+            level3_costs->append(Beacon_Upgrade_Cost{"wood", 50});
+            level3_costs->append(Beacon_Upgrade_Cost{"scrap", 30});
+            level3_costs->append(Beacon_Upgrade_Cost{"fiber", 20});
+
+            level4_costs->append(Beacon_Upgrade_Cost{"scrap", 50});
+            level4_costs->append(Beacon_Upgrade_Cost{"fiber", 50});
+            level4_costs->append(Beacon_Upgrade_Cost{"sulfur", 15});
         }
 
         if level == 1 return level2_costs;
         if level == 2 return level3_costs;
+        if level == 3 return level4_costs;
 
         empty: [..]Beacon_Upgrade_Cost;
         return empty;

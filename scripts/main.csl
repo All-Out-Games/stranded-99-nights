@@ -61,6 +61,7 @@ PLAYER_DEATH_BLACK_HOLD_SECONDS :: 2.0;
 PLAYER_DEATH_FADE_IN_SECONDS :: 2.0;
 PLAYER_DOWNED_DURATION_SECONDS :: 45.0;
 PLAYER_DOWNED_REVIVE_HEALTH :: 25.0;
+PLAYER_DOWNED_REVIVE_HOLD_SECONDS :: 1.25;
 PLAYER_DEATH_DROP_SELF_PICKUP_BLOCK_SECONDS :: 5.0;
 PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS :: 2.5;
 GHOST_HIDE_FROM_LIVING_REASON :: "ghost_hide_from_living";
@@ -85,10 +86,10 @@ lerp_towards :: proc(current: float, target: float, max_step: float) -> float {
     return current + (delta / abs(delta)) * step;
 }
 
-get_respawn_position :: proc() -> v2 {
+get_respawn_position :: proc(player: Player) -> v2 {
     manager := get_game_manager();
-    if manager != null && manager.island1_spawn != null {
-        return manager.island1_spawn.world_position;
+    if manager != null {
+        return manager->get_respawn_position_for_player(player);
     }
 
     spawn_entity := Scene.get_entity_by_name(ISLAND1_RESPAWN_ENTITY_NAME);
@@ -119,7 +120,7 @@ Player_Death_Effect :: class : Effect_Base {
             did_respawn = true;
             if Game.is_server() && player != null {
                 player.health = player.max_health;
-                player.entity->set_local_position(get_respawn_position());
+                player.entity->set_local_position(get_respawn_position(player));
             }
         }
 
@@ -173,7 +174,7 @@ Downed_Revive_Interactable :: class : Interactable {
             radius = 2.0;
         }
         if required_hold_time <= 0.0 {
-            required_hold_time = 0.35;
+            required_hold_time = PLAYER_DOWNED_REVIVE_HOLD_SECONDS;
         }
         prompt_offset = v2{0.0, 1.0};
     }
@@ -243,7 +244,7 @@ Player_Downed_Effect :: class : Effect_Base {
         player->set_ghost_mode_enabled(false);
         player.health = player.max_health;
         if player.entity != null {
-            player.entity->set_local_position(get_respawn_position());
+            player.entity->set_local_position(get_respawn_position(player));
         }
         remove_effect(false);
     }
@@ -327,6 +328,9 @@ Player :: class : Player_Base {
     active_beacon: Beacon;
     voyage_prep_ui_open: bool;
     active_voyage_prep: VoyagePrep;
+    codex_ui_open: bool;
+    log_page_ui_open: bool;
+    active_log_page_index: int;
     death_drop_pickup_blocks: [..]Death_Drop_Pickup_Block;
     is_ghost_mode: bool;
     ghost_current_animation_name: string;
@@ -356,6 +360,9 @@ Player :: class : Player_Base {
         active_beacon = null;
         voyage_prep_ui_open = false;
         active_voyage_prep = null;
+        codex_ui_open = false;
+        log_page_ui_open = false;
+        active_log_page_index = 0;
         is_ghost_mode = false;
         ghost_current_animation_name = "";
         ghost_last_world_position = entity.world_position;
@@ -372,6 +379,21 @@ Player :: class : Player_Base {
             }
         }
         setup_reusable_weapons_player_state_machine(this);
+    }
+
+    close_all_non_log_ui_modals :: method() {
+        crafting_ui_open = false;
+        beacon_ui_open = false;
+        active_beacon = null;
+        voyage_prep_ui_open = false;
+        active_voyage_prep = null;
+    }
+
+    close_all_ui_modals :: method() {
+        this->close_all_non_log_ui_modals();
+        codex_ui_open = false;
+        log_page_ui_open = false;
+        active_log_page_index = 0;
     }
 
     ao_update :: method(dt: float) {
@@ -420,88 +442,94 @@ Player :: class : Player_Base {
     this->update_ghost_facing_from_movement();
     dead_for_night := this->is_dead_for_night_state();
     if dead_for_night {
-        crafting_ui_open = false;
-        beacon_ui_open = false;
-        active_beacon = null;
-        voyage_prep_ui_open = false;
-        active_voyage_prep = null;
+        this->close_all_ui_modals();
     }
 
     this->draw_night_tint_overlay();
 
-    draw_coin_currency_hud(this);
+    if this->is_local_or_server() && log_page_ui_open {
+        LogPageSystem.draw_ui(this);
+    } else if this->is_local_or_server() && codex_ui_open {
+        LogPageSystem.draw_codex_ui(this);
+    } else {
+        draw_coin_currency_hud(this);
 
-    if is_local_or_server() && !dead_for_night {
-        // Draw hotbar first so held-item abilities react immediately on selection change.
-        options := Inventory_Draw_Options.default();
-        hotbar := Items.draw_hotbar(this, default_inventory, options);
-        handle_equipped_item_changing(hotbar.selected_item_index);
+        if is_local_or_server() && !dead_for_night {
+            // Draw hotbar first so held-item abilities react immediately on selection change.
+            options := Inventory_Draw_Options.default();
+            hotbar := Items.draw_hotbar(this, default_inventory, options);
+            handle_equipped_item_changing(hotbar.selected_item_index);
 
-        if player_is_holding_healing_item(this) {
-            draw_ability_button(this, Eat_Fish_Ability, 0);
-        } else {
-            // Primary ability: default melee unless a weapon overrides it.
-            if equipped_weapon_type != .NONE {
-                config := get_weapon_config(equipped_weapon_type);
-                switch config.fire_mode {
-                    case .CONTINUOUS:  { draw_ability_button(this, Continuous_Fire_Ability, 0); }
-                    case .SINGLE_SHOT: { draw_ability_button(this, Single_Shot_Ability, 0); }
-                    case .SPREAD:      { draw_ability_button(this, Spread_Shot_Ability, 0); }
-                    case .LOBBED:      { draw_ability_button(this, Lobbed_Shot_Ability, 0); }
-                    case .BEAM:        { draw_ability_button(this, Beam_Ability, 0); }
-                    case .SPECIAL:     { draw_ability_button(this, Special_Ability, 0); }
-                    case .MELEE:       { draw_ability_button(this, Melee_Ability, 0); }
-                }
+            if player_is_holding_healing_item(this) {
+                draw_ability_button(this, Eat_Fish_Ability, 0);
             } else {
-                draw_ability_button(this, Melee_Ability, 0);
-            }
-        }
-
-        // Always-available secondary movement ability.
-        draw_ability_button(this, Dodge_Roll_Ability, 1);
-
-        manager := get_game_manager();
-        if manager != null && manager->can_player_force_start_from_lobby(this) {
-            draw_ability_button(this, Private_Server_Start_Ability, 5);
-        }
-
-        dropped_item: Dropped_Item;
-        if Dropped_Item.handle_dropped_item(hotbar, entity.world_position, ref dropped_item) {
-            manager = get_game_manager();
-            drop_navmesh: Navmesh;
-            if manager != null {
-                drop_navmesh = manager.player_navmesh;
+                // Primary ability: default melee unless a weapon overrides it.
+                if equipped_weapon_type != .NONE {
+                    config := get_weapon_config(equipped_weapon_type);
+                    switch config.fire_mode {
+                        case .CONTINUOUS:  { draw_ability_button(this, Continuous_Fire_Ability, 0); }
+                        case .SINGLE_SHOT: { draw_ability_button(this, Single_Shot_Ability, 0); }
+                        case .SPREAD:      { draw_ability_button(this, Spread_Shot_Ability, 0); }
+                        case .LOBBED:      { draw_ability_button(this, Lobbed_Shot_Ability, 0); }
+                        case .BEAM:        { draw_ability_button(this, Beam_Ability, 0); }
+                        case .SPECIAL:     { draw_ability_button(this, Special_Ability, 0); }
+                        case .MELEE:       { draw_ability_button(this, Melee_Ability, 0); }
+                    }
+                } else {
+                    draw_ability_button(this, Melee_Ability, 0);
+                }
             }
 
-            drop_rng := rng_seed_time();
-            dropped_item->do_spawn_animation(ref drop_rng, drop_navmesh);
-            this->register_pickup_block(dropped_item, PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS);
-            game_sfx_play(.ITEM_DROP, entity);
+            // Always-available secondary movement ability.
+            draw_ability_button(this, Dodge_Roll_Ability, 1);
+
+            manager := get_game_manager();
+            if manager != null && manager->can_player_force_start_from_lobby(this) {
+                draw_ability_button(this, Private_Server_Start_Ability, 5);
+            }
+
+            dropped_item: Dropped_Item;
+            if Dropped_Item.handle_dropped_item(hotbar, entity.world_position, ref dropped_item) {
+                manager = get_game_manager();
+                drop_navmesh: Navmesh;
+                if manager != null {
+                    drop_navmesh = manager.player_navmesh;
+                }
+
+                drop_rng := rng_seed_time();
+                dropped_item->do_spawn_animation(ref drop_rng, drop_navmesh);
+                this->register_pickup_block(dropped_item, PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS);
+                game_sfx_play(.ITEM_DROP, entity);
+            }
+
+            // Crafting UI and actions are player-scoped state.
+            CraftingSystem.draw_ui(this);
+            BeaconSystem.draw_ui(this);
+            VoyagePrepSystem.draw_ui(this);
         }
 
-        // Crafting UI and actions are player-scoped state.
-        CraftingSystem.draw_ui(this);
-        BeaconSystem.draw_ui(this);
-        VoyagePrepSystem.draw_ui(this);
-    }
+        if !Game.is_server() {
+            draw_health_bar(this); // from weapons_ui_helpers.csl
+        }
 
-    if !Game.is_server() {
-        draw_health_bar(this); // from weapons_ui_helpers.csl
-    }
+        if this->is_local_or_server() && !crafting_ui_open && !beacon_ui_open && !voyage_prep_ui_open {
+            this->draw_day_night_clock();
+        }
 
-    if this->is_local_or_server() && !crafting_ui_open && !beacon_ui_open && !voyage_prep_ui_open {
-        this->draw_day_night_clock();
-    }
+        if this->is_local_or_server() {
+            this->draw_pre_night_beacon_arrow();
+            this->draw_supply_drop_arrow();
+        }
 
-    if this->is_local_or_server() {
-        this->draw_pre_night_beacon_arrow();
-        this->draw_supply_drop_arrow();
-    }
+        if this->is_local_or_server() && !dead_for_night && !crafting_ui_open && !beacon_ui_open && !voyage_prep_ui_open {
+            LogPageSystem.draw_codex_button(this);
+        }
 
-    if this->is_local_or_server() {
-        this->draw_lobby_waiting_text();
-        this->draw_round_start_intro();
-        draw_global_notification_banner(this);
+        if this->is_local_or_server() {
+            this->draw_lobby_waiting_text();
+            this->draw_round_start_intro();
+            draw_global_notification_banner(this);
+        }
     }
    }
 
@@ -903,7 +931,7 @@ Player :: class : Player_Base {
         if !is_ghost_mode return;
         this->set_ghost_mode_enabled(false);
         health = max_health;
-        entity->set_local_position(get_respawn_position());
+        entity->set_local_position(get_respawn_position(this));
         this->reset_death_animation();
     }
 
@@ -991,7 +1019,7 @@ Player :: class : Player_Base {
             death_effect := entity.active_effect.(Player_Death_Effect);
             death_effect->remove_effect(true);
             health = max_health;
-            entity->set_local_position(get_respawn_position());
+            entity->set_local_position(get_respawn_position(this));
         } else {
             health = max_health;
             this->reset_death_animation();
@@ -1004,11 +1032,7 @@ Player :: class : Player_Base {
         equipped_item_def = null;
         last_selected_index = -1;
         this->set_mouse_ik_enabled(false);
-        crafting_ui_open = false;
-        beacon_ui_open = false;
-        active_beacon = null;
-        voyage_prep_ui_open = false;
-        active_voyage_prep = null;
+        this->close_all_ui_modals();
         death_drop_pickup_blocks->clear();
         this->clear_inventory_for_restart();
     }
@@ -1316,14 +1340,16 @@ Player :: class : Player_Base {
         manager := get_game_manager();
         if manager == null return;
         if !manager->is_night_warning_window_active() return;
-        if manager.island1_spawn == null return;
         if entity == null return;
 
-        to_spawn := manager.island1_spawn.world_position - entity.world_position;
+        target_pos, has_target := manager->get_beacon_arrow_target();
+        if !has_target return;
+
+        to_spawn := target_pos - entity.world_position;
         hide_dist_sq := PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE * PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE;
         if length_squared(to_spawn) <= hide_dist_sq return;
 
-        DrawArrowToPosition(this, manager.island1_spawn.world_position);
+        DrawArrowToPosition(this, target_pos);
     }
 
     draw_supply_drop_arrow :: method() {

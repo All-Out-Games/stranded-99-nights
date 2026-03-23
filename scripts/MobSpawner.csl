@@ -1,5 +1,6 @@
 MobSpawner :: class : Component {
     mob_prefab_path: string @ao_serialize;
+    IslandIndex: int @ao_serialize;
     spawn_navmesh: Navmesh @ao_serialize;
     spawn_radius: float @ao_serialize;
     max_mobs: s64 @ao_serialize;
@@ -20,6 +21,7 @@ MobSpawner :: class : Component {
     temporary_spawn_cap_bonus: s64;
 
     ao_start :: method() {
+        if IslandIndex == 0 { IslandIndex = 1; }
         if spawn_radius <= 0.0 { spawn_radius = 6.0; }
         if max_mobs < 0 { max_mobs = 0; }
         if spawn_rate_seconds < 0.0 { spawn_rate_seconds = 0.0; }
@@ -35,6 +37,7 @@ MobSpawner :: class : Component {
 
         if !Game.is_server() return;
 
+        if !is_current_island_active() return;
         if NightOnly && !can_spawn_night_only_mobs() return;
 
         spawn_to_target_immediately(max_mobs);
@@ -44,6 +47,15 @@ MobSpawner :: class : Component {
         if !Game.is_server() return;
 
         prune_spawned_mobs();
+
+        if !is_current_island_active() {
+            if spawned_mobs.count > 0 {
+                destroy_all_spawned_mobs();
+            }
+            respawn_timer_active = false;
+            respawn_timer_remaining_seconds = 0.0;
+            return;
+        }
 
         if NightOnly && !can_spawn_night_only_mobs() {
             if spawned_mobs.count > 0 {
@@ -138,7 +150,17 @@ MobSpawner :: class : Component {
     force_fill_to_current_cap :: method() {
         if !Game.is_server() return;
         prune_spawned_mobs();
+        if !is_current_island_active() return;
         spawn_to_target_immediately(get_target_mob_cap());
+    }
+
+    is_current_island_active :: method() -> bool {
+        manager := get_game_manager();
+        if manager == null return false;
+        if IslandIndex == -1 {
+            return manager->is_voyage_damage_redirect_active();
+        }
+        return manager.Island == IslandIndex;
     }
 
     prune_spawned_mobs :: method() {

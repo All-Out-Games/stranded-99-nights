@@ -24,9 +24,10 @@
   "internal_component_type": "MobSpawner",
   "data": {
     "mob_prefab_path": "MobTentacle.prefab",
+    "IslandIndex": -1,
     "spawn_radius": 10,
     "max_mobs": 2,
-    "spawn_rate_seconds": 12
+    "spawn_rate_seconds": 7
   }
 },
 {

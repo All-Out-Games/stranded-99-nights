@@ -1,0 +1,300 @@
+log_page_texture_path :: proc(log_index: int) -> string {
+    return format_string("Logs/Log%.png", {log_index});
+}
+
+LogPageSystem :: struct {
+    open_page_modal :: proc(player: Player, log_index: int, keep_codex_open: bool = false) {
+        if player == null return;
+        if log_index <= 0 return;
+
+        player->close_all_non_log_ui_modals();
+        player.codex_ui_open = keep_codex_open;
+        player.log_page_ui_open = true;
+        player.active_log_page_index = log_index;
+    }
+
+    close_page_modal :: proc(player: Player) {
+        if player == null return;
+        player.log_page_ui_open = false;
+        player.active_log_page_index = 0;
+    }
+
+    open_codex :: proc(player: Player) {
+        if player == null return;
+
+        player->close_all_non_log_ui_modals();
+        player.codex_ui_open = true;
+        player.log_page_ui_open = false;
+        player.active_log_page_index = 0;
+    }
+
+    close_codex :: proc(player: Player) {
+        if player == null return;
+        player.codex_ui_open = false;
+    }
+
+    draw_codex_button :: proc(player: Player) {
+        if player == null return;
+
+        manager := get_game_manager();
+        if manager == null return;
+
+        page_count := manager->get_picked_up_log_page_count();
+        if page_count <= 0 return;
+
+        bs := UI.default_button_settings();
+        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_5.png");
+        bs.press_scaling = 0.35;
+
+        ts := UI.default_text_settings();
+        ts.size = 28;
+        ts.halign = .CENTER;
+        ts.valign = .CENTER;
+        ts.do_outline = true;
+        ts.outline_thickness = 2;
+        ts.outline_color = {0, 0, 0, 1};
+
+        button_rect := UI.get_safe_screen_rect()->bottom_left_rect()->grow(34, 145, 34, 145)->offset(150, 165);
+        if UI.button(button_rect, bs, ts, format_string("Codex (%)", {page_count})).clicked {
+            LogPageSystem.open_codex(player);
+            game_sfx_play(.UI_CLICK, player.entity);
+        }
+    }
+
+    draw_codex_entry_button :: proc(player: Player, rect: Rect, log_index: int) {
+        if player == null return;
+        if log_index <= 0 return;
+
+        bs := UI.default_button_settings();
+        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_8.png");
+        bs.press_scaling = 0.35;
+
+        ts := UI.default_text_settings();
+        ts.size = 28;
+        ts.halign = .CENTER;
+        ts.valign = .CENTER;
+        ts.do_outline = true;
+        ts.outline_thickness = 2;
+        ts.outline_color = {0, 0, 0, 1};
+
+        UI.push_id("codex_log_%", {log_index});
+        defer UI.pop_id();
+        if UI.button(rect, bs, ts, format_string("Log Page %", {log_index})).clicked {
+            LogPageSystem.open_page_modal(player, log_index, true);
+            game_sfx_play(.UI_CLICK, player.entity);
+        }
+    }
+
+    draw_codex_ui :: proc(player: Player) {
+        if player == null return;
+        if !player.codex_ui_open return;
+
+        manager := get_game_manager();
+        if manager == null {
+            LogPageSystem.close_codex(player);
+            return;
+        }
+
+        page_count := manager->get_picked_up_log_page_count();
+        if page_count <= 0 {
+            LogPageSystem.close_codex(player);
+            return;
+        }
+
+        ts := UI.default_text_settings();
+        ts.do_outline = true;
+        ts.outline_color = {0, 0, 0, 1};
+        ts.outline_thickness = 2;
+
+        bs := UI.default_button_settings();
+        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
+        bs.press_scaling = 0.35;
+
+        UI.push_screen_draw_context();
+        defer UI.pop_draw_context();
+        UI.push_layer(2400);
+        defer UI.pop_layer();
+
+        UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {0, 0, 0, 0.78});
+
+        panel_rect := UI.get_safe_screen_rect()->center_rect()->grow(360, 540, 360, 540);
+        UI.quad(panel_rect, core_globals.white_sprite, {0.06, 0.07, 0.09, 0.96});
+        UI.quad(panel_rect->inset(5), core_globals.white_sprite, {0.12, 0.13, 0.18, 0.98});
+
+        content_rect := panel_rect->inset(20);
+        header_rect := content_rect->cut_top(70);
+        info_rect := content_rect->cut_top(50);
+        close_rect := content_rect->cut_bottom(92)->bottom_center_rect()->grow(36, 165, 36, 165)->offset(0, 8);
+        list_rect := content_rect;
+
+        title_ts := ts;
+        title_ts.size = 52;
+        title_ts.halign = .LEFT;
+        title_ts.valign = .CENTER;
+        UI.text(header_rect, title_ts, "Codex");
+
+        info_ts := ts;
+        info_ts.size = 26;
+        info_ts.halign = .LEFT;
+        info_ts.valign = .CENTER;
+        info_ts.color = {0.82, 0.9, 1.0, 1.0};
+        UI.text(info_rect, info_ts, "Recovered Pages This Run: %", {page_count});
+
+        display_index := 0;
+        while display_index < page_count {
+            row_rect := list_rect->cut_top(82)->inset(4);
+            left_rect := row_rect->subrect(0.0, 0.0, 0.5, 1.0)->inset(0, 6, 0, 0);
+            right_rect := row_rect->subrect(0.5, 0.0, 1.0, 1.0)->inset(0, 0, 0, 6);
+
+            left_log_index, has_left := manager->get_picked_up_log_page_at(display_index);
+            if has_left {
+                LogPageSystem.draw_codex_entry_button(player, left_rect, left_log_index);
+            }
+
+            if display_index + 1 < page_count {
+                right_log_index, has_right := manager->get_picked_up_log_page_at(display_index + 1);
+                if has_right {
+                    LogPageSystem.draw_codex_entry_button(player, right_rect, right_log_index);
+                }
+            }
+
+            display_index += 2;
+        }
+
+        close_ts := ts;
+        close_ts.size = 32;
+        close_ts.halign = .CENTER;
+        close_ts.valign = .CENTER;
+        if UI.button(close_rect, bs, close_ts, "Close").clicked {
+            LogPageSystem.close_codex(player);
+            game_sfx_play(.UI_CLICK, player.entity);
+        }
+    }
+
+    draw_ui :: proc(player: Player) {
+        if player == null return;
+        if !player.log_page_ui_open return;
+
+        log_index := player.active_log_page_index;
+        if log_index <= 0 {
+            LogPageSystem.close_page_modal(player);
+            return;
+        }
+
+        texture_path := log_page_texture_path(log_index);
+        page_texture := get_asset(Texture_Asset, texture_path);
+
+        ts := UI.default_text_settings();
+        ts.do_outline = true;
+        ts.outline_color = {0, 0, 0, 1};
+        ts.outline_thickness = 2;
+
+        bs := UI.default_button_settings();
+        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
+        bs.press_scaling = 0.35;
+
+        UI.push_screen_draw_context();
+        defer UI.pop_draw_context();
+        UI.push_layer(2500);
+        defer UI.pop_layer();
+
+        UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {0, 0, 0, 0.82});
+
+        panel_rect := UI.get_safe_screen_rect()->center_rect()->grow(505, 435, 505, 435);
+        UI.quad(panel_rect, core_globals.white_sprite, {0.08, 0.06, 0.04, 0.94});
+        UI.quad(panel_rect->inset(6), core_globals.white_sprite, {0.16, 0.12, 0.08, 0.96});
+
+        content_rect := panel_rect->inset(18);
+        close_rect := content_rect->cut_bottom(96)->bottom_center_rect()->grow(36, 165, 36, 165)->offset(0, 8);
+        page_rect := content_rect->inset(0, 0, 12, 0);
+
+        if page_texture != null {
+            UI.quad(page_rect->fit_aspect(page_texture->get_aspect()), page_texture);
+        } else {
+            UI.quad(page_rect, core_globals.white_sprite, {0.22, 0.18, 0.12, 1.0});
+
+            missing_ts := ts;
+            missing_ts.size = 34;
+            missing_ts.halign = .CENTER;
+            missing_ts.valign = .CENTER;
+            missing_ts.word_wrap = true;
+            UI.text(page_rect->inset(24), missing_ts, "Missing log page texture: %", {texture_path});
+        }
+
+        close_ts := ts;
+        close_ts.size = 32;
+        close_ts.halign = .CENTER;
+        close_ts.valign = .CENTER;
+        close_label := "Close";
+        if player.codex_ui_open {
+            close_label = "Back";
+        }
+        if UI.button(close_rect, bs, close_ts, close_label).clicked {
+            LogPageSystem.close_page_modal(player);
+            game_sfx_play(.UI_CLICK, player.entity);
+        }
+    }
+}
+
+LogPage :: class : Interactable {
+    log_index: int @ao_serialize;
+    is_collected: bool;
+
+    ao_start :: method() {
+        if log_index <= 0 {
+            log_index = 1;
+        }
+
+        this->set_listener(this);
+        this->set_text("Read Log");
+        prompt_offset = v2{0.0, 1.0};
+        if radius <= 0.0 {
+            radius = 1.8;
+        }
+
+        manager := get_game_manager();
+        if manager != null && manager->has_log_page_for_run(log_index) {
+            is_collected = true;
+            if entity != null {
+                entity->set_local_enabled(false);
+            }
+            return;
+        }
+
+        is_collected = false;
+        if entity != null {
+            entity->set_local_enabled(true);
+        }
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if player == null return false;
+        if is_collected return false;
+        if entity == null return false;
+        return entity->get_local_enabled();
+    }
+
+    on_interact :: method(player: Player) {
+        if player == null return;
+        if entity == null return;
+
+        manager := ensure_game_manager_exists();
+        if manager == null return;
+
+        did_acquire := manager->acquire_log_page_for_run(log_index);
+        is_collected = true;
+        entity->set_local_enabled(false);
+
+        if did_acquire {
+            LogPageSystem.open_page_modal(player, log_index);
+            game_sfx_play(.ITEM_PICKUP, entity);
+        }
+    }
+
+    reset_for_run_restart :: method() {
+        is_collected = false;
+        if entity != null {
+            entity->set_local_enabled(true);
+        }
+    }
+}
