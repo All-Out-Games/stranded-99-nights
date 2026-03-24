@@ -326,7 +326,7 @@ GameManager :: class : Component {
     SupplyDropPrefab: string @ao_serialize;
     Island1BossMob: string @ao_serialize;
     island1_boss_spawn_point: Entity @ao_serialize;
-    supply_drop_spawn_point: Entity @ao_serialize;
+    SupplyDrops: [..]Entity @ao_serialize;
     active_supply_drop_entity: Entity;
     active_island1_boss_entity: Entity;
     island1_boss_defeated_for_run: bool;
@@ -998,6 +998,13 @@ GameManager :: class : Component {
         if island_index < 0 return null;
         if island_index >= Islands.count return null;
         return Islands[island_index];
+    }
+
+    get_supply_drop_spawn_entity :: method(island_number: int) -> Entity {
+        supply_drop_index := island_number - 1;
+        if supply_drop_index < 0 return null;
+        if supply_drop_index >= SupplyDrops.count return null;
+        return SupplyDrops[supply_drop_index];
     }
 
     try_start_next_island_voyage :: method() -> bool {
@@ -1801,12 +1808,12 @@ GameManager :: class : Component {
             return;
         }
 
-        spawn_pos := entity.world_position;
-        if supply_drop_spawn_point != null {
-            spawn_pos = supply_drop_spawn_point.world_position;
-        } else if island1_spawn != null {
-            spawn_pos = island1_spawn.world_position;
+        supply_drop_spawn_entity := get_supply_drop_spawn_entity(Island);
+        if supply_drop_spawn_entity == null {
+            log_info("Night event Supply Drop skipped: island % has no assigned SupplyDrops entry.", {Island});
+            return;
         }
+        spawn_pos := supply_drop_spawn_entity.world_position;
 
         active_supply_drop_entity = Scene.instantiate(prefab);
         if active_supply_drop_entity == null {
@@ -1999,15 +2006,12 @@ GameManager :: class : Component {
             return active_supply_drop_entity.world_position, true;
         }
 
-        if supply_drop_spawn_point != null {
-            return supply_drop_spawn_point.world_position, true;
+        supply_drop_spawn_entity := get_supply_drop_spawn_entity(Island);
+        if supply_drop_spawn_entity != null {
+            return supply_drop_spawn_entity.world_position, true;
         }
 
-        if island1_spawn != null {
-            return island1_spawn.world_position, true;
-        }
-
-        return entity.world_position, true;
+        return {0.0, 0.0}, false;
     }
 
     is_night_warning_window_active :: method() -> bool {

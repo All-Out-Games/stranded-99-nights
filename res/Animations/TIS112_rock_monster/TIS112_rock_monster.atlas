@@ -1,0 +1,472 @@
+TIS112_rock_monster.png
+	size: 4068, 1308
+	filter: Linear, Linear
+MYTH103/dust/Bigger dust particle (1)
+	bounds: 3795, 7, 81, 71
+	offsets: 1, 1, 83, 73
+MYTH103/dust/Bigger dust particle (2)
+	bounds: 3664, 795, 282, 113
+	offsets: 1, 1, 284, 115
+MYTH103/dust/Bigger dust particle (3)
+	bounds: 1391, 7, 218, 161
+	offsets: 1, 1, 220, 163
+MYTH103/dust/Bigger dust particle (4)
+	bounds: 3885, 8, 108, 106
+	offsets: 1, 1, 110, 108
+MYTH103/dust/Bigger dust particle (5)
+	bounds: 726, 209, 121, 104
+	offsets: 1, 1, 123, 106
+	rotate: 90
+MYTH103/dust/Dust
+	bounds: 6, 168, 178, 162
+	offsets: 1, 1, 180, 164
+MYTH103/dust/DustSmall
+	bounds: 955, 36, 51, 65
+	offsets: 1, 1, 53, 66
+MYTH103/dust/dust_cloudA
+	bounds: 989, 165, 199, 179
+	offsets: 1, 1, 201, 181
+MYTH103/dust/dust_cloudB
+	bounds: 3885, 120, 177, 208
+	offsets: 1, 1, 179, 209
+MYTH103/dust/dust_cloudC
+	bounds: 591, 205, 125, 129
+	offsets: 1, 1, 127, 131
+	rotate: 90
+Poof/Poof_1
+	bounds: 1952, 99, 386, 325
+Poof/Poof_2
+	bounds: 3537, 914, 471, 388
+Poof/Poof_3
+	bounds: 3029, 310, 598, 469
+Poof/Poof_4
+	bounds: 2493, 217, 561, 455
+	rotate: 90
+blobs/BlobVisor_A
+	bounds: 1059, 10, 39, 36
+	offsets: 1, 1, 41, 38
+blobs/BlobVisor_B
+	bounds: 897, 7, 43, 44
+	offsets: 1, 1, 45, 45
+	rotate: 90
+blobs/BlobVisor_C
+	bounds: 901, 205, 56, 55
+	offsets: 1, 1, 58, 57
+blobs/Blob_A
+	bounds: 3999, 6, 51, 36
+	offsets: 1, 1, 53, 38
+blobs/Blob_B
+	bounds: 899, 125, 55, 72
+	offsets: 1, 1, 57, 74
+blobs/Blob_C
+	bounds: 2424, 109, 71, 62
+	offsets: 1, 1, 73, 64
+	rotate: 90
+blobs/Blob_D
+	bounds: 653, 6, 64, 39
+	offsets: 1, 1, 66, 41
+blobs/Blob_E
+	bounds: 439, 11, 53, 43
+	offsets: 1, 1, 55, 45
+blobs/Blob_F
+	bounds: 1212, 49, 36, 34
+	offsets: 1, 1, 38, 36
+blobs/Blob_G
+	bounds: 134, 6, 27, 28
+	offsets: 1, 1, 29, 30
+	rotate: 90
+blobs/Blob_H
+	bounds: 836, 51, 55, 69
+	offsets: 1, 1, 57, 71
+blobs/Blob_I
+	bounds: 279, 34, 59, 69
+	offsets: 1, 1, 61, 71
+	rotate: 90
+blobs/Blob_J
+	bounds: 498, 8, 29, 33
+	offsets: 1, 1, 31, 35
+	rotate: 90
+blobs/Blob_K
+	bounds: 1254, 49, 36, 34
+	offsets: 1, 1, 38, 36
+blobs/Blob_L
+	bounds: 836, 126, 71, 57
+	offsets: 1, 1, 73, 59
+	rotate: 90
+blobs/Blob_M
+	bounds: 3629, 6, 82, 72
+	offsets: 1, 1, 84, 74
+particles/ice_1
+	bounds: 508, 43, 66, 68
+	offsets: 1, 1, 68, 70
+	rotate: 90
+particles/ice_2
+	bounds: 1104, 11, 35, 38
+	offsets: 1, 1, 37, 40
+	rotate: 90
+particles/ice_3
+	bounds: 4014, 1155, 47, 50
+	offsets: 1, 1, 49, 51
+particles/snow_1
+	bounds: 168, 7, 26, 32
+	offsets: 1, 1, 28, 33
+	rotate: 90
+particles/snow_2
+	bounds: 1864, 126, 20, 26
+	offsets: 1, 1, 22, 27
+	rotate: 90
+particles/snow_3
+	bounds: 3609, 237, 17, 67
+	offsets: 1, 0, 19, 67
+particles/snow_4
+	bounds: 806, 45, 24, 57
+	offsets: 1, 1, 26, 59
+particles/snow_5
+	bounds: 1363, 134, 22, 29
+	offsets: 1, 1, 24, 31
+particles/snow_6
+	bounds: 1363, 75, 22, 22
+	offsets: 1, 1, 24, 24
+particles/snow_7
+	bounds: 1363, 103, 25, 22
+	offsets: 1, 1, 27, 24
+	rotate: 90
+particles/snow_8
+	bounds: 3609, 213, 17, 18
+	offsets: 1, 1, 19, 20
+snow globe mini/globe
+	bounds: 2712, 16, 195, 195
+	offsets: 1, 1, 197, 197
+snow globe mini/glow
+	bounds: 1952, 430, 335, 345
+	offsets: 1, 2, 337, 348
+snow globe mini/glow_back
+	bounds: 2293, 587, 183, 188
+	offsets: 1, 1, 185, 189
+snow globe mini/glow_main
+	bounds: 3633, 84, 246, 244
+	offsets: 1, 1, 248, 246
+snow globe mini/glow_spikes
+	bounds: 1952, 781, 535, 521
+	offsets: 1, 1, 537, 524
+snow globe mini/shine
+	bounds: 3321, 9, 145, 139
+	offsets: 1, 1, 147, 141
+snow globe mini/snow_group_particle_1
+	bounds: 78, 89, 60, 73
+	offsets: 1, 1, 62, 75
+snow globe mini/snow_group_particle_2
+	bounds: 370, 99, 71, 66
+	offsets: 1, 1, 73, 68
+snow globe mini/snow_group_particle_3
+	bounds: 897, 56, 52, 63
+	offsets: 1, 1, 54, 65
+snow globe mini/snow_group_particle_4
+	bounds: 1090, 102, 49, 57
+	offsets: 1, 1, 51, 58
+snow globe mini/snow_particle_1
+	bounds: 3928, 414, 11, 13
+	offsets: 1, 1, 13, 14
+	rotate: 90
+snow globe mini/snow_particle_2
+	bounds: 3890, 412, 13, 13
+	offsets: 1, 1, 15, 15
+snow globe mini/snow_particle_3
+	bounds: 1896, 127, 19, 35
+	offsets: 1, 1, 21, 37
+	rotate: 90
+snow globe mini/snow_particle_4
+	bounds: 537, 14, 23, 38
+	offsets: 1, 1, 25, 39
+	rotate: 90
+snow globe mini/snow_particle_5
+	bounds: 3609, 187, 16, 20
+	offsets: 1, 1, 18, 22
+snow globe mini/snow_particle_6
+	bounds: 354, 10, 27, 25
+	offsets: 1, 1, 29, 27
+snow globe mini/snow_particle_7
+	bounds: 3909, 413, 12, 13
+	offsets: 1, 1, 14, 14
+	rotate: 90
+snow globe mini/snow_particle_8
+	bounds: 387, 16, 19, 22
+	offsets: 1, 1, 21, 24
+	rotate: 90
+snow globe mini/snow_particle_9
+	bounds: 3609, 164, 17, 16
+	offsets: 1, 1, 19, 18
+	rotate: 90
+soundwave/sound wave 1
+	bounds: 3537, 787, 121, 121
+	offsets: 1, 1, 123, 123
+soundwave/sound wave 2
+	bounds: 2493, 784, 530, 518
+	offsets: 1, 1, 532, 520
+soundwave/sound wave 2.2
+	bounds: 3029, 785, 517, 502
+	offsets: 2, 1, 521, 504
+	rotate: 90
+soundwave/sound wave 3
+	bounds: 6, 336, 966, 977
+	offsets: 1, 1, 968, 979
+	rotate: 90
+soundwave/sound wave 3.2
+	bounds: 989, 350, 957, 952
+	offsets: 1, 1, 959, 956
+spear/reticle
+	bounds: 370, 171, 215, 159
+	offsets: 1, 1, 217, 161
+spear/spear
+	bounds: 3633, 410, 371, 251
+	offsets: 1, 1, 373, 253
+	rotate: 90
+stone_freak/arm l/arm_lower_l
+	bounds: 1194, 169, 191, 175
+	offsets: 1, 1, 193, 177
+stone_freak/arm l/arm_shoulder_l
+	bounds: 3952, 795, 113, 102
+	offsets: 1, 1, 115, 104
+	rotate: 90
+stone_freak/arm l/arm_upper_l
+	bounds: 2344, 6, 74, 174
+	offsets: 1, 1, 76, 176
+stone_freak/arm l/arm_wrist_l
+	bounds: 3999, 48, 66, 63
+	offsets: 1, 1, 68, 65
+	rotate: 90
+stone_freak/arm l/hand_ground_index_l
+	bounds: 217, 27, 72, 56
+	offsets: 1, 1, 74, 58
+	rotate: 90
+stone_freak/arm l/hand_ground_middle_l
+	bounds: 144, 39, 67, 60
+	offsets: 1, 1, 69, 62
+stone_freak/arm l/hand_ground_pinky_l
+	bounds: 1038, 92, 67, 46
+	offsets: 1, 1, 69, 48
+	rotate: 90
+stone_freak/arm l/hand_ground_thumb_l
+	bounds: 726, 7, 70, 46
+	offsets: 1, 1, 72, 48
+stone_freak/arm l/hand_index_l
+	bounds: 3717, 6, 72, 72
+	offsets: 1, 1, 74, 74
+stone_freak/arm l/hand_middle_l
+	bounds: 6, 24, 71, 60
+	offsets: 1, 1, 73, 62
+	rotate: 90
+stone_freak/arm l/hand_palm
+	bounds: 2954, 359, 67, 127
+	offsets: 1, 1, 69, 128
+stone_freak/arm l/hand_pinky_l
+	bounds: 582, 36, 73, 65
+	offsets: 1, 1, 75, 67
+	rotate: 90
+stone_freak/arm l/hand_raised_index_l
+	bounds: 3026, 6, 52, 94
+	offsets: 1, 1, 54, 96
+	rotate: 90
+stone_freak/arm l/hand_raised_middle_l
+	bounds: 4014, 1211, 48, 91
+	offsets: 1, 1, 50, 92
+stone_freak/arm l/hand_raised_palm_l
+	bounds: 2954, 660, 118, 69
+	offsets: 1, 1, 120, 71
+	rotate: 90
+stone_freak/arm l/hand_raised_thumb_l
+	bounds: 2954, 206, 67, 68
+	offsets: 1, 1, 69, 70
+stone_freak/arm l/hand_shove_index_1_l
+	bounds: 836, 6, 42, 39
+	offsets: 1, 1, 44, 41
+stone_freak/arm l/hand_shove_index_l
+	bounds: 726, 59, 74, 43
+	offsets: 1, 1, 76, 45
+stone_freak/arm l/hand_shove_middle_1_l
+	bounds: 1145, 114, 41, 45
+	offsets: 1, 1, 43, 47
+stone_freak/arm l/hand_shove_middle_l
+	bounds: 670, 122, 77, 50
+	offsets: 1, 1, 79, 52
+	rotate: 90
+stone_freak/arm l/hand_shove_palm_l
+	bounds: 2253, 6, 73, 87
+	offsets: 1, 1, 75, 89
+stone_freak/arm l/hand_shove_pinky_1_l
+	bounds: 1012, 42, 41, 44
+	offsets: 1, 1, 43, 46
+stone_freak/arm l/hand_shove_thumb_1_l
+	bounds: 2293, 532, 49, 45
+	offsets: 1, 1, 51, 47
+	rotate: 90
+stone_freak/arm l/hand_shove_thumb_l
+	bounds: 1090, 52, 64, 44
+	offsets: 1, 1, 66, 46
+stone_freak/arm l/hand_thumb_l
+	bounds: 2424, 21, 82, 61
+	offsets: 1, 1, 98, 63
+	rotate: 90
+stone_freak/arm_lower_r
+	bounds: 190, 170, 160, 174
+	offsets: 1, 1, 162, 175
+	rotate: 90
+stone_freak/arm_shoulder_r
+	bounds: 1741, 13, 107, 106
+	offsets: 1, 1, 109, 108
+stone_freak/arm_upper_r
+	bounds: 1194, 89, 74, 163
+	offsets: 1, 1, 76, 165
+	rotate: 90
+stone_freak/body_hip
+	bounds: 3890, 431, 136, 170
+	offsets: 1, 1, 138, 171
+	rotate: 90
+stone_freak/body_middle
+	bounds: 3472, 14, 134, 151
+	offsets: 0, 1, 134, 153
+	rotate: 90
+stone_freak/body_top
+	bounds: 2492, 13, 214, 198
+	offsets: 1, 1, 216, 200
+stone_freak/eye_angry
+	bounds: 2153, 9, 84, 94
+	offsets: 1, 1, 86, 95
+	rotate: 90
+stone_freak/eye_happy
+	bounds: 1864, 247, 97, 77
+	offsets: 1, 1, 99, 79
+	rotate: 90
+stone_freak/eye_neutral
+	bounds: 726, 108, 95, 104
+	offsets: 1, 2, 100, 107
+	rotate: 90
+stone_freak/eye_open_head
+	bounds: 447, 60, 105, 55
+	offsets: 1, 1, 107, 57
+	rotate: 90
+stone_freak/hand_ground_index_r
+	bounds: 3222, 6, 83, 52
+stone_freak/hand_ground_middle_r
+	bounds: 354, 41, 79, 52
+	offsets: 1, 1, 81, 54
+stone_freak/hand_ground_pinky_r
+	bounds: 4014, 1066, 83, 46
+	offsets: 1, 1, 85, 48
+	rotate: 90
+stone_freak/hand_ground_thumb_r
+	bounds: 3126, 6, 90, 52
+	offsets: 1, 1, 92, 54
+stone_freak/hand_index_r
+	bounds: 72, 9, 56, 74
+	offsets: 1, 1, 58, 76
+stone_freak/hand_middle_r
+	bounds: 4014, 914, 46, 69
+	offsets: 1, 1, 48, 71
+stone_freak/hand_palm_r
+	bounds: 1854, 15, 90, 104
+	offsets: 1, 1, 92, 106
+stone_freak/hand_pinky_r
+	bounds: 144, 105, 37, 57
+	offsets: 1, 1, 39, 58
+stone_freak/hand_raised_pinky_1_r
+	bounds: 1160, 46, 37, 46
+	offsets: 1, 1, 39, 47
+	rotate: 90
+stone_freak/hand_raised_thumb_1_r
+	bounds: 670, 51, 65, 50
+	offsets: 1, 1, 67, 52
+	rotate: 90
+stone_freak/hand_shove_index_r
+	bounds: 190, 105, 83, 59
+	offsets: 1, 1, 85, 61
+stone_freak/hand_shove_middle_r
+	bounds: 2293, 443, 83, 44
+	offsets: 1, 1, 85, 46
+	rotate: 90
+stone_freak/hand_shove_palm_r
+	bounds: 2055, 7, 86, 92
+	offsets: 1, 1, 88, 94
+	rotate: 90
+stone_freak/hand_shove_thumb_r
+	bounds: 4014, 989, 71, 46
+	offsets: 1, 1, 73, 48
+	rotate: 90
+stone_freak/hand_thumb_r
+	bounds: 6, 101, 66, 61
+	offsets: 1, 1, 68, 63
+stone_freak/head
+	bounds: 3027, 64, 240, 288
+	offsets: 1, 1, 242, 290
+	rotate: 90
+stone_freak/head_open
+	bounds: 3321, 154, 282, 150
+	offsets: 1, 1, 284, 152
+stone_freak/jaw_back
+	bounds: 2344, 186, 142, 153
+	offsets: 1, 1, 144, 155
+stone_freak/jaw_back_open
+	bounds: 2913, 21, 107, 179
+	offsets: 1, 1, 109, 181
+stone_freak/jaw_neutral
+	bounds: 3890, 573, 171, 216
+	offsets: 1, 1, 173, 217
+stone_freak/jaw_open
+	bounds: 2344, 345, 143, 236
+	offsets: 1, 1, 145, 238
+stone_freak/jaw_smile
+	bounds: 1391, 174, 170, 218
+	offsets: 1, 1, 172, 220
+	rotate: 90
+stone_freak/leg_lower_l
+	bounds: 1733, 125, 125, 219
+stone_freak/leg_lower_r
+	bounds: 1615, 122, 112, 222
+stone_freak/leg_upper_l
+	bounds: 1615, 7, 109, 120
+	rotate: 90
+stone_freak/leg_upper_r
+	bounds: 2954, 492, 83, 68
+	offsets: 1, 1, 85, 70
+	rotate: 90
+stone_freak/neck_bottom
+	bounds: 591, 115, 73, 84
+	offsets: 1, 1, 75, 86
+stone_freak/neck_middle
+	bounds: 1864, 152, 76, 89
+	offsets: 1, 1, 78, 91
+stone_freak/neck_top
+	bounds: 1950, 6, 87, 99
+	offsets: 1, 1, 89, 101
+	rotate: 90
+stone_freak/shadow
+	bounds: 3633, 334, 428, 70
+	offsets: 1, 1, 430, 72
+stone_freak/toe_big_l
+	bounds: 279, 99, 65, 64
+	offsets: 1, 1, 67, 66
+	rotate: 90
+stone_freak/toe_big_r
+	bounds: 508, 115, 64, 50
+	offsets: 1, 1, 66, 52
+stone_freak/toe_left_l
+	bounds: 836, 203, 60, 59
+	offsets: 1, 1, 62, 61
+	rotate: 90
+stone_freak/toe_left_r
+	bounds: 836, 269, 61, 59
+	offsets: 1, 1, 63, 61
+	rotate: 90
+stone_freak/toe_middle_l
+	bounds: 2954, 581, 69, 73
+	offsets: 1, 1, 71, 75
+stone_freak/toe_middle_r
+	bounds: 901, 266, 64, 55
+	offsets: 1, 1, 66, 57
+	rotate: 90
+stone_freak/toe_right_l
+	bounds: 2954, 280, 67, 73
+	offsets: 1, 1, 69, 74
+stone_freak/toe_right_r
+	bounds: 960, 107, 72, 52
+	offsets: 1, 1, 74, 54

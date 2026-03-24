@@ -1,5 +1,11 @@
 [
   {
+    "id": "vegetation/burned_tree_4.png",
+    "texture": {
+      "pixels_per_unit": 120
+    }
+  },
+  {
     "id": "UI/BeaconImage.png",
     "texture": {
       "pixels_per_unit": 250

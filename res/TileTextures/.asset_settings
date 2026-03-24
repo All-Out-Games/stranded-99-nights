@@ -1,5 +1,17 @@
 [
   {
+    "id": "TileTextures/BurntAsh.png",
+    "texture": {
+      "wrap_repeat": true
+    }
+  },
+  {
+    "id": "TileTextures/obsidian_volcano_1.png",
+    "texture": {
+      "wrap_repeat": true
+    }
+  },
+  {
     "id": "TileTextures/platinum_tundra_1.png",
     "texture": {
       "wrap_repeat": true
