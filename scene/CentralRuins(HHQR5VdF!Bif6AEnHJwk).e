@@ -2,10 +2,10 @@
 4999341932545
 31284842026821 1774391869856062500
 {
-  "name": "ruins_set_left_bottom.png",
+  "name": "CentralRuins",
   "local_enabled": true,
   "local_position": {
-    "X": 525.4440307617187500,
+    "X": 5.4440307617187500,
     "Y": 5.2114629745483398
   },
   "local_rotation": 0,
@@ -13,7 +13,8 @@
     "X": 1,
     "Y": 1
   },
-  "previous_sibling": "3615941048855:1774378769052151600"
+  "previous_sibling": "30363918661402:1774391433812851700",
+  "parent": "18403440932879:1774385770708504700"
 },
 {
   "cid": 1,
@@ -35,6 +36,8 @@
   "component_type": "Internal_Component",
   "internal_component_type": "Polygon_Collider",
   "data": {
+    "make_navmesh_loop": true,
+    "flip_navmesh_loop": true,
     "points": [
       {
         "X": -3.3303833007812500,

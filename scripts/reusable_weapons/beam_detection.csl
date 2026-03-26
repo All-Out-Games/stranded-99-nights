@@ -1,15 +1,16 @@
 // Line beam: damage mobs along a line from origin in direction
-beam_line_damage :: proc(origin: v2, direction: v2, range: float, width: float, damage: float, owner_id: u64) {
-    nearby_mobs: [..]Mob;
-    Scene.get_all_components_in_range(origin, range, ref nearby_mobs);
+beam_line_damage :: proc(player: Player, origin: v2, direction: v2, range: float, width: float, damage: float) {
+    nearby: [..]Mob;
+    Scene.get_all_components_in_range(origin, range, ref nearby);
 
     dir := normalize(direction);
 
-    for target_mob: nearby_mobs {
-        if !target_mob->is_alive() continue;
+    for mob: nearby {
+        if mob == null continue;
+        if !mob->is_alive() continue;
 
-        target_pos := target_mob.entity.world_position;
-        to_target := v2{target_pos.x - origin.x, target_pos.y - origin.y};
+        mob_pos := mob.entity.world_position;
+        to_target := v2{mob_pos.x - origin.x, mob_pos.y - origin.y};
 
         // Project onto beam direction
         dot := to_target.x * dir.x + to_target.y * dir.y;
@@ -21,24 +22,27 @@ beam_line_damage :: proc(origin: v2, direction: v2, range: float, width: float, 
         perp_dist := length(perp);
 
         if perp_dist <= width {
-            mob_apply_damage_from_player(target_mob, damage, owner_id);
+            mob_apply_damage_from_player(mob, damage, player.entity.id);
         }
     }
+
 }
 
 // Cone beam: damage mobs within a cone from origin
-beam_cone_damage :: proc(origin: v2, direction: v2, range: float, cone_angle_deg: float, damage: float, owner_id: u64) {
-    nearby_mobs: [..]Mob;
-    Scene.get_all_components_in_range(origin, range, ref nearby_mobs);
+beam_cone_damage :: proc(player: Player, origin: v2, direction: v2, range: float, cone_angle_deg: float, damage: float) {
+    nearby: [..]Mob;
+    Scene.get_all_components_in_range(origin, range, ref nearby);
 
     dir := normalize(direction);
     half_angle := cone_angle_deg * 0.5 * 3.14159 / 180.0;
+    cos_half := cos(half_angle);
 
-    for target_mob: nearby_mobs {
-        if !target_mob->is_alive() continue;
+    for mob: nearby {
+        if mob == null continue;
+        if !mob->is_alive() continue;
 
-        target_pos := target_mob.entity.world_position;
-        to_target := v2{target_pos.x - origin.x, target_pos.y - origin.y};
+        mob_pos := mob.entity.world_position;
+        to_target := v2{mob_pos.x - origin.x, mob_pos.y - origin.y};
         dist := length(to_target);
         if dist < 0.1 || dist > range continue;
 
@@ -48,17 +52,28 @@ beam_cone_damage :: proc(origin: v2, direction: v2, range: float, cone_angle_deg
         if dot > 1.0 { dot = 1.0; }
         if dot < -1.0 { dot = -1.0; }
 
-        cos_half := cos(half_angle);
-
         if dot >= cos_half {
-            mob_apply_damage_from_player(target_mob, damage, owner_id);
+            mob_apply_damage_from_player(mob, damage, player.entity.id);
         }
     }
+
 }
 
 // Radius-based damage: damages all mobs within range (Octo Siphoner)
-beam_radius_damage :: proc(origin: v2, range: float, damage: float, owner_id: u64) -> s64 {
-    return mob_damage_all_in_range_from_player(origin, range, damage, owner_id);
+beam_radius_damage :: proc(player: Player, origin: v2, range: float, damage: float) -> s64 {
+    nearby: [..]Mob;
+    Scene.get_all_components_in_range(origin, range, ref nearby);
+    hit_count: s64 = 0;
+    for mob: nearby {
+        if mob == null continue;
+        if !mob->is_alive() continue;
+        did_damage := mob_apply_damage_from_player(mob, damage, player.entity.id);
+        if did_damage {
+            hit_count += 1;
+        }
+    }
+
+    return hit_count;
 }
 
 // Beam visual entity - positions spine beam between source and target each frame
@@ -86,10 +101,8 @@ Beam_Visual :: class : Component {
         }
 
         // Beam start from PROJECTILE bone
-        bone_local := source.animator.instance->get_bone_local_position("PROJECTILE");
-        barrel_dist := length(bone_local);
         aim_dir := source.last_aim_direction;
-        start_pos := v2{source.animator.entity.world_position.x + aim_dir.x * barrel_dist, source.animator.entity.world_position.y + aim_dir.y * barrel_dist};
+        start_pos := get_projectile_spawn_pos(source, aim_dir);
 
         end_pos: v2;
         if target_id != 0 {
@@ -112,9 +125,19 @@ Beam_Visual :: class : Component {
             end_pos = v2{start_pos.x + dir.x * beam_range, start_pos.y + dir.y * beam_range};
         }
 
-        // Position beam bones (beam entity is at origin with unit scale, so world == local)
-        spine_anim.instance->set_bone_local_position("beam_base", start_pos);
-        spine_anim.instance->set_bone_local_position("AIM", end_pos);
+        beam_dir := v2{end_pos.x - start_pos.x, end_pos.y - start_pos.y};
+        beam_length := length(beam_dir);
+        if beam_length < 0.001 {
+            beam_dir = source.last_aim_direction;
+            beam_length = beam_range;
+        }
+
+        entity->set_local_position(start_pos);
+        entity->set_local_rotation(to_degrees(atan2(beam_dir.y, beam_dir.x)));
+
+        // Drive the rig in beam-local space so aiming left does not mirror the visual.
+        spine_anim.instance->set_bone_local_position("beam_base", {0.0, 0.0});
+        spine_anim.instance->set_bone_local_position("AIM", {beam_length, 0.0});
     }
 }
 

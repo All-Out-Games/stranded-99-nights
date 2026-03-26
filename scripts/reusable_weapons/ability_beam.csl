@@ -7,13 +7,14 @@ Beam_Ability :: class : Ability_Base {
     on_init :: proc(ability: Ability_Base) {
         ability.name = "Beam";
         ability.icon = get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/weapon_icons/weapon_icons_250x250/fireray.png");
-        ability.disable_keybind = false;
+        ability.disable_keybind = true;
         ability.is_aimed_ability = true;
     }
 
     can_use :: proc(ability: Ability_Base) -> bool {
         p := ability.player.(Player);
         if p.equipped_weapon_type == .NONE return false;
+       // if weapon_is_blocked_by_ui_modal(p) return false;
         config := get_weapon_config(p.equipped_weapon_type);
         if config.fire_mode != .BEAM return false;
         return weapon_has_ammo(p, p.equipped_weapon_type);
@@ -23,6 +24,11 @@ Beam_Ability :: class : Ability_Base {
         p := ability.player.(Player);
         self := ability.(Beam_Ability);
         wt := p.equipped_weapon_type;
+        if wt == .NONE {
+            // No weapon equipped: don't enable mouse IK / facing.
+            p->set_mouse_ik_enabled(false);
+            return;
+        }
         config := get_weapon_config(wt);
 
         ability.icon = get_asset(Texture_Asset, config.weapon_icon_path);
@@ -31,6 +37,11 @@ Beam_Ability :: class : Ability_Base {
 
         if aiming.aim {
             p.last_aim_direction = aiming.aim_direction;
+            if aiming.aim_direction.x > 0.01 {
+                p->set_facing_right(true);
+            } else if aiming.aim_direction.x < -0.01 {
+                p->set_facing_right(false);
+            }
             p->set_mouse_ik_enabled(true);
             p->set_aim_target(p.entity.world_position + aiming.aim_direction * 5.0);
             draw_thin_aiming_line(p.entity.world_position, aiming.aim_direction, 1.0);
@@ -79,13 +90,14 @@ Beam_Ability :: class : Ability_Base {
                 if wt == .OCTO_SIPHONER {
                     // Radius-based damage, heal scales with targets hit
                     destroy_player_beams(p.entity.id);
-                    hit_count := beam_radius_damage(origin, config.beam_range, config.base_damage, p.entity.id);
+                    hit_count := beam_radius_damage(p, origin, config.beam_range, config.base_damage);
 
                     // Spawn beam entities for each mob in range
                     nearby: [..]Mob;
                     Scene.get_all_components_in_range(origin, config.beam_range, ref nearby);
                     beam_count := 0;
                     for target: nearby {
+                        if target == null continue;
                         if !target->is_alive() continue;
                         if beam_count >= 5 break;
                         spawn_beam_entity(p.entity.id, target.entity.id, "pink", "pink_beam_loop_AL_mIK", config.beam_range);
@@ -102,7 +114,7 @@ Beam_Ability :: class : Ability_Base {
                     }
                 } else if wt == .VOID_SPLITTER {
                     // Line beam damage + single directional beam entity
-                    beam_line_damage(origin, aiming.aim_direction, config.beam_range, config.beam_width, config.base_damage, p.entity.id);
+                    beam_line_damage(p, origin, aiming.aim_direction, config.beam_range, config.beam_width, config.base_damage);
 
                     if !self.beams_spawned {
                         spawn_beam_entity(p.entity.id, 0, "blue", "lightning_beam_loop_AL_mIK", config.beam_range);
@@ -112,9 +124,9 @@ Beam_Ability :: class : Ability_Base {
                     // Fire Ray, Ice Launcher, Glaciator, Solar Siphoner
                     // Beam visual is part of weapon animation (animation-based beams)
                     if config.beam_cone_angle > 0 {
-                        beam_cone_damage(origin, aiming.aim_direction, config.beam_range, config.beam_cone_angle, config.base_damage, p.entity.id);
+                        beam_cone_damage(p, origin, aiming.aim_direction, config.beam_range, config.beam_cone_angle, config.base_damage);
                     } else {
-                        beam_line_damage(origin, aiming.aim_direction, config.beam_range, config.beam_width, config.base_damage, p.entity.id);
+                        beam_line_damage(p, origin, aiming.aim_direction, config.beam_range, config.beam_width, config.base_damage);
                     }
 
                     if config.heals_self {
@@ -124,18 +136,24 @@ Beam_Ability :: class : Ability_Base {
                 }
             }
 
+
             ability.current_cooldown = config.fire_rate;
         }
 
         // Fire Ray: position BEAM_TARGET bone each frame for beam aiming
         if self.was_shooting && wt == .FIRE_RAY {
             dir := p.last_aim_direction;
-            bone_local := p.animator.instance->get_bone_local_position("PROJECTILE");
-            barrel_dist := length(bone_local);
-            beam_start := v2{p.animator.entity.world_position.x + dir.x * barrel_dist, p.animator.entity.world_position.y + dir.y * barrel_dist};
+            beam_start := get_projectile_spawn_pos(p, dir);
             beam_end := v2{beam_start.x + dir.x * config.beam_range, beam_start.y + dir.y * config.beam_range};
             anim_scale := p.animator.entity.local_scale;
-            beam_end_local := v2{(beam_end.x - p.animator.entity.world_position.x) / anim_scale.x, (beam_end.y - p.animator.entity.world_position.y) / anim_scale.x};
+            scale_x := anim_scale.x;
+            scale_y := anim_scale.y;
+            if scale_x == 0.0 { scale_x = 1.0; }
+            if scale_y == 0.0 { scale_y = 1.0; }
+            beam_end_local := v2{
+                (beam_end.x - p.animator.entity.world_position.x) / scale_x,
+                (beam_end.y - p.animator.entity.world_position.y) / scale_y
+            };
             p.animator.instance->set_bone_local_position("BEAM_TARGET", beam_end_local);
         }
 

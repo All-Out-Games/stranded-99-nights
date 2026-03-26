@@ -668,6 +668,7 @@ GameManager :: class : Component {
     }
 
     get_night_survival_credit_amount :: method() -> s64 {
+        if Island == 3 return 4;
         if Island == 2 return 2;
         return 1;
     }
