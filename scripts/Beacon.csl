@@ -15,6 +15,7 @@ Beacon :: class : Interactable {
     fog3: Entity @ao_serialize;
     fog4: Entity @ao_serialize;
     fog5: Entity @ao_serialize;
+    fog6: Entity @ao_serialize;
     safety_zone_visual: Entity @ao_serialize;
     los_caster: LOS_Caster @ao_serialize;
     spine_animator: Spine_Animator @ao_serialize;
@@ -27,9 +28,10 @@ Beacon :: class : Interactable {
     upgrade_feedback_sequence: s64;
     seen_upgrade_feedback_sequence: s64;
 
-    MAX_LEVEL :: 5;
+    MAX_LEVEL :: 6;
     FOG4_DISABLE_LEVEL :: 4;
     FOG5_DISABLE_LEVEL :: 5;
+    FOG6_DISABLE_LEVEL :: 6;
     DEFAULT_STARTING_FUEL :: 3;
     DEFAULT_FUEL_BURN_INTERVAL_SECONDS :: 15.0;
     MAX_FUEL_ANIMATION_BUCKET :: 5;
@@ -98,6 +100,15 @@ Beacon :: class : Interactable {
     }
 
     sync_to_beacon_spawn :: method() {
+        manager := get_game_manager();
+        if manager != null {
+            spawn_pos, found_spawn := manager->get_loaded_island_beacon_spawn_position();
+            if found_spawn {
+                entity->set_local_position(spawn_pos);
+                return;
+            }
+        }
+
         foreach beacon_spawn: component_iterator(BeaconSpawn) {
             if beacon_spawn == null continue;
             if beacon_spawn.entity == null continue;
@@ -132,6 +143,9 @@ Beacon :: class : Interactable {
         }
         if fog5 != null {
             fog5->set_local_enabled(level < FOG5_DISABLE_LEVEL);
+        }
+        if fog6 != null {
+            fog6->set_local_enabled(level < FOG6_DISABLE_LEVEL);
         }
         apply_safety_zone_visual_scale();
     }
@@ -375,6 +389,7 @@ Beacon :: class : Interactable {
         #static level3_costs: [..]Beacon_Upgrade_Cost;
         #static level4_costs: [..]Beacon_Upgrade_Cost;
         #static level5_costs: [..]Beacon_Upgrade_Cost;
+        #static level6_costs: [..]Beacon_Upgrade_Cost;
         #static initted: bool;
 
         if !initted {
@@ -393,12 +408,17 @@ Beacon :: class : Interactable {
             level5_costs->append(Beacon_Upgrade_Cost{"scrap", 75});
             level5_costs->append(Beacon_Upgrade_Cost{"sulfur", 20});
             level5_costs->append(Beacon_Upgrade_Cost{"fish", 25});
+
+            level6_costs->append(Beacon_Upgrade_Cost{"scrap", 100});
+            level6_costs->append(Beacon_Upgrade_Cost{"sulfur", 30});
+            level6_costs->append(Beacon_Upgrade_Cost{"fish", 40});
         }
 
         if level == 1 return level2_costs;
         if level == 2 return level3_costs;
         if level == 3 return level4_costs;
         if level == 4 return level5_costs;
+        if level == 5 return level6_costs;
 
         empty: [..]Beacon_Upgrade_Cost;
         return empty;
@@ -443,8 +463,9 @@ BeaconSystem :: struct {
             case 3: return 11.0;
             case 4: return 13.0;
             case 5: return 15.0;
+            case 6: return 17.0;
         }
-        return 15.0;
+        return 17.0;
     }
 
     clamp_position_outside_safety_zones :: proc(position: v2, fallback_reference: v2) -> v2 {

@@ -30,7 +30,7 @@
     },
     "resource_type": 3,
     "respawn_time_seconds": 15,
-    "drop_count": 1,
+    "drop_count": 2,
     "drop_spawn_radius": 1,
     "visual_target": "24695980889723:1774388750130496600",
     "animation_target": "24695980889723:1774388750130496600"

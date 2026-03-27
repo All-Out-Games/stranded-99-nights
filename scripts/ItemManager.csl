@@ -27,6 +27,7 @@ ItemManager :: struct {
             bandage_icon := get_asset(Texture_Asset, "Items/Bandage.png");
             medkit_icon := get_asset(Texture_Asset, "Items/Medkit.png");
             ice_shard_icon := get_asset(Texture_Asset, "prop/Crystal Shard.png");
+            obsidian_shard_icon := get_asset(Texture_Asset, "PUP obsidian.png");
 
             // Wood
             wood := Items.register_item_definition(
@@ -83,6 +84,14 @@ ItemManager :: struct {
                 Item_Instance
             );
             defs->append(ice_shard);
+
+            // Obsidian Shard
+            obsidian_shard := Items.register_item_definition(
+                {"obsidian.shard", "Obsidian Shard", obsidian_shard_icon, 64, .COMMON},
+                Item_Definition,
+                Item_Instance
+            );
+            defs->append(obsidian_shard);
 
             // Bandage
             bandage := Items.register_item_definition(

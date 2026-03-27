@@ -14,6 +14,7 @@
     "Y": 1
   },
   "previous_sibling": "223366275382646:1774482817243868400",
+  "next_sibling": "381672382949975:1774557772832453900",
   "parent": "206383489823044:1774474776387100100"
 },
 {
@@ -29,7 +30,7 @@
     },
     "resource_type": 6,
     "respawn_time_seconds": 35,
-    "drop_count": 2,
+    "drop_count": 4,
     "drop_spawn_radius": 1,
     "visual_target": "223377033371428:1774482822337561100",
     "animation_target": "223377033371428:1774482822337561100"

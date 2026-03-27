@@ -5,7 +5,7 @@
   "name": "Island4",
   "local_enabled": true,
   "local_position": {
-    "Y": -260
+    "X": 780
   },
   "local_rotation": 0,
   "local_scale": {

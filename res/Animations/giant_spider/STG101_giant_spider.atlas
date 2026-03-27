@@ -1,0 +1,38 @@
+STG101_giant_spider.png
+	size: 624, 624
+	filter: Linear, Linear
+Spider_Body
+	bounds: 477, 47, 116, 98
+	offsets: 1, 1, 118, 100
+Spider_Butt
+	bounds: 2, 256, 205, 188
+	offsets: 1, 1, 207, 190
+Spider_DropShadow
+	bounds: 2, 446, 438, 174
+	offsets: 1, 1, 440, 176
+Spider_Head
+	bounds: 2, 7, 143, 106
+	offsets: 1, 1, 145, 108
+Spider_HeadBlink
+	bounds: 332, 2, 143, 106
+	offsets: 1, 1, 145, 108
+Spider_LegL_1
+	bounds: 381, 262, 49, 182
+Spider_LegL_2
+	bounds: 209, 83, 121, 206
+Spider_LegL_3
+	bounds: 442, 436, 172, 184
+Spider_LegL_4
+	bounds: 209, 291, 170, 153
+Spider_LegR_1
+	bounds: 2, 115, 139, 159
+	rotate: 90
+Spider_LegR_2
+	bounds: 472, 147, 137, 136
+Spider_LegR_3
+	bounds: 332, 110, 138, 150
+Spider_LegR_4
+	bounds: 432, 285, 149, 126
+	rotate: 90
+Spider_Pincers
+	bounds: 147, 19, 87, 62

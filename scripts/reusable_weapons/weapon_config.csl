@@ -61,7 +61,7 @@ get_weapon_config :: proc(wt: Weapon_Type) -> Weapon_Config {
             config.fire_mode = .CONTINUOUS;
             config.hand_type = .TWO_HAND;
             config.fire_rate = 0.2;
-            config.base_damage = 8.0;
+            config.base_damage = 15.0;
             config.projectile_speed = 17.0;
             config.weapon_skin = "weapons/assault_rifle";
             config.weapon_icon_path = "reusable_weapons/sprites/reusable-weapons/weapon_icons/weapon_icons_250x250/assaultrifle.png";
@@ -194,7 +194,7 @@ get_weapon_config :: proc(wt: Weapon_Type) -> Weapon_Config {
             config.fire_mode = .SINGLE_SHOT;
             config.hand_type = .ONE_HAND;
             config.fire_rate = 2.0;
-            config.base_damage = 30.0;
+            config.base_damage = 100.0;
             config.projectile_speed = 17.0;
             config.weapon_skin = "weapons/blunderbuss";
             config.weapon_icon_path = "reusable_weapons/sprites/reusable-weapons/weapon_icons/weapon_icons_250x250/blunderbuss.png";

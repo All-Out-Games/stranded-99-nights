@@ -1,0 +1,266 @@
+BUG108_imposter.png
+	size: 4096, 4096
+	filter: Linear, Linear
+acid splash/splash1
+	bounds: 1943, 726, 232, 188
+	offsets: 1, 1, 234, 190
+acid splash/splash2
+	bounds: 1532, 653, 405, 261
+	offsets: 1, 1, 407, 263
+acid splash/splash3
+	bounds: 764, 769, 467, 300
+	offsets: 1, 1, 469, 302
+assets/antennae_l
+	bounds: 3067, 1773, 78, 180
+	offsets: 1, 1, 80, 181
+assets/antennae_r
+	bounds: 3969, 2295, 113, 175
+	offsets: 1, 1, 115, 176
+assets/black_widow_abdomen
+	bounds: 1339, 414, 251, 183
+	offsets: 1, 1, 253, 185
+	rotate: 90
+assets/body
+	bounds: 774, 1075, 483, 342
+	offsets: 0, 0, 484, 343
+assets/body_abdomen
+	bounds: 754, 499, 264, 343
+	rotate: 90
+assets/body_neutral
+	bounds: 1393, 1166, 726, 143
+	offsets: 1, 1, 728, 145
+	rotate: 90
+assets/body_neutral_abdomen
+	bounds: 573, 942, 506, 143
+	offsets: 1, 1, 508, 145
+	rotate: 90
+assets/claw_end_l
+	bounds: 3885, 1260, 48, 168
+	offsets: 1, 1, 50, 170
+assets/claw_end_r
+	bounds: 3067, 1598, 76, 169
+	offsets: 1, 1, 78, 170
+assets/claw_middle_l
+	bounds: 683, 630, 43, 95
+	offsets: 1, 1, 45, 97
+assets/claw_middle_r
+	bounds: 483, 820, 58, 87
+	offsets: 1, 1, 60, 89
+assets/claw_start_l
+	bounds: 483, 648, 57, 82
+	offsets: 1, 1, 59, 84
+assets/claw_start_r
+	bounds: 483, 913, 74, 75
+	offsets: 1, 1, 76, 77
+	rotate: 90
+assets/fang_l
+	bounds: 467, 408, 47, 68
+	offsets: 1, 1, 49, 70
+assets/fang_r
+	bounds: 664, 501, 45, 74
+	offsets: 1, 1, 47, 76
+	rotate: 90
+assets/giant_cocoon
+	bounds: 6, 1454, 777, 438
+assets/leg_1_l
+	bounds: 398, 534, 59, 74
+	rotate: 90
+assets/leg_2_l
+	bounds: 398, 534, 59, 74
+	rotate: 90
+assets/leg_3_l
+	bounds: 398, 534, 59, 74
+	rotate: 90
+assets/leg_4_l
+	bounds: 398, 534, 59, 74
+	rotate: 90
+assets/leg_1_r
+	bounds: 483, 566, 58, 76
+	offsets: 1, 1, 60, 78
+assets/leg_2_r
+	bounds: 483, 566, 58, 76
+	offsets: 1, 1, 60, 78
+assets/leg_3_r
+	bounds: 483, 566, 58, 76
+	offsets: 1, 1, 60, 78
+assets/leg_4_r
+	bounds: 483, 736, 60, 78
+assets/leg_5_l
+	bounds: 478, 482, 52, 78
+	offsets: 1, 1, 54, 80
+assets/leg_5_r
+	bounds: 478, 482, 52, 78
+	offsets: 1, 1, 54, 80
+assets/lower_wing_l
+	bounds: 3959, 1620, 223, 123
+	offsets: 1, 1, 225, 125
+	rotate: 90
+assets/lower_wing_r
+	bounds: 564, 779, 157, 130
+	offsets: 1, 1, 159, 132
+	rotate: 90
+assets/mosquito_head
+	bounds: 2780, 756, 190, 158
+	offsets: 1, 1, 192, 160
+assets/mosquito_head_angry
+	bounds: 2383, 756, 194, 158
+	offsets: 1, 1, 196, 160
+assets/mosquito_head_eyes_closed
+	bounds: 2181, 756, 196, 158
+	offsets: 1, 1, 198, 160
+assets/mosquito_head_sad
+	bounds: 1358, 671, 203, 158
+	offsets: 1, 1, 205, 160
+	rotate: 90
+assets/mosquito_head_surprised_happy
+	bounds: 2976, 697, 190, 158
+	offsets: 1, 1, 192, 160
+	rotate: 90
+assets/proboscis
+	bounds: 3067, 1441, 62, 151
+assets/scorpion_tail_end
+	bounds: 3969, 2116, 173, 105
+	offsets: 1, 1, 175, 107
+	rotate: 90
+assets/scorpion_tail_middle
+	bounds: 1263, 1086, 93, 165
+	offsets: 1, 1, 95, 166
+assets/scorpion_tail_start
+	bounds: 3939, 1288, 139, 109
+	offsets: 1, 1, 141, 111
+assets/shadow
+	bounds: 3969, 2476, 493, 114
+	offsets: 1, 1, 495, 116
+	rotate: 90
+assets/spider_leg_1_end_l
+	bounds: 3067, 1070, 50, 120
+	offsets: 1, 1, 52, 121
+assets/spider_leg_1_end_r
+	bounds: 722, 967, 36, 119
+	offsets: 1, 0, 38, 119
+assets/spider_leg_1_middle_l
+	bounds: 683, 552, 72, 57
+	offsets: 1, 1, 74, 59
+	rotate: 90
+assets/spider_leg_1_middle_r
+	bounds: 398, 467, 61, 63
+	offsets: 1, 1, 63, 65
+	rotate: 90
+assets/spider_leg_1_start_l
+	bounds: 536, 415, 97, 98
+	offsets: 1, 1, 99, 100
+	rotate: 90
+assets/spider_leg_1_start_r
+	bounds: 700, 731, 48, 113
+	offsets: 1, 1, 50, 115
+assets/spider_leg_2_end_l
+	bounds: 722, 850, 31, 111
+	offsets: 1, 1, 33, 113
+assets/spider_leg_2_end_r
+	bounds: 722, 1092, 43, 104
+	offsets: 1, 1, 45, 106
+assets/spider_leg_2_middle_l
+	bounds: 3067, 893, 65, 89
+	offsets: 1, 1, 67, 91
+assets/spider_leg_2_middle_r
+	bounds: 3067, 988, 76, 77
+	offsets: 1, 1, 78, 79
+	rotate: 90
+assets/spider_leg_2_start_l
+	bounds: 722, 1329, 46, 119
+	offsets: 1, 1, 48, 121
+assets/spider_leg_2_start_r
+	bounds: 722, 1202, 42, 121
+	offsets: 1, 1, 44, 123
+assets/upper_wing_l
+	bounds: 6, 6, 256, 263
+	offsets: 1, 1, 258, 265
+	rotate: 90
+assets/upper_wing_r
+	bounds: 1362, 880, 164, 280
+	offsets: 1, 1, 166, 282
+assets/visor
+	bounds: 3067, 1327, 108, 79
+	offsets: 1, 1, 110, 81
+	rotate: 90
+assets/visor_angry
+	bounds: 1263, 958, 122, 90
+	offsets: 1, 1, 124, 92
+	rotate: 90
+assets/visor_closed
+	bounds: 3067, 1196, 125, 54
+	offsets: 1, 1, 127, 56
+	rotate: 90
+assets/visor_sad
+	bounds: 1237, 693, 130, 94
+	offsets: 1, 1, 132, 96
+	rotate: 90
+assets/visor_surprised_happy
+	bounds: 547, 518, 111, 92
+	offsets: 1, 1, 113, 94
+attack fx/hit fx 1
+	bounds: 3959, 1403, 211, 128
+	offsets: 1, 1, 213, 131
+	rotate: 90
+attack fx/hit fx 2
+	bounds: 398, 102, 300, 214
+	offsets: 5, 2, 307, 217
+	rotate: 90
+attack fx/hit fx 3
+	bounds: 640, 275, 315, 218
+	offsets: 1, 1, 317, 220
+attack fx/hit fx 4
+	bounds: 1103, 363, 324, 230
+	offsets: 1, 1, 326, 232
+	rotate: 90
+attack fx/swing fx
+	bounds: 3959, 1849, 128, 261
+blood/Blood_1
+	bounds: 1237, 829, 123, 115
+	offsets: 1, 1, 125, 117
+	rotate: 90
+blood/Blood_2
+	bounds: 549, 616, 128, 157
+	offsets: 1, 1, 130, 159
+blood/Blood_3
+	bounds: 2583, 754, 160, 191
+	offsets: 1, 1, 162, 193
+	rotate: 90
+blood/Blood_4
+	bounds: 1263, 1257, 108, 160
+	offsets: 1, 2, 110, 163
+dustL0000
+	bounds: 1561, 1959, 1587, 1010
+	offsets: 1, 1, 1589, 1012
+dustL0001
+	bounds: 6, 1898, 1549, 1071
+	offsets: 1, 1, 1551, 1073
+dustL0002
+	bounds: 1561, 920, 1500, 1033
+	offsets: 1, 1, 1502, 1035
+dustR0000
+	bounds: 3154, 2181, 809, 788
+	offsets: 1, 1, 811, 790
+dustR0001
+	bounds: 3152, 620, 727, 808
+	offsets: 1, 1, 729, 810
+dustR0002
+	bounds: 3154, 1434, 741, 799
+	offsets: 1, 1, 743, 800
+	rotate: 90
+poof/Poof_1
+	bounds: 6, 268, 386, 325
+	offsets: 1, 1, 388, 327
+poof/Poof_2
+	bounds: 6, 599, 471, 388
+	offsets: 1, 1, 473, 390
+poof/Poof_3
+	bounds: 789, 1423, 598, 469
+	offsets: 1, 1, 600, 471
+poof/Poof_4
+	bounds: 6, 993, 561, 455
+	offsets: 1, 1, 563, 457
+shockwave
+	bounds: 3885, 200, 1054, 205
+	offsets: 1, 1, 1056, 207
+	rotate: 90

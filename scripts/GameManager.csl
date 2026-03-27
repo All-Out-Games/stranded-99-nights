@@ -196,6 +196,35 @@ start :: proc(player: Player) {
     try_force_start_game(player, "/start");
 } @chat_command @youtuber
 
+get_give_command_max_stack :: proc(item_id: string) -> s64 {
+    switch item_id {
+        case "wood":           return 64;
+        case "scrap":          return 64;
+        case "fiber":          return 64;
+        case "fish":           return 64;
+        case "sulfur":         return 64;
+        case "root.resin":     return 64;
+        case "ice.shard":      return 64;
+        case "obsidian.shard": return 64;
+        case "bandage":        return 64;
+        case "medkit":         return 64;
+        case "arrow":          return 64;
+        case "plank":          return 64;
+        case "stick":          return 64;
+    }
+
+    i := 0;
+    while i < AMMO_TYPE_COUNT {
+        ammo_info := get_ammo_info(i);
+        if ammo_info.id == item_id {
+            return ammo_info.stack_size;
+        }
+        i += 1;
+    }
+
+    return 1;
+}
+
 g :: proc(player: Player, item_id: string, quantity: s64 = 1) {
     if player == null return;
 
@@ -225,6 +254,10 @@ g :: proc(player: Player, item_id: string, quantity: s64 = 1) {
     }
 
     give_count := quantity;
+    max_stack := get_give_command_max_stack(defn->get_id());
+    if give_count > max_stack {
+        give_count = max_stack;
+    }
     if give_count > room {
         give_count = room;
     }
@@ -349,6 +382,7 @@ GameManager :: class : Component {
     NON_NIGHT_ONLY_SPAWNER_DOUBLING_NIGHTS :: 5.0;
     NIGHT_SURVIVAL_SAVE_KEY_FORMAT :: "night_survived_%";
     NIGHT_EVENT_NOTIFICATION_TEXT :: "Night Event: %!";
+    RAID_INCOMING_NOTIFICATION_TEXT :: "Raid Incoming!";
     PLAYER_DOWNED_NOTIFICATION_TEXT :: "% has been downed!";
     VOYAGE_FAILED_NOTIFICATION_TEXT :: "Voyage Failed! Try Again!";
     BROADCAST_NOTIFICATION_DURATION_SECONDS :: 5.0;
@@ -668,6 +702,7 @@ GameManager :: class : Component {
     }
 
     get_night_survival_credit_amount :: method() -> s64 {
+        if Island == 4 return 6;
         if Island == 3 return 4;
         if Island == 2 return 2;
         return 1;
@@ -1008,6 +1043,47 @@ GameManager :: class : Component {
         return SupplyDrops[supply_drop_index];
     }
 
+    get_beacon_spawn_position_for_island :: method(island_number: int) -> v2, bool {
+        island_entity := get_island_entity(island_number);
+        island_pos: v2 = {0.0, 0.0};
+        if island_entity != null {
+            island_pos = island_entity.world_position;
+        }
+
+        closest_spawn_pos: v2 = {0.0, 0.0};
+        closest_dist_sq: float = 0.0;
+        found_spawn := false;
+
+        foreach beacon_spawn: component_iterator(BeaconSpawn) {
+            if beacon_spawn == null continue;
+            if beacon_spawn.entity == null continue;
+
+            spawn_pos := beacon_spawn.entity.world_position;
+            if island_entity == null {
+                return spawn_pos, true;
+            }
+
+            dist_sq := length_squared(spawn_pos - island_pos);
+            if !found_spawn || dist_sq < closest_dist_sq {
+                closest_spawn_pos = spawn_pos;
+                closest_dist_sq = dist_sq;
+                found_spawn = true;
+            }
+        }
+
+        return closest_spawn_pos, found_spawn;
+    }
+
+    get_loaded_island_beacon_spawn_position :: method() -> v2, bool {
+        pos, found := this->get_beacon_spawn_position_for_island(loaded_island);
+        return pos, found;
+    }
+
+    get_transition_target_beacon_spawn_position :: method() -> v2, bool {
+        pos, found := this->get_beacon_spawn_position_for_island(island_transition_target_island);
+        return pos, found;
+    }
+
     try_start_next_island_voyage :: method() -> bool {
         if current_phase != .IN_ROUND return false;
         if island_transition_active return false;
@@ -1186,16 +1262,9 @@ GameManager :: class : Component {
     }
 
     get_current_beacon_position :: method() -> v2 {
-        foreach beacon: component_iterator(Beacon) {
-            if beacon == null continue;
-            if beacon.entity == null continue;
-            return beacon.entity.world_position;
-        }
-
-        foreach beacon_spawn: component_iterator(BeaconSpawn) {
-            if beacon_spawn == null continue;
-            if beacon_spawn.entity == null continue;
-            return beacon_spawn.entity.world_position;
+        beacon_spawn_pos, found_beacon_spawn := this->get_loaded_island_beacon_spawn_position();
+        if found_beacon_spawn {
+            return beacon_spawn_pos;
         }
 
         island_entity := get_island_entity(loaded_island);
@@ -1206,19 +1275,12 @@ GameManager :: class : Component {
     }
 
     get_island_transition_beacon_position :: method() -> v2 {
-        foreach beacon_spawn: component_iterator(BeaconSpawn) {
-            if beacon_spawn == null continue;
-            if beacon_spawn.entity == null continue;
-            return beacon_spawn.entity.world_position;
+        beacon_spawn_pos, found_beacon_spawn := this->get_transition_target_beacon_spawn_position();
+        if found_beacon_spawn {
+            return beacon_spawn_pos;
         }
 
-        foreach beacon: component_iterator(Beacon) {
-            if beacon == null continue;
-            if beacon.entity == null continue;
-            return beacon.entity.world_position;
-        }
-
-        island_entity := get_island_entity(loaded_island);
+        island_entity := get_island_entity(island_transition_target_island);
         if island_entity != null {
             return island_entity.world_position;
         }
@@ -1767,34 +1829,41 @@ GameManager :: class : Component {
     }
 
     apply_raid_event :: method() {
-        multiplier := max(raid_spawn_cap_multiplier, 2);
-
-        // Snapshot the spawners before force-filling so entity creation does not
-        // invalidate the live component iterator during the raid setup pass.
-        spawners: [..]MobSpawner;
-        foreach spawner: component_iterator(MobSpawner) {
-            if spawner == null continue;
-            spawners->append(spawner);
+        raid_target_players: [..]Player;
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            if p.entity == null continue;
+            if p->is_dead_for_night_state() continue;
+            raid_target_players->append(p);
         }
 
-        for spawner: spawners {
-            if spawner == null continue;
-            bonus := max(spawner.max_mobs * (multiplier - 1), 0);
-            spawner->set_temporary_spawn_cap_bonus(bonus);
+        if raid_target_players.count <= 0 {
+            log_info("Night event started: RAID (no valid player targets found).", {});
+            return;
         }
 
-        for spawner: spawners {
-            if spawner == null continue;
-            spawner->force_fill_to_current_cap();
+        raid_rng := rng_seed_time();
+        retargeted_mob_count: s64 = 0;
+        foreach mob: component_iterator(Mob) {
+            if mob == null continue;
+            if !mob->is_alive() continue;
+
+            target_index := rng_range_int(ref raid_rng, 0, raid_target_players.count - 1);
+            target_player := raid_target_players[target_index];
+            if target_player == null continue;
+            if target_player.entity == null continue;
+
+            mob->set_damage_aggro_target(target_player.entity.id);
+            retargeted_mob_count += 1;
         }
-        log_info("Night event started: RAID (spawn cap x%).", {multiplier});
+        log_info("Night event started: RAID (retargeted % mobs across % players).", {
+            retargeted_mob_count,
+            raid_target_players.count
+        });
     }
 
     clear_raid_event :: method() {
-        foreach spawner: component_iterator(MobSpawner) {
-            if spawner == null continue;
-            spawner->clear_temporary_spawn_cap_bonus();
-        }
+        // Raid no longer mutates persistent mob spawner state.
     }
 
     apply_supply_drop_event :: method() {
@@ -1951,6 +2020,9 @@ GameManager :: class : Component {
 
         event_name := night_event_type_to_text(current_night_event);
         message := format_string(NIGHT_EVENT_NOTIFICATION_TEXT, {event_name});
+        if current_night_event == .RAID {
+            message = RAID_INCOMING_NOTIFICATION_TEXT;
+        }
         show_broadcast_notification(message);
         last_notified_night_event = current_night_event;
         log_info("Broadcasted night event notification: %.", {event_name});

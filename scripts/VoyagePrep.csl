@@ -66,6 +66,7 @@ VoyagePrep :: class : Interactable {
     get_requirements :: method() -> [..]VoyagePrep_Requirement {
         #static island1_requirements: [..]VoyagePrep_Requirement;
         #static island2_requirements: [..]VoyagePrep_Requirement;
+        #static island3_requirements: [..]VoyagePrep_Requirement;
         #static initted: bool;
 
         if !initted {
@@ -77,6 +78,10 @@ VoyagePrep :: class : Interactable {
             island2_requirements->append({"scrap", 30});
             island2_requirements->append({"ice.shard", 5});
             island2_requirements->append({"bandage", 5});
+
+            island3_requirements->append({"sulfur", 20});
+            island3_requirements->append({"medkit", 5});
+            island3_requirements->append({"obsidian.shard", 10});
         }
 
         manager := get_game_manager();
@@ -85,6 +90,9 @@ VoyagePrep :: class : Interactable {
         }
         if manager != null && manager.Island == 2 {
             return island2_requirements;
+        }
+        if manager != null && manager.Island == 3 {
+            return island3_requirements;
         }
 
         empty: [..]VoyagePrep_Requirement;

@@ -1,5 +1,11 @@
 [
   {
+    "id": "TileTextures/steel_desert_1.png",
+    "texture": {
+      "wrap_repeat": true
+    }
+  },
+  {
     "id": "TileTextures/pine_hills_1.png",
     "texture": {
       "wrap_repeat": true

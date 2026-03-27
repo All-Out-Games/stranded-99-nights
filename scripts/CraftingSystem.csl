@@ -145,6 +145,26 @@ CraftingSystem :: struct {
             CraftingSystem.add_output(r8, "ar_ammo", 30);
             recipes->append(r8);
 
+            r8b := CraftingSystem.make_recipe(
+                "craft_heavy_ammo_bundle",
+                "Heavy Ammo x30",
+                "Craft 30 heavy ammo rounds."
+            );
+            CraftingSystem.add_input(r8b, "sulfur", 10);
+            CraftingSystem.add_input(r8b, "scrap", 15);
+            CraftingSystem.add_output(r8b, "heavy_ammo", 30);
+            recipes->append(r8b);
+
+            r8c := CraftingSystem.make_recipe(
+                "craft_tornado_ammo_bundle",
+                "Tornado Ammo x5",
+                "Craft 5 tornado ammo shots."
+            );
+            CraftingSystem.add_input(r8c, "scrap", 10);
+            CraftingSystem.add_input(r8c, "wood", 10);
+            CraftingSystem.add_output(r8c, "tornado_ammo", 5);
+            recipes->append(r8c);
+
             r9 := CraftingSystem.make_recipe(
                 "craft_bandage",
                 "Bandage",
