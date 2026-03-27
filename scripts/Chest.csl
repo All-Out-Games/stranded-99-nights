@@ -111,7 +111,7 @@ Chest :: class : Interactable {
         if guaranteed_defn == null return;
         guaranteed_amount: s64 = 1;
         if loot_item_amounts.count > 0 {
-            guaranteed_amount = max(loot_item_amounts[0], 1);
+            guaranteed_amount = compat_max(loot_item_amounts[0], 1);
         }
 
         remaining_entries: [..]Chest_Loot_Entry;
@@ -127,18 +127,18 @@ Chest :: class : Interactable {
             if defn != null {
                 amount: s64 = 1;
                 if i < loot_item_amounts.count {
-                    amount = max(loot_item_amounts[i], 1);
+                    amount = compat_max(loot_item_amounts[i], 1);
                 }
                 remaining_entries->append(Chest_Loot_Entry{defn, amount});
             }
             i += 1;
         }
 
-        min_count := max(min_drop_count, 0);
-        max_count := max(max_drop_count, min_count);
+        min_count := compat_max(min_drop_count, 0);
+        max_count := compat_max(max_drop_count, min_count);
         if max_count < 0 return;
 
-        rng := rng_seed_time();
+        rng := rng_root_seed();
         drop_total := rng_range_int(ref rng, min_count, max_count).(s64);
 
         center := entity.world_position;
@@ -148,7 +148,7 @@ Chest :: class : Interactable {
         }
         ItemDrops.spawn_from_definition(spawn_position, guaranteed_defn, guaranteed_amount);
 
-        remaining_drop_count := max(drop_total - 1, 0);
+        remaining_drop_count := compat_max(drop_total - 1, 0);
         if remaining_entries.count <= 0 || remaining_drop_count <= 0 {
             return;
         }

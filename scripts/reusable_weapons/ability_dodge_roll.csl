@@ -26,7 +26,7 @@ resolve_dodge_roll_direction :: proc(player: Player) -> v2 {
     if length_squared(dir) <= DODGE_ROLL_DIRECTION_EPSILON_SQ {
         dir = get_player_facing_direction(player);
     }
-    return normalize(dir);
+    return safe_normalize_or(dir, get_player_facing_direction(player));
 }
 
 has_dodge_roll_motion_intent :: proc(player: Player) -> bool {
@@ -48,9 +48,9 @@ Dodge_Roll_Effect :: class : Effect_Base {
 
         if player == null return;
         if length_squared(direction) <= DODGE_ROLL_DIRECTION_EPSILON_SQ {
-            direction = normalize(get_player_facing_direction(player));
+            direction = safe_normalize_or(get_player_facing_direction(player), {1.0, 0.0});
         } else {
-            direction = normalize(direction);
+            direction = safe_normalize_or(direction, get_player_facing_direction(player));
         }
 
         if direction.x > 0.001 {
@@ -94,7 +94,8 @@ Dodge_Roll_Ability :: class : Ability_Base {
 
     can_use :: proc(ability: Ability_Base) -> bool {
         p := ability.player.(Player);
-        return p.entity.active_effect == null || p.entity.active_effect.#type != Dodge_Roll_Effect;
+        active_effect := p.entity->get_active_effect();
+        return active_effect == null || active_effect.#type != Dodge_Roll_Effect;
     }
 
     on_update :: proc(ability: Ability_Base, params: ref Ability_Update_Params) {

@@ -139,7 +139,7 @@ game_sfx_play :: proc(event: Game_Sfx_Event, follow_entity: Entity = null, volum
     if follow_entity != null {
         desc.entity_to_follow = follow_entity.id;
     }
-    desc.volume = clamp(game_sfx_default_volume_for_event(event) * max(volume_scale, 0.0), 0.0, 1.0);
+    desc.volume = clamp(game_sfx_default_volume_for_event(event) * compat_max(volume_scale, 0.0), 0.0, 1.0);
     SFX.play(sfx, desc);
 }
 
@@ -734,13 +734,13 @@ GameManager :: class : Component {
         if amount <= 0.0 return 0.0;
         if !is_voyage_damage_redirect_active() return 0.0;
 
-        absorbed := min(amount, VoyageHealth);
+        absorbed := compat_min(amount, VoyageHealth);
         if absorbed > 0.0 {
             foreach voyage_boat: component_iterator(VoyageBoat) {
                 voyage_boat->trigger_damage_feedback();
             }
         }
-        VoyageHealth = max(VoyageHealth - amount, 0.0);
+        VoyageHealth = compat_max(VoyageHealth - amount, 0.0);
         if VoyageHealth <= 0.0 {
             if Game.is_server() {
                 show_broadcast_notification(VOYAGE_FAILED_NOTIFICATION_TEXT);
@@ -759,7 +759,7 @@ GameManager :: class : Component {
     }
 
     get_voyage_mob_damage :: method() -> float {
-        return max((Island * 5 - 5).(float), 0.0);
+        return compat_max((Island * 5 - 5).(float), 0.0);
     }
 
     should_mobs_path_to_closest_reachable_target_point :: method() -> bool {
@@ -767,7 +767,7 @@ GameManager :: class : Component {
     }
 
     get_non_night_only_spawner_spawn_scale :: method() -> float {
-        completed_nights := max(nights, 0);
+        completed_nights := compat_max(nights, 0);
         if completed_nights <= 0 return 1.0;
 
         return pow(2.0, completed_nights.(float) / NON_NIGHT_ONLY_SPAWNER_DOUBLING_NIGHTS);
@@ -971,7 +971,7 @@ GameManager :: class : Component {
     }
 
     run_round_start_poi_setup :: method() {
-        poi_rng := rng_seed_time();
+        poi_rng := rng_root_seed();
         spawned_count: s64 = 0;
         total_count: s64 = 0;
         foreach poi: component_iterator(POI) {
@@ -1290,7 +1290,7 @@ GameManager :: class : Component {
     sample_player_position_near_beacon :: method(player: Player) -> v2 {
         center := get_current_beacon_position();
         rng: u64 = rng_seed(player.entity.id);
-        advance_count := max(loaded_island, 1);
+        advance_count := compat_max(loaded_island, 1);
         angle: float = 0.0;
         radius_t: float = 0.0;
         advance_step: int = 0;
@@ -1337,7 +1337,7 @@ GameManager :: class : Component {
     sample_island_transition_player_position :: method(player: Player) -> v2 {
         center := get_island_transition_beacon_position();
         rng: u64 = rng_seed(player.entity.id);
-        advance_count := max(island_transition_target_island, 1);
+        advance_count := compat_max(island_transition_target_island, 1);
         angle: float = 0.0;
         radius_t: float = 0.0;
         advance_step: int = 0;
@@ -1594,7 +1594,7 @@ GameManager :: class : Component {
         }
 
         fade_total_time := GAME_OVER_FADE_OUT_SECONDS + GAME_OVER_BLACK_HOLD_SECONDS + GAME_OVER_FADE_IN_SECONDS;
-        total_time := max(fade_total_time, GAME_OVER_TEXT_DURATION_SECONDS);
+        total_time := compat_max(fade_total_time, GAME_OVER_TEXT_DURATION_SECONDS);
         if elapsed >= total_time {
             game_over_sequence_active = false;
             game_over_sequence_restart_done = false;
@@ -1755,7 +1755,7 @@ GameManager :: class : Component {
     }
 
     notify_all_players_survived_night :: method() {
-        remaining_nights := max(99 - nights, 0);
+        remaining_nights := compat_max(99 - nights, 0);
         message := format_string(SURVIVED_NIGHT_NOTIFICATION_TEXT, {remaining_nights});
         show_broadcast_notification(message);
         log_info("Broadcasted survived-night notification (remaining: %).", {remaining_nights});
@@ -1779,13 +1779,13 @@ GameManager :: class : Component {
             unlocked_nights.(float) * night_event_weight_scale_gain_per_completed_night;
         event_weight_scale = clamp(event_weight_scale, 0.0, night_event_weight_scale_cap);
 
-        none_weight := max(night_event_none_weight, 0.0);
-        raid_weight := max(night_event_raid_weight, 0.0) * event_weight_scale;
-        supply_weight := max(night_event_supply_drop_weight, 0.0) * event_weight_scale;
+        none_weight := compat_max(night_event_none_weight, 0.0);
+        raid_weight := compat_max(night_event_raid_weight, 0.0) * event_weight_scale;
+        supply_weight := compat_max(night_event_supply_drop_weight, 0.0) * event_weight_scale;
         total_weight := none_weight + raid_weight + supply_weight;
         if total_weight <= 0.0 return;
 
-        roll_rng := rng_seed_time();
+        roll_rng := rng_root_seed();
         roll := rng_range_float(ref roll_rng, 0.0, total_weight);
         if roll < none_weight {
             current_night_event = .NONE;
@@ -1842,7 +1842,7 @@ GameManager :: class : Component {
             return;
         }
 
-        raid_rng := rng_seed_time();
+        raid_rng := rng_root_seed();
         retargeted_mob_count: s64 = 0;
         foreach mob: component_iterator(Mob) {
             if mob == null continue;
@@ -1920,7 +1920,7 @@ GameManager :: class : Component {
 
         center := get_island1_boss_spawn_center();
         radius_sq := ISLAND1_BOSS_SPAWN_RADIUS * ISLAND1_BOSS_SPAWN_RADIUS;
-        rng := rng_seed_time();
+        rng := rng_root_seed();
         hint_as_int: int = 0;
 
         for attempt: 0..ISLAND1_BOSS_SPAWN_SAMPLE_ATTEMPTS-1 {

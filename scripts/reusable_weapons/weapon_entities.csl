@@ -91,7 +91,7 @@ spawn_poison_cloud :: proc(pos: v2, owner_id: u64) {
 // Cluster bombs for Boomwheel
 spawn_cluster_bombs :: proc(pos: v2, owner_id: u64) {
     count :: 10;
-    rng: u64 = rng_seed_time();
+    rng: u64 = rng_root_seed();
     i := 0;
     while i < count {
         angle := i.(float) / count.(float) * 2.0 * 3.14159;
@@ -216,10 +216,10 @@ Tornado_Entity :: class : Component {
                 to_target := v2{target.entity.world_position.x - pos.x, target.entity.world_position.y - pos.y};
                 dist := length(to_target);
                 if dist > 0.1 {
-                    desired := normalize(to_target);
+                    desired := safe_normalize(to_target);
                     direction.x = lerp(direction.x, desired.x, 2.0 * (lifetime / max_lifetime));
                     direction.y = lerp(direction.y, desired.y, 2.0 * (lifetime / max_lifetime));
-                    direction = normalize(direction);
+                    direction = safe_normalize_or(direction, desired);
                 }
             }
         }
@@ -275,7 +275,7 @@ spawn_tornado_entity :: proc(player: Player, direction: v2, wt: Weapon_Type) {
     tornado.damage_per_tick = config.base_damage;
     tornado.tick_rate = 0.5;
     tornado.max_lifetime = 10.0;
-    tornado.direction = normalize(direction);
+    tornado.direction = safe_normalize(direction);
     tornado.speed = config.projectile_speed;
     tornado.homing_radius = 10.0;
     tornado.aoe_radius = config.aoe_radius;

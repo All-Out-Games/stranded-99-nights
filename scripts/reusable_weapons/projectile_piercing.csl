@@ -64,7 +64,7 @@ spawn_piercing_projectile :: proc(player: Player, direction: v2, wt: Weapon_Type
     config := get_weapon_config(wt);
     bone_local := player.animator.instance->get_bone_local_position("PROJECTILE");
     barrel_dist := length(bone_local);
-    dir := normalize(direction);
+    dir := safe_normalize(direction);
     spawn_pos := v2{player.animator.entity.world_position.x + dir.x * barrel_dist, player.animator.entity.world_position.y + dir.y * barrel_dist};
 
     proj_entity := Scene.create_entity();
@@ -80,7 +80,7 @@ spawn_piercing_projectile :: proc(player: Player, direction: v2, wt: Weapon_Type
 
     proj := proj_entity->add_component(Piercing_Projectile);
     proj.damage = config.base_damage;
-    proj.direction = normalize(direction);
+    proj.direction = safe_normalize(direction);
     proj.owner_id = player.entity.id;
     proj.speed = config.projectile_speed;
     proj.max_lifetime = config.projectile_lifetime;

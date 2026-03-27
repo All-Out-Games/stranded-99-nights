@@ -72,7 +72,7 @@ Interior :: class : Component {
                     sprite_renderer.color.x,
                     sprite_renderer.color.y,
                     sprite_renderer.color.z,
-                    min(base_alphas[i], INTERIOR_FADE_ALPHA)
+                    compat_min(base_alphas[i], INTERIOR_FADE_ALPHA)
                 };
                 sprite_renderer.layer = 1;
             }

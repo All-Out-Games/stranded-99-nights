@@ -134,7 +134,7 @@ ResourceNode :: class : Interactable {
         is_depleted = depleted;
 
         if depleted {
-            depleted_until_time = get_time() + max(respawn_time_seconds, 0.0);
+            depleted_until_time = get_time() + compat_max(respawn_time_seconds, 0.0);
             this->set_text("Depleted");
             radius = 0.0;
 
@@ -144,7 +144,7 @@ ResourceNode :: class : Interactable {
         }
         else {
             this->set_text("Gather");
-            radius = max(cached_active_radius, 0.0);
+            radius = compat_max(cached_active_radius, 0.0);
 
             if visual_target != null {
                 visual_target->set_local_enabled(true);
@@ -188,7 +188,7 @@ ResourceNode :: class : Interactable {
 
         spawn_position := spawn_center;
         if spawn_radius > 0.0 {
-            rng := rng_seed_time();
+            rng := rng_root_seed();
             if use_fish_scatter {
                 angle := rng_range_float(ref rng, 0.0, 1.0) * (PI * 2.0);
                 dist := sqrt(rng_range_float(ref rng, 0.0, 1.0)) * spawn_radius;

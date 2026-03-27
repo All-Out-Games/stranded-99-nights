@@ -109,7 +109,7 @@ MobSpawner :: class : Component {
         if target_count <= 0 return;
 
         attempts: s64 = 0;
-        max_attempts := max(target_count * 4, 4);
+        max_attempts := compat_max(target_count * 4, 4);
         while spawned_mobs.count < target_count && attempts < max_attempts {
             if !try_spawn_one_mob() {
                 attempts += 1;
@@ -121,11 +121,11 @@ MobSpawner :: class : Component {
 
     get_target_mob_cap :: method() -> s64 {
         scaled_base_cap := get_scaled_base_mob_cap();
-        return max(scaled_base_cap + temporary_spawn_cap_bonus, 0);
+        return compat_max(scaled_base_cap + temporary_spawn_cap_bonus, 0);
     }
 
     get_scaled_base_mob_cap :: method() -> s64 {
-        base_cap := max(max_mobs, 0);
+        base_cap := compat_max(max_mobs, 0);
         if base_cap <= 0 return 0;
         if NightOnly return base_cap;
 
@@ -136,11 +136,11 @@ MobSpawner :: class : Component {
         if scale <= 1.0 return base_cap;
 
         scaled_cap := (base_cap.(float) * scale + 0.5).(s64);
-        return max(scaled_cap, base_cap);
+        return compat_max(scaled_cap, base_cap);
     }
 
     set_temporary_spawn_cap_bonus :: method(bonus: s64) {
-        temporary_spawn_cap_bonus = max(bonus, 0);
+        temporary_spawn_cap_bonus = compat_max(bonus, 0);
     }
 
     clear_temporary_spawn_cap_bonus :: method() {

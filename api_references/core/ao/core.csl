@@ -112,7 +112,15 @@ core_globals: struct "ao core globals" {
     ability_keybinds: [6]Keybind;
 
     all_abilities: [..]User_Ability_Info;
+
+    server_on_chat_message_received: proc(player: Player, message: string);
 };
+
+core_on_chat_message :: proc(player: Player, message: string) {
+    if core_globals.server_on_chat_message_received != null {
+        core_globals.server_on_chat_message_received(player, message);
+    }
+}
 
 User_Ability_Info :: struct {
     class_type: typeid;
@@ -281,13 +289,13 @@ core_player_start :: proc(player: Player) {
 
 core_player_update :: proc(player: Player, dt: float) {
     update_ability_cooldowns(player, dt);
-    if player.entity.first_effect != null {
+    if player.entity.effect_data != null && player.entity.effect_data.first_effect != null {
         core_update_effects(player.entity, dt);
     }
 }
 
 core_player_late_update :: proc(player: Player, dt: float) {
-    if player.entity.first_effect != null {
+    if player.entity.effect_data != null && player.entity.effect_data.first_effect != null {
         core_late_update_effects(player.entity, dt);
     }
 }
@@ -391,10 +399,27 @@ get_asset :: proc($T: typeid, id: string) -> T {
 }
 
 get_time :: proc() -> float #foreign;
+
+#deprecate_soft "get_real_time() is being deprecated. If being used for an RNG seed switch to rng_root_seed(). If you have another use-case let me know!"
 get_real_time :: proc() -> float #foreign;
 
+Datetime :: struct {
+    year:   s64;
+    month:  s64;
+    day:    s64;
+    hour:   s64;
+    minute: s64;
+    second: s64;
+}
+
+get_nanoseconds_since_epoch :: proc() -> s64 #foreign;
+get_utc_datetime   :: proc() -> Datetime #foreign;
+
+rng_root_seed :: proc() -> u64 #foreign;
+
+#deprecate_soft "rng_seed_time() is being deprecated. Use rng_root_seed(). It will always be the same within a game instance."
 rng_seed_time :: proc() -> u64 {
-    return rng_seed((get_real_time() * 1000000000).(u64));
+    return rng_root_seed();
 }
 
 get_input_down   :: proc(input: Input, consume: bool) -> bool #foreign;
@@ -1231,6 +1256,7 @@ Keybinds :: struct {
 SFX :: struct {
     play :: proc(asset: SFX_Asset, desc: SFX_Desc) -> u64 #foreign "sfx_play";
     stop :: proc(id: u64) #foreign "sfx_stop";
+    fade_out_and_stop :: proc(id: u64, fade_time: float) #foreign "sfx_fade_out_and_stop";
 
     default_sfx_desc :: proc() -> SFX_Desc {
         #static initted: bool;
@@ -1313,6 +1339,9 @@ Device_Kind :: enum {
 Player_Base :: class : AO_Player {
     get_username :: method() -> string #foreign "player_get_username";
     get_user_id ::  method() -> string #foreign "player_get_user_id";
+
+    get_name_override :: method() -> string #foreign "player_get_name_override";
+    set_name_override :: method(name: string) #foreign "player_set_name_override";
 
     add_freeze_reason    :: method(reason: string) #foreign "player_add_freeze_reason";
     remove_freeze_reason :: method(reason: string) #foreign "player_remove_freeze_reason";
@@ -1430,8 +1459,9 @@ Effect_Base :: class {
         }
 
         // note(josh): its important to remove it from the entity before we call the end proc because they may add a new active effect
-        if entity.active_effect == this {
-            entity.active_effect = null;
+        effect_data := entity.effect_data;
+        if effect_data.active_effect == this {
+            effect_data.active_effect = null;
         }
 
         // remove it from the chain
@@ -1442,11 +1472,11 @@ Effect_Base :: class {
             if next_effect != null {
                 next_effect.prev_effect = prev_effect;
             }
-            if entity.first_effect == this {
-                entity.first_effect = next_effect;
+            if effect_data.first_effect == this {
+                effect_data.first_effect = next_effect;
             }
-            if entity.last_effect == this {
-                entity.last_effect = prev_effect;
+            if effect_data.last_effect == this {
+                effect_data.last_effect = prev_effect;
             }
         }
 
@@ -1459,14 +1489,17 @@ Effect_Base :: class {
 } #gc_root
 
 set_active_effect :: proc(entity: Entity, new_active_effect: $T) #unsafe {
-    current_active_effect := entity.active_effect;
+    if entity.effect_data == null {
+        entity.effect_data = new();
+    }
+    current_active_effect := entity.effect_data.active_effect;
     if current_active_effect != null {
         current_active_effect->remove_effect(true);
     }
-    if entity.active_effect != null {
+    if entity.effect_data.active_effect != null {
         assert(false, "seems like you may have added an effect in %.effect_end even though interrupt was true", {current_active_effect.#type});
     }
-    entity.active_effect = new_active_effect;
+    entity.effect_data.active_effect = new_active_effect;
 
     add_passive_effect(entity, new_active_effect);
 }
@@ -1491,16 +1524,22 @@ add_passive_effect :: proc(entity: Entity, new_effect: $T) #unsafe {
         new_effect.internal.end_proc = T.effect_end;
     }
 
+    if entity.effect_data == null {
+        entity.effect_data = new();
+    }
+
+    effect_data := entity.effect_data;
+
     // insert it into the chain
     {
-        if entity.first_effect == null {
-            entity.first_effect = new_effect;
-            entity.last_effect = new_effect;
+        if effect_data.first_effect == null {
+            effect_data.first_effect = new_effect;
+            effect_data.last_effect = new_effect;
         }
         else {
-            entity.last_effect.next_effect = new_effect;
-            new_effect.prev_effect = entity.last_effect;
-            entity.last_effect = new_effect;
+            effect_data.last_effect.next_effect = new_effect;
+            new_effect.prev_effect = effect_data.last_effect;
+            effect_data.last_effect = new_effect;
         }
     }
 
@@ -1525,13 +1564,19 @@ add_passive_effect :: proc(entity: Entity, new_effect: $T) #unsafe {
 }
 
 remove_all_effects :: proc(entity: Entity) {
-    while entity.first_effect != null {
-        entity.first_effect->remove_effect(true);
+    if entity.effect_data == null {
+        return;
+    }
+    while entity.effect_data.first_effect != null {
+        entity.effect_data.first_effect->remove_effect(true);
     }
 }
 
 remove_effect :: proc(entity: Entity, type: typeid, interrupt: bool) -> bool {
-    effect := entity.first_effect;
+    if entity.effect_data == null {
+        return false;
+    }
+    effect := entity.effect_data.first_effect;
     while effect != null {
         if effect.#type == type {
             effect->remove_effect(interrupt);
@@ -1568,9 +1613,13 @@ get_underlying_struct_type_info :: proc(type: typeid) -> Type_Info_Struct {
 }
 
 try_get_effect_dynamic :: proc(entity: Entity, type: typeid, mode := Try_Get_Effect_Mode.EXACT_MATCH) -> Effect_Base {
+    if entity.effect_data == null {
+        return null;
+    }
+
     // first pass: check exact matches
     {
-        effect := entity.first_effect;
+        effect := entity.effect_data.first_effect;
         while effect != null {
             if effect.#type == type {
                 return effect;
@@ -1582,7 +1631,7 @@ try_get_effect_dynamic :: proc(entity: Entity, type: typeid, mode := Try_Get_Eff
     // second pass: check for inheritance
     if mode == .ALLOW_INHERITANCE {
         base_struct := get_underlying_struct_type_info(type);
-        effect := entity.first_effect;
+        effect := entity.effect_data.first_effect;
         while effect != null {
             effect_ti := get_underlying_struct_type_info(effect.#type);
             if a_inherits_from_b(effect_ti, base_struct) {
@@ -1605,9 +1654,12 @@ has_effect :: proc(entity: Entity, $T: typeid, mode := Try_Get_Effect_Mode.EXACT
 }
 
 core_update_effects :: proc(entity: Entity, dt: float) {
+    if entity.effect_data == null {
+        return;
+    }
     current_time := get_time();
 
-    current := entity.first_effect;
+    current := entity.effect_data.first_effect;
     while current != null {
         next := current.next_effect; // cache because the effect might remove itself in update
         defer current = next;
@@ -1626,7 +1678,10 @@ core_update_effects :: proc(entity: Entity, dt: float) {
 }
 
 core_late_update_effects :: proc(entity: Entity, dt: float) {
-    current := entity.first_effect;
+    if entity.effect_data == null {
+        return;
+    }
+    current := entity.effect_data.first_effect;
     while current != null {
         next := current.next_effect; // cache because the effect might remove itself in update
         defer current = next;
@@ -1652,7 +1707,10 @@ Effect_Iterator :: struct {
 }
 
 effect_iterator :: proc(entity: Entity) -> Effect_Iterator {
-    return Effect_Iterator{entity.first_effect, null};
+    if entity.effect_data == null {
+        return {};
+    }
+    return Effect_Iterator{entity.effect_data.first_effect, null};
 }
 
 //

@@ -456,7 +456,7 @@ ItemDrops :: struct {
         if icon != null {
             sprite->set_texture(icon);
             PIXELS_PER_UNIT :: 240.0;
-            icon_scale := PIXELS_PER_UNIT / max(icon->get_width(), icon->get_height()).(float);
+            icon_scale := PIXELS_PER_UNIT / compat_max(icon->get_width(), icon->get_height()).(float);
             icon_entity->set_local_scale({icon_scale, icon_scale});
             sprite.depth_offset = -DEPTH_OFFSET / icon_entity.local_scale.y;
         }

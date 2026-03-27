@@ -159,7 +159,7 @@ Eat_Fish_Ability :: class : Ability_Base {
 
         if Game.is_server() {
             if consume_selected_item_stack(p, 1) {
-                p.health = min(p.health + heal_amount, p.max_health);
+                p.health = compat_min(p.health + heal_amount, p.max_health);
                 spawn_fish_heal_effect(p);
                 play_fish_heal_sfx(p);
             }

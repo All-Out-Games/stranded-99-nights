@@ -63,7 +63,7 @@ Mob :: class : Component {
         if acquire_range <= 0.0 { acquire_range = 100.0; }
         if despawn_delay_seconds < 0.0 { despawn_delay_seconds = 0.75; }
         if destination_spread_radius <= 0.0 {
-            destination_spread_radius = max(attack_range * 0.75, 0.8);
+            destination_spread_radius = compat_max(attack_range * 0.75, 0.8);
         }
         if separation_radius <= 0.0 { separation_radius = 1.0; }
         if separation_strength <= 0.0 { separation_strength = 0.75; }
@@ -218,7 +218,7 @@ Mob :: class : Component {
 
             if length_squared(boss_last_path_destination - self_pos) <= MOB_BOSS_PATH_ARRIVAL_EPSILON_SQ {
                 movement_agent.velocity = {0.0, 0.0};
-                face_from_movement_direction(normalize(to_target));
+                face_from_movement_direction(safe_normalize(to_target));
                 return;
             }
 
@@ -227,7 +227,7 @@ Mob :: class : Component {
                 face_from_movement_direction(path_result.move_direction);
             } else {
                 fallback_dir := v2{boss_last_path_destination.x - self_pos.x, boss_last_path_destination.y - self_pos.y};
-                face_from_movement_direction(normalize(fallback_dir));
+                face_from_movement_direction(safe_normalize(fallback_dir));
             }
             return;
         }
@@ -252,7 +252,7 @@ Mob :: class : Component {
         } else {
             // Fallback while waiting for path result on the first frame.
             fallback_dir := v2{destination.x - self_pos.x, destination.y - self_pos.y};
-            face_from_movement_direction(normalize(fallback_dir));
+            face_from_movement_direction(safe_normalize(fallback_dir));
         }
     }
 
@@ -503,14 +503,14 @@ Mob :: class : Component {
     }
 
     get_boss_keep_away_distance :: method() -> float {
-        return max(MOB_BOSS_MIN_KEEP_AWAY_DISTANCE, max(attack_range * MOB_BOSS_KEEP_AWAY_ATTACK_RANGE_MULTIPLIER, destination_spread_radius + attack_range));
+        return compat_max(MOB_BOSS_MIN_KEEP_AWAY_DISTANCE, compat_max(attack_range * MOB_BOSS_KEEP_AWAY_ATTACK_RANGE_MULTIPLIER, destination_spread_radius + attack_range));
     }
 
     get_boss_keep_away_destination :: method(target_pos: v2) -> v2 {
         self_pos := entity.world_position;
         keep_away_distance := get_boss_keep_away_distance();
         to_self := self_pos - target_pos;
-        radial_dir := normalize(to_self);
+        radial_dir := safe_normalize(to_self);
         if length_squared(radial_dir) <= 0.0001 {
             radial_dir = v2{1.0, 0.0};
         }
@@ -587,7 +587,7 @@ Mob :: class : Component {
         angle := (slot_index / slot_count) * 6.2831853;
 
         ring_jitter := ((entity.id % 5).(float) - 2.0) * 0.12;
-        ring_dist := max(0.25, destination_spread_radius + ring_jitter);
+        ring_dist := compat_max(0.25, destination_spread_radius + ring_jitter);
         dir := v2{cos(angle), sin(angle)};
         base_destination := v2{target_pos.x + dir.x * ring_dist, target_pos.y + dir.y * ring_dist};
 
@@ -621,7 +621,7 @@ Mob :: class : Component {
             if dist >= separation_radius continue;
 
             strength := (separation_radius - dist) / separation_radius;
-            away := normalize(delta);
+            away := safe_normalize(delta);
             push.x += away.x * strength;
             push.y += away.y * strength;
         }
@@ -739,7 +739,7 @@ Mob :: class : Component {
         defn := ItemManager.TryFindItem(death_drop_item_id);
         if defn == null return;
 
-        rng := rng_seed_time();
+        rng := rng_root_seed();
         roll := rng_range_float(ref rng, 0.0, 1.0);
         if roll > MOB_DEATH_DROP_CHANCE return;
 

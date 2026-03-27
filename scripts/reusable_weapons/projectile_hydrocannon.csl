@@ -55,7 +55,7 @@ Hydro_Cannon_Projectile :: class : Component {
                     }
 
                     // Play random splash sound
-                    rng: u64 = rng_seed_time();
+                    rng: u64 = rng_root_seed();
                     splash_index := rng_range_int(ref rng, 1, 3);
                     splash_path := "reusable_weapons/sounds/reusable-weapons/geyser_splash_01.wav";
                     if splash_index == 2 { splash_path = "reusable_weapons/sounds/reusable-weapons/geyser_splash_02.wav"; }
@@ -119,7 +119,7 @@ spawn_hydrocannon_projectile :: proc(player: Player, direction: v2, wt: Weapon_T
 
     bone_local := player.animator.instance->get_bone_local_position("PROJECTILE");
     barrel_dist := length(bone_local);
-    dir := normalize(direction);
+    dir := safe_normalize(direction);
     spawn_pos := v2{player.animator.entity.world_position.x + dir.x * barrel_dist, player.animator.entity.world_position.y + dir.y * barrel_dist};
 
     proj_entity := Scene.create_entity();

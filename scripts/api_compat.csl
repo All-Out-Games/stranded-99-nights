@@ -1,0 +1,30 @@
+COMPAT_NORMALIZE_EPSILON_SQ :: 0.0001;
+
+compat_max :: proc(a: $T, b: T) -> T {
+    if a > b {
+        return a;
+    }
+    return b;
+}
+
+compat_min :: proc(a: $T, b: T) -> T {
+    if a < b {
+        return a;
+    }
+    return b;
+}
+
+safe_normalize :: proc(v: v2) -> v2 {
+    if length_squared(v) <= COMPAT_NORMALIZE_EPSILON_SQ {
+        return {0.0, 0.0};
+    }
+    return normalize(v);
+}
+
+safe_normalize_or :: proc(v: v2, fallback: v2) -> v2 {
+    result := safe_normalize(v);
+    if length_squared(result) > COMPAT_NORMALIZE_EPSILON_SQ {
+        return result;
+    }
+    return safe_normalize(fallback);
+}

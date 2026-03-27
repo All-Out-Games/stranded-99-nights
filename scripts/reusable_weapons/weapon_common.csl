@@ -86,7 +86,7 @@ weapon_play_fire_sound :: proc(player: Player, wt: Weapon_Type) {
     count := g_weapon_fire_sound_counts[idx];
     if count <= 0 return;
 
-    rng: u64 = rng_seed_time();
+    rng: u64 = rng_root_seed();
     sound_index := 0;
     if count > 1 {
         sound_index = rng_range_int(ref rng, 0, count - 1);
@@ -189,7 +189,7 @@ weapon_spawn_standard_projectile :: proc(player: Player, direction: v2, wt: Weap
 
     bone_local := player.animator.instance->get_bone_local_position("PROJECTILE");
     barrel_dist := length(bone_local);
-    dir := normalize(direction);
+    dir := safe_normalize(direction);
     spawn_pos := v2{player.animator.entity.world_position.x + dir.x * barrel_dist, player.animator.entity.world_position.y + dir.y * barrel_dist};
 
     proj_entity := Scene.create_entity();
@@ -206,7 +206,7 @@ weapon_spawn_standard_projectile :: proc(player: Player, direction: v2, wt: Weap
 
     proj := proj_entity->add_component(Standard_Projectile);
     proj.damage = config.base_damage;
-    proj.direction = normalize(direction);
+    proj.direction = safe_normalize(direction);
     proj.owner_id = player.entity.id;
     proj.speed = config.projectile_speed;
     proj.max_lifetime = config.projectile_lifetime;
@@ -221,7 +221,7 @@ TRAVEL_LOOP_SPINNING :: "013RED/Travel_Loop_Spinning";
 get_projectile_spawn_pos :: proc(player: Player, direction: v2) -> v2 {
     bone_local := player.animator.instance->get_bone_local_position("PROJECTILE");
     barrel_dist := length(bone_local);
-    dir := normalize(direction);
+    dir := safe_normalize(direction);
     return v2{player.animator.entity.world_position.x + dir.x * barrel_dist, player.animator.entity.world_position.y + dir.y * barrel_dist};
 }
 
@@ -250,7 +250,7 @@ spawn_blunderbuss_projectile :: proc(player: Player, direction: v2, wt: Weapon_T
 
     proj := proj_entity->add_component(Standard_Projectile);
     proj.damage = config.base_damage;
-    proj.direction = normalize(direction);
+    proj.direction = safe_normalize(direction);
     proj.owner_id = player.entity.id;
     proj.speed = config.projectile_speed;
     proj.max_lifetime = config.projectile_lifetime;
@@ -271,7 +271,7 @@ spawn_ray_gun_projectile :: proc(player: Player, direction: v2, wt: Weapon_Type)
 
     proj := proj_entity->add_component(Standard_Projectile);
     proj.damage = config.base_damage;
-    proj.direction = normalize(direction);
+    proj.direction = safe_normalize(direction);
     proj.owner_id = player.entity.id;
     proj.speed = config.projectile_speed;
     proj.max_lifetime = config.projectile_lifetime;
@@ -292,7 +292,7 @@ spawn_beam_machine_projectile :: proc(player: Player, direction: v2, wt: Weapon_
 
     proj := proj_entity->add_component(Piercing_Projectile);
     proj.damage = config.base_damage;
-    proj.direction = normalize(direction);
+    proj.direction = safe_normalize(direction);
     proj.owner_id = player.entity.id;
     proj.speed = config.projectile_speed;
     proj.max_lifetime = config.projectile_lifetime;
@@ -314,7 +314,7 @@ spawn_water_gun_projectile :: proc(player: Player, direction: v2, wt: Weapon_Typ
 
     proj := proj_entity->add_component(Standard_Projectile);
     proj.damage = config.base_damage;
-    proj.direction = normalize(direction);
+    proj.direction = safe_normalize(direction);
     proj.owner_id = player.entity.id;
     proj.speed = config.projectile_speed;
     proj.max_lifetime = config.projectile_lifetime;
@@ -337,7 +337,7 @@ spawn_crossbow_projectile :: proc(player: Player, direction: v2, wt: Weapon_Type
 
     proj := proj_entity->add_component(Standard_Projectile);
     proj.damage = config.base_damage;
-    proj.direction = normalize(direction);
+    proj.direction = safe_normalize(direction);
     proj.owner_id = player.entity.id;
     proj.speed = config.projectile_speed;
     proj.max_lifetime = config.projectile_lifetime;

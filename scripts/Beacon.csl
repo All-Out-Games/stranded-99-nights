@@ -159,7 +159,7 @@ Beacon :: class : Interactable {
         if fuel_burn_interval_seconds <= 0.0 return 0.0;
 
         remaining := get_seconds_until_next_fuel_burn();
-        whole_fuel_after_current := max(fuel - 1, 0);
+        whole_fuel_after_current := compat_max(fuel - 1, 0);
         return whole_fuel_after_current.(float) * fuel_burn_interval_seconds + remaining;
     }
 
@@ -222,7 +222,7 @@ Beacon :: class : Interactable {
             fuel_burn_interval_seconds = DEFAULT_FUEL_BURN_INTERVAL_SECONDS;
         }
 
-        fuel = max(amount, 0);
+        fuel = compat_max(amount, 0);
         if fuel > 0 {
             fuel_next_burn_time_seconds = get_time() + fuel_burn_interval_seconds;
         } else {
@@ -492,7 +492,7 @@ BeaconSystem :: struct {
                 }
             }
 
-            dir := normalize(delta);
+            dir := safe_normalize_or(delta, {1.0, 0.0});
             adjusted = beacon_pos + dir * padded_radius;
         }
         return adjusted;
