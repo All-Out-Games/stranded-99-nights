@@ -31,6 +31,7 @@
     ],
     "VoyageScene": "413939010494160:1773876479751859900",
     "SupplyDropPrefab": "SupplyDrop.prefab",
+    "MoonMerchantPrefab": "MoonMerchant.prefab",
     "Island1BossMob": "Mimicer.prefab",
     "island1_boss_spawn_point": "96282698901151:1773179589928275700",
     "SupplyDrops": [

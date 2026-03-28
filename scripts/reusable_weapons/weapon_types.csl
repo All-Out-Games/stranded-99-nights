@@ -30,6 +30,7 @@ Weapon_Type :: enum {
     CROSSBOW;
     SPEAR;
     SWORD;
+    OBSIDIAN_SWORD;
 }
 
 Fire_Mode :: enum {

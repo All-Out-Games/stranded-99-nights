@@ -26,10 +26,7 @@ CraftingStationInteractable :: class : Interactable {
     on_interact :: method(player: Player) {
         if player == null return;
 
-        player.beacon_ui_open = false;
-        player.active_beacon = null;
-        player.voyage_prep_ui_open = false;
-        player.active_voyage_prep = null;
+        player->close_all_non_log_ui_modals();
         player.crafting_ui_open = true;
         player.selected_crafting_recipe_index = CraftingSystem.clamp_recipe_index(player.selected_crafting_recipe_index);
         game_sfx_play(.UI_CLICK, player.entity);

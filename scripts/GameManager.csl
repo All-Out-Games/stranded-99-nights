@@ -26,13 +26,15 @@ Night_Event_Type :: enum {
     NONE;
     RAID;
     SUPPLY_DROP;
+    MOON_MERCHANT;
 }
 
 night_event_type_to_text :: proc(event_type: Night_Event_Type) -> string {
     switch event_type {
-        case .RAID:        return "Raid";
-        case .SUPPLY_DROP: return "Supply Drop";
-        case .NONE:        return "None";
+        case .RAID:          return "Raid";
+        case .SUPPLY_DROP:   return "Supply Drop";
+        case .MOON_MERCHANT: return "Moon Merchant";
+        case .NONE:          return "None";
     }
     return "None";
 }
@@ -324,6 +326,51 @@ beacon :: proc(player: Player, beacon_level: int) {
     log_info("% set beacon level to % via /beacon", {player->get_username(), next_level});
 } @chat_command @youtuber
 
+raid :: proc(player: Player) {
+    if !Game.is_server() return;
+    if player == null return;
+
+    manager := ensure_game_manager_exists();
+    if manager == null {
+        Notifier.notify(player, "GameManager is unavailable.");
+        return;
+    }
+
+    manager->set_forced_next_night_event(.RAID);
+    Notifier.notify(player, "Next night event forced to Raid.");
+    log_info("% queued a forced Raid event via /raid", {player->get_username()});
+} @chat_command @youtuber
+
+supply :: proc(player: Player) {
+    if !Game.is_server() return;
+    if player == null return;
+
+    manager := ensure_game_manager_exists();
+    if manager == null {
+        Notifier.notify(player, "GameManager is unavailable.");
+        return;
+    }
+
+    manager->set_forced_next_night_event(.SUPPLY_DROP);
+    Notifier.notify(player, "Next night event forced to Supply Drop.");
+    log_info("% queued a forced Supply Drop event via /supply", {player->get_username()});
+} @chat_command @youtuber
+
+merchant :: proc(player: Player) {
+    if !Game.is_server() return;
+    if player == null return;
+
+    manager := ensure_game_manager_exists();
+    if manager == null {
+        Notifier.notify(player, "GameManager is unavailable.");
+        return;
+    }
+
+    manager->set_forced_next_night_event(.MOON_MERCHANT);
+    Notifier.notify(player, "Next night event forced to Moon Merchant.");
+    log_info("% queued a forced Moon Merchant event via /merchant", {player->get_username()});
+} @chat_command @youtuber
+
 GameManager :: class : Component {
 
     damage_numbers: [..]DamageNumbers;
@@ -348,22 +395,31 @@ GameManager :: class : Component {
     day_night_blend_transition_time_seconds: float;
     nights: s64;
     current_night_event: Night_Event_Type;
+    forced_next_night_event: Night_Event_Type;
     raid_spawn_cap_multiplier: s64 @ao_serialize;
     night_event_min_completed_nights_before_roll: s64 @ao_serialize;
     night_event_none_weight: float @ao_serialize;
     night_event_raid_weight: float @ao_serialize;
     night_event_supply_drop_weight: float @ao_serialize;
+    night_event_moon_merchant_weight: float @ao_serialize;
     night_event_weight_scale_start: float @ao_serialize;
     night_event_weight_scale_gain_per_completed_night: float @ao_serialize;
     night_event_weight_scale_cap: float @ao_serialize;
     SupplyDropPrefab: string @ao_serialize;
+    MoonMerchantPrefab: string @ao_serialize;
     Island1BossMob: string @ao_serialize;
+    moon_merchant_spawn_radius: float @ao_serialize;
+    moon_merchant_spawn_sample_attempts: s64 @ao_serialize;
     island1_boss_spawn_point: Entity @ao_serialize;
     SupplyDrops: [..]Entity @ao_serialize;
     active_supply_drop_entity: Entity;
+    active_moon_merchant_entity: Entity;
+    active_moon_merchant_spawn_position: v2;
+    moon_merchant_spawn_position_ready: bool;
     active_island1_boss_entity: Entity;
     island1_boss_defeated_for_run: bool;
     island1_boss_spawns_enabled_for_run: bool;
+    next_raid_allowed_night_number: s64;
     last_notified_night_event: Night_Event_Type;
     broadcast_notification_text: string;
     broadcast_notification_end_time: float;
@@ -383,9 +439,18 @@ GameManager :: class : Component {
     NIGHT_SURVIVAL_SAVE_KEY_FORMAT :: "night_survived_%";
     NIGHT_EVENT_NOTIFICATION_TEXT :: "Night Event: %!";
     RAID_INCOMING_NOTIFICATION_TEXT :: "Raid Incoming!";
+    MOON_MERCHANT_NOTIFICATION_TEXT :: "A Moon Merchant has appeared!";
     PLAYER_DOWNED_NOTIFICATION_TEXT :: "% has been downed!";
     VOYAGE_FAILED_NOTIFICATION_TEXT :: "Voyage Failed! Try Again!";
     BROADCAST_NOTIFICATION_DURATION_SECONDS :: 5.0;
+    RAID_RETARGET_DISTANCE :: 20.0;
+    SUPPLY_DROP_NIGHTLY_CHANCE_PERCENT :: 15.0;
+    MOON_MERCHANT_NIGHTLY_CHANCE_PERCENT :: 30.0;
+    RAID_MIN_NIGHT_NUMBER :: 15;
+    RAID_COOLDOWN_NIGHTS_AFTER_TRIGGER :: 5;
+    RAID_CHANCE_START_PERCENT :: 5.0;
+    RAID_CHANCE_MAX_PERCENT :: 30.0;
+    RAID_CHANCE_MAX_NIGHT_NUMBER :: 80;
     ROUND_START_FADE_OUT_SECONDS :: 1.0;
     ROUND_START_BLACK_HOLD_SECONDS :: 1.0;
     ROUND_START_FADE_IN_SECONDS :: 1.0;
@@ -404,6 +469,8 @@ GameManager :: class : Component {
     GAME_OVER_TEXT_DURATION_SECONDS :: 10.0;
     ISLAND1_BOSS_SPAWN_RADIUS :: 20.0;
     ISLAND1_BOSS_SPAWN_SAMPLE_ATTEMPTS :: 8;
+    MOON_MERCHANT_DEFAULT_SPAWN_RADIUS :: 14.0;
+    MOON_MERCHANT_DEFAULT_SPAWN_SAMPLE_ATTEMPTS :: 10;
     DAY_MUSIC_ASSET_PATH :: "Music/WoP.wav";
     NIGHT_MUSIC_ASSET_PATH :: "Music/FtI.wav";
     LOBBY_MATCHMAKING_PRIORITY :: 1;
@@ -443,9 +510,12 @@ GameManager :: class : Component {
         if night_event_none_weight <= 0.0 { night_event_none_weight = 65.0; }
         if night_event_raid_weight <= 0.0 { night_event_raid_weight = 25.0; }
         if night_event_supply_drop_weight <= 0.0 { night_event_supply_drop_weight = 10.0; }
+        if night_event_moon_merchant_weight <= 0.0 { night_event_moon_merchant_weight = 10.0; }
         if night_event_weight_scale_start <= 0.0 { night_event_weight_scale_start = 0.1; }
         if night_event_weight_scale_gain_per_completed_night <= 0.0 { night_event_weight_scale_gain_per_completed_night = 0.1; }
         if night_event_weight_scale_cap <= 0.0 { night_event_weight_scale_cap = 1.0; }
+        if moon_merchant_spawn_radius <= 0.0 { moon_merchant_spawn_radius = MOON_MERCHANT_DEFAULT_SPAWN_RADIUS; }
+        if moon_merchant_spawn_sample_attempts <= 0 { moon_merchant_spawn_sample_attempts = MOON_MERCHANT_DEFAULT_SPAWN_SAMPLE_ATTEMPTS; }
         last_notified_night_event = .NONE;
         reset_game_state();
         loaded_island = Island;
@@ -454,6 +524,8 @@ GameManager :: class : Component {
         island_transition_disable_done = false;
         island_transition_applied = false;
         island_transition_freeze_applied = false;
+        active_moon_merchant_spawn_position = {0.0, 0.0};
+        moon_merchant_spawn_position_ready = false;
         island_transition_start_time = 0.0;
         voyage_state = .NONE;
         voyage_timer_start_time = 0.0;
@@ -487,6 +559,7 @@ GameManager :: class : Component {
 
         sync_active_island_entity();
         disable_island1_boss_spawns_for_current_run();
+        sync_moon_merchant_event_entity();
         try_start_island_transition_if_needed();
         update_island_transition();
         sync_island_transition_freeze_state();
@@ -520,7 +593,18 @@ GameManager :: class : Component {
 
     ao_late_update :: method(dt: float) {
         if Game.is_server() return;
+        if this->is_local_merchant_ui_open() return;
         draw_damage_numbers();
+    }
+
+    is_local_merchant_ui_open :: method() -> bool {
+        foreach player: component_iterator(Player) {
+            if player != null && player->is_local() && player.merchant_ui_open {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     ao_end :: method() {
@@ -548,6 +632,7 @@ GameManager :: class : Component {
         clear_active_night_event();
         clear_island1_boss();
         clear_broadcast_notification();
+        forced_next_night_event = .NONE;
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;
         Island = 1;
@@ -564,6 +649,7 @@ GameManager :: class : Component {
         VoyageHealth = VOYAGE_STARTING_HEALTH;
         last_enabled_island_number = -1;
         nights = 0;
+        next_raid_allowed_night_number = 0;
         island1_boss_defeated_for_run = false;
         island1_boss_spawns_enabled_for_run = true;
         sync_active_island_entity();
@@ -594,6 +680,7 @@ GameManager :: class : Component {
                 }
                 run_round_start_poi_setup();
                 nights = 0;
+                next_raid_allowed_night_number = 0;
                 reset_day_night_cycle();
                 current_night_event = .NONE;
                 reset_beacons_for_round();
@@ -1262,6 +1349,12 @@ GameManager :: class : Component {
     }
 
     get_current_beacon_position :: method() -> v2 {
+        foreach beacon: component_iterator(Beacon) {
+            if beacon == null continue;
+            if beacon.entity == null continue;
+            return beacon.entity.world_position;
+        }
+
         beacon_spawn_pos, found_beacon_spawn := this->get_loaded_island_beacon_spawn_position();
         if found_beacon_spawn {
             return beacon_spawn_pos;
@@ -1761,51 +1854,90 @@ GameManager :: class : Component {
         log_info("Broadcasted survived-night notification (remaining: %).", {remaining_nights});
     }
 
+    set_forced_next_night_event :: method(event_type: Night_Event_Type) {
+        forced_next_night_event = event_type;
+    }
+
+    get_upcoming_night_number :: method() -> s64 {
+        return nights + 1;
+    }
+
+    get_supply_drop_night_chance_percent :: method() -> float {
+        return SUPPLY_DROP_NIGHTLY_CHANCE_PERCENT;
+    }
+
+    get_moon_merchant_night_chance_percent :: method() -> float {
+        return MOON_MERCHANT_NIGHTLY_CHANCE_PERCENT;
+    }
+
+    mark_raid_night_triggered :: method(raid_night_number: s64) {
+        next_raid_allowed_night_number = raid_night_number + RAID_COOLDOWN_NIGHTS_AFTER_TRIGGER + 1;
+    }
+
+    get_raid_night_chance_percent :: method(upcoming_night_number: s64) -> float {
+        if upcoming_night_number < RAID_MIN_NIGHT_NUMBER return 0.0;
+        if upcoming_night_number < next_raid_allowed_night_number return 0.0;
+        if upcoming_night_number >= RAID_CHANCE_MAX_NIGHT_NUMBER return RAID_CHANCE_MAX_PERCENT;
+
+        night_span := (RAID_CHANCE_MAX_NIGHT_NUMBER - RAID_MIN_NIGHT_NUMBER).(float);
+        if night_span <= 0.0 return RAID_CHANCE_MAX_PERCENT;
+
+        progress := (upcoming_night_number - RAID_MIN_NIGHT_NUMBER).(float) / night_span;
+        return lerp(RAID_CHANCE_START_PERCENT, RAID_CHANCE_MAX_PERCENT, clamp(progress, 0.0, 1.0));
+    }
+
     roll_and_apply_night_event :: method() {
         //if !Game.is_server() return;
         clear_active_night_event();
         current_night_event = .NONE;
 
-        if nights < night_event_min_completed_nights_before_roll {
-            log_info("Night event skipped: completed nights % below unlock threshold %.", {
-                nights,
-                night_event_min_completed_nights_before_roll
-            });
+        if forced_next_night_event != .NONE {
+            current_night_event = forced_next_night_event;
+            forced_next_night_event = .NONE;
+            apply_active_night_event();
+            notify_all_players_night_event_started();
+            log_info("Night event forced for next night: %.", {night_event_type_to_text(current_night_event)});
             return;
         }
 
-        unlocked_nights := nights - night_event_min_completed_nights_before_roll;
-        event_weight_scale := night_event_weight_scale_start +
-            unlocked_nights.(float) * night_event_weight_scale_gain_per_completed_night;
-        event_weight_scale = clamp(event_weight_scale, 0.0, night_event_weight_scale_cap);
-
-        none_weight := max(night_event_none_weight, 0.0);
-        raid_weight := max(night_event_raid_weight, 0.0) * event_weight_scale;
-        supply_weight := max(night_event_supply_drop_weight, 0.0) * event_weight_scale;
-        total_weight := none_weight + raid_weight + supply_weight;
-        if total_weight <= 0.0 return;
+        upcoming_night_number := this->get_upcoming_night_number();
+        raid_chance_percent := this->get_raid_night_chance_percent(upcoming_night_number);
+        supply_chance_percent := this->get_supply_drop_night_chance_percent();
+        moon_merchant_chance_percent := this->get_moon_merchant_night_chance_percent();
+        none_chance_percent := max(100.0 - raid_chance_percent - supply_chance_percent - moon_merchant_chance_percent, 0.0);
+        total_chance_percent := none_chance_percent + raid_chance_percent + supply_chance_percent + moon_merchant_chance_percent;
+        if total_chance_percent <= 0.0 return;
 
         roll_rng := rng_seed_time();
-        roll := rng_range_float(ref roll_rng, 0.0, total_weight);
-        if roll < none_weight {
+        roll := rng_range_float(ref roll_rng, 0.0, total_chance_percent);
+        if roll < none_chance_percent {
             current_night_event = .NONE;
-        } else if roll < none_weight + raid_weight {
+        } else if roll < none_chance_percent + raid_chance_percent {
             current_night_event = .RAID;
-        } else {
+        } else if roll < none_chance_percent + raid_chance_percent + supply_chance_percent {
             current_night_event = .SUPPLY_DROP;
+        } else {
+            current_night_event = .MOON_MERCHANT;
         }
 
         if current_night_event == .NONE return;
 
         apply_active_night_event();
         notify_all_players_night_event_started();
-        log_info("Night event roll applied with scale % after % completed nights.", {
-            format_float(event_weight_scale, decimals=2),
-            nights
+        log_info("Night event roll applied for night %0 (raid %1%%, supply %2%%, merchant %3%%, none %4%%).", {
+            upcoming_night_number,
+            format_float(raid_chance_percent, decimals=2),
+            format_float(supply_chance_percent, decimals=2),
+            format_float(moon_merchant_chance_percent, decimals=2),
+            format_float(none_chance_percent, decimals=2)
         });
     }
 
     apply_active_night_event :: method() {
+        if current_night_event == .MOON_MERCHANT {
+            apply_moon_merchant_event();
+            return;
+        }
         if !Game.is_server() return;
 
         switch current_night_event {
@@ -1825,10 +1957,14 @@ GameManager :: class : Component {
             clear_raid_event();
             clear_supply_drop_event();
         }
+        clear_moon_merchant_event();
         current_night_event = .NONE;
     }
 
     apply_raid_event :: method() {
+        raid_night_number := this->get_upcoming_night_number();
+        this->mark_raid_night_triggered(raid_night_number);
+
         raid_target_players: [..]Player;
         foreach p: component_iterator(Player) {
             if p == null continue;
@@ -1848,6 +1984,18 @@ GameManager :: class : Component {
             if mob == null continue;
             if !mob->is_alive() continue;
 
+            mob_in_range_of_any_player := false;
+            for p: raid_target_players {
+                if p == null continue;
+                if p.entity == null continue;
+
+                if length_squared(mob.entity.world_position - p.entity.world_position) <= RAID_RETARGET_DISTANCE * RAID_RETARGET_DISTANCE {
+                    mob_in_range_of_any_player = true;
+                    break;
+                }
+            }
+            if !mob_in_range_of_any_player continue;
+
             target_index := rng_range_int(ref raid_rng, 0, raid_target_players.count - 1);
             target_player := raid_target_players[target_index];
             if target_player == null continue;
@@ -1860,6 +2008,7 @@ GameManager :: class : Component {
             retargeted_mob_count,
             raid_target_players.count
         });
+        log_info("Next raid cannot occur before night %.", {next_raid_allowed_night_number});
     }
 
     clear_raid_event :: method() {
@@ -1900,6 +2049,118 @@ GameManager :: class : Component {
             active_supply_drop_entity->destroy();
         }
         active_supply_drop_entity = null;
+    }
+
+    sync_moon_merchant_event_entity :: method() {
+        if current_night_event == .MOON_MERCHANT {
+            apply_moon_merchant_event();
+            return;
+        }
+        clear_moon_merchant_event();
+    }
+
+    get_moon_merchant_spawn_center :: method() -> v2, bool {
+        island_entity := get_island_entity(Island);
+        if island_entity != null {
+            return island_entity.world_position, true;
+        }
+        return {0.0, 0.0}, false;
+    }
+
+    sample_moon_merchant_spawn_position :: method() -> v2, bool {
+        center, found_center := get_moon_merchant_spawn_center();
+        if !found_center {
+            return {0.0, 0.0}, false;
+        }
+
+        min_radius: float = 2.0;
+        radius: float = 3.0;
+        if radius <= 0.0 || radius <= min_radius {
+            return center, true;
+        }
+
+        navmesh := player_navmesh;
+        rng := rng_seed_time();
+
+        if navmesh != null {
+            radius_sq := radius * radius;
+            hint_as_int: int = 0;
+
+            for attempt: 0..moon_merchant_spawn_sample_attempts-1 {
+                angle := rng_range_float(ref rng, 0.0, 6.2831853);
+                radius_lerp_t := rng_range_float(ref rng, 0.0, 1.0);
+                dist := lerp(min_radius, radius, radius_lerp_t);
+                desired_pos := v2{
+                    center.x + cos(angle) * dist,
+                    center.y + sin(angle) * dist
+                };
+
+                spawn_pos: v2;
+                if !navmesh->try_find_closest_point_on_navmesh(desired_pos, ref spawn_pos, ref hint_as_int) {
+                    continue;
+                }
+                if length_squared(spawn_pos - center) <= radius_sq {
+                    return spawn_pos, true;
+                }
+            }
+
+            fallback_pos: v2;
+            if navmesh->try_find_closest_point_on_navmesh(center, ref fallback_pos, ref hint_as_int) {
+                return fallback_pos, true;
+            }
+        }
+
+        angle := rng_range_float(ref rng, 0.0, 6.2831853);
+        dist := lerp(min_radius, radius, rng_range_float(ref rng, 0.0, 1.0));
+        return v2{
+            center.x + cos(angle) * dist,
+            center.y + sin(angle) * dist
+        }, true;
+    }
+
+    apply_moon_merchant_event :: method() {
+        if MoonMerchantPrefab.count <= 0 {
+            log_info("Night event Moon Merchant skipped: MoonMerchantPrefab is empty.", {});
+            return;
+        }
+
+        prefab := get_asset(Prefab_Asset, MoonMerchantPrefab);
+        if prefab == null {
+            log_info("Night event Moon Merchant skipped: prefab missing at '%'.", {MoonMerchantPrefab});
+            return;
+        }
+
+        if Game.is_server() {
+            if !moon_merchant_spawn_position_ready {
+                spawn_pos, found_spawn_pos := sample_moon_merchant_spawn_position();
+                if !found_spawn_pos {
+                    log_info("Night event Moon Merchant skipped: no valid spawn position near the Beacon.", {});
+                    return;
+                }
+                active_moon_merchant_spawn_position = spawn_pos;
+                moon_merchant_spawn_position_ready = true;
+            }
+        }
+        if !moon_merchant_spawn_position_ready return;
+
+        spawn_pos := active_moon_merchant_spawn_position;
+
+        if active_moon_merchant_entity == null || !#alive(active_moon_merchant_entity) {
+            active_moon_merchant_entity = Scene.instantiate(prefab);
+        }
+
+        active_moon_merchant_entity->set_local_position(spawn_pos);
+    }
+
+    clear_moon_merchant_event :: method() {
+        if active_moon_merchant_entity != null && #alive(active_moon_merchant_entity) {
+            active_moon_merchant_entity->destroy();
+        }
+        active_moon_merchant_entity = null;
+        if Game.is_server() {
+            active_moon_merchant_spawn_position = {0.0, 0.0};
+            moon_merchant_spawn_position_ready = false;
+        }
     }
 
     get_island1_boss_spawn_center :: method() -> v2 {
@@ -2022,6 +2283,8 @@ GameManager :: class : Component {
         message := format_string(NIGHT_EVENT_NOTIFICATION_TEXT, {event_name});
         if current_night_event == .RAID {
             message = RAID_INCOMING_NOTIFICATION_TEXT;
+        } else if current_night_event == .MOON_MERCHANT {
+            message = MOON_MERCHANT_NOTIFICATION_TEXT;
         }
         show_broadcast_notification(message);
         last_notified_night_event = current_night_event;
@@ -2066,6 +2329,10 @@ GameManager :: class : Component {
 
     is_supply_drop_event_active :: method() -> bool {
         return current_night_event == .SUPPLY_DROP;
+    }
+
+    is_moon_merchant_event_active :: method() -> bool {
+        return current_night_event == .MOON_MERCHANT;
     }
 
     should_mobs_ignore_beacon_safety :: method() -> bool {

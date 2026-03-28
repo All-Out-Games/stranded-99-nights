@@ -19,9 +19,9 @@
   "component_type": "Internal_Component",
   "internal_component_type": "Mob",
   "data": {
-    "max_health": 50,
+    "max_health": 30,
     "move_speed": 265,
-    "attack_damage": 17,
+    "attack_damage": 15,
     "attack_speed": 2.2500000000000000,
     "attack_range": 1.5000000000000000,
     "acquire_range": 3.5000000000000000,

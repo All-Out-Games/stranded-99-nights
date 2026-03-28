@@ -1,4 +1,4 @@
-WEAPON_COUNT :: 30;
+WEAPON_COUNT :: 31;
 AMMO_TYPE_COUNT :: 10;
 
 g_weapon_item_defs: [WEAPON_COUNT]Item_Definition;
@@ -43,6 +43,7 @@ weapon_type_to_index :: proc(wt: Weapon_Type) -> s64 {
         case .CROSSBOW:               return 27;
         case .SPEAR:                  return 28;
         case .SWORD:                  return 29;
+        case .OBSIDIAN_SWORD:         return 30;
     }
     return -1;
 }
@@ -173,6 +174,7 @@ init_weapon_items :: proc() {
     register_weapon(.CROSSBOW);
     register_weapon(.SPEAR);
     register_weapon(.SWORD);
+    register_weapon(.OBSIDIAN_SWORD);
 
     // Load fire sounds for each weapon
     load_fire_sounds();
@@ -334,6 +336,7 @@ get_weapon_type_for_item :: proc(item_def: Item_Definition) -> Weapon_Type {
                 case 27: return .CROSSBOW;
                 case 28: return .SPEAR;
                 case 29: return .SWORD;
+                case 30: return .OBSIDIAN_SWORD;
             }
         }
         i += 1;

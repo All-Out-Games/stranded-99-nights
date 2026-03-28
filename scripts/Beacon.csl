@@ -80,11 +80,9 @@ Beacon :: class : Interactable {
     on_interact :: method(player: Player) {
         if player == null return;
 
-        player.crafting_ui_open = false;
+        player->close_all_non_log_ui_modals();
         player.beacon_ui_open = true;
         player.active_beacon = this;
-        player.voyage_prep_ui_open = false;
-        player.active_voyage_prep = null;
         game_sfx_play(.UI_CLICK, player.entity);
     }
 

@@ -27,7 +27,7 @@
     "IslandIndex": -1,
     "spawn_radius": 10,
     "max_mobs": 2,
-    "spawn_rate_seconds": 7
+    "spawn_rate_seconds": 9
   }
 },
 {

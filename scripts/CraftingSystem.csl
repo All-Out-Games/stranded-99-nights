@@ -124,6 +124,25 @@ CraftingSystem :: struct {
             CraftingSystem.add_output(r6, "crossbow", 1);
             recipes->append(r6);
 
+            r9 := CraftingSystem.make_recipe(
+                "craft_bandage",
+                "Bandage",
+                "A simple healing item that restores 30 HP."
+            );
+            CraftingSystem.add_input(r9, "fiber", 2);
+            CraftingSystem.add_output(r9, "bandage", 1);
+            recipes->append(r9);
+
+            r10 := CraftingSystem.make_recipe(
+                "craft_medkit",
+                "Medkit",
+                "A powerful healing item that restores 80 HP."
+            );
+            CraftingSystem.add_input(r10, "fish", 2);
+            CraftingSystem.add_input(r10, "fiber", 2);
+            CraftingSystem.add_output(r10, "medkit", 1);
+            recipes->append(r10);
+
             r7 := CraftingSystem.make_recipe(
                 "craft_arrow_bundle",
                 "Arrow x10",
@@ -165,24 +184,7 @@ CraftingSystem :: struct {
             CraftingSystem.add_output(r8c, "tornado_ammo", 5);
             recipes->append(r8c);
 
-            r9 := CraftingSystem.make_recipe(
-                "craft_bandage",
-                "Bandage",
-                "A simple healing item that restores 30 HP."
-            );
-            CraftingSystem.add_input(r9, "fiber", 2);
-            CraftingSystem.add_output(r9, "bandage", 1);
-            recipes->append(r9);
-
-            r10 := CraftingSystem.make_recipe(
-                "craft_medkit",
-                "Medkit",
-                "A powerful healing item that restores 80 HP."
-            );
-            CraftingSystem.add_input(r10, "fish", 2);
-            CraftingSystem.add_input(r10, "fiber", 2);
-            CraftingSystem.add_output(r10, "medkit", 1);
-            recipes->append(r10);
+            
         }
 
         return recipes;
