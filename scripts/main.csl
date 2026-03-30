@@ -335,6 +335,12 @@ Player :: class : Player_Base {
     codex_ui_open: bool;
     log_page_ui_open: bool;
     active_log_page_index: int;
+    tutorial_harvest_wood_complete: bool;
+    tutorial_feed_fire_complete: bool;
+    tutorial_craft_spear_complete: bool;
+    tutorial_defeat_mob_complete: bool;
+    tutorial_upgrade_beacon_complete: bool;
+    tutorial_survive_5_nights_complete: bool;
     death_drop_pickup_blocks: [..]Death_Drop_Pickup_Block;
     is_ghost_mode: bool;
     ghost_current_animation_name: string;
@@ -369,6 +375,7 @@ Player :: class : Player_Base {
         codex_ui_open = false;
         log_page_ui_open = false;
         active_log_page_index = 0;
+        TutorialSystem.load_player_progress(this);
         is_ghost_mode = false;
         ghost_current_animation_name = "";
         ghost_last_world_position = entity.world_position;
@@ -417,6 +424,7 @@ Player :: class : Player_Base {
 				this->update_local_vision_light();
 			}
             this->update_melee_weapon_idle_aim();
+            TutorialSystem.update_progress(this);
         }
     }
 
@@ -539,6 +547,10 @@ Player :: class : Player_Base {
             this->draw_lobby_waiting_text();
             this->draw_round_start_intro();
             draw_global_notification_banner(this);
+        }
+
+        if this->is_local_or_server() && !dead_for_night && !merchant_ui_open {
+            TutorialSystem.draw_ui(this);
         }
     }
    }
@@ -1315,21 +1327,22 @@ Player :: class : Player_Base {
     DrawArrowToPosition :: proc(using this: Player, position: v2) {
         if this == null return;
         if entity == null || entity.self == null return;
+        if this->is_local() {
 
         // Screen-space overlay so it can't be occluded by world sprites.
         UI.push_screen_draw_context();
         defer UI.pop_draw_context();
 
         // Above almost everything else in the HUD.
-        UI.push_layer(800);
+        UI.push_layer(1000);
         defer UI.pop_layer();
 
-        safe := UI.get_safe_screen_rect();
-        h := 1080.0;
-        if h <= 0 {
+        screen := UI.get_screen_rect();
+        screen_height := screen->height();
+        if screen_height <= 0 {
             return;
         }
-        aspect := 1920.0 / h;
+        aspect := screen->width() / screen_height;
         if aspect <= 0 {
             aspect = 1.0;
         }
@@ -1350,7 +1363,7 @@ Player :: class : Player_Base {
         anim := pow(abs(sin(PI * get_time())), 0.75);
 
         // distanceThreshold = ((dir * threshold) / (1, aspect)).Length
-        distance_threshold_world :: 8.5;
+        distance_threshold_world :: 6.5;
         dvec := v2{dir.x * distance_threshold_world, dir.y * distance_threshold_world};
         scaled := v2{dvec.x, dvec.y / aspect};
         distance_threshold := length(scaled);
@@ -1364,7 +1377,7 @@ Player :: class : Player_Base {
             t := 1.0 - Ease.T(distance - distance_threshold, 1.0);
             t = clamp(t, 0.0, 1.0);
 
-            arrow_screen := Rect{player_screen, player_screen}->offset_unscaled(dir.x * 300.0, dir.y * 300.0)->center();
+            arrow_screen := Rect{player_screen, player_screen}->offset(dir.x * 300.0, dir.y * 300.0)->center();
             arrow_screen = lerp(arrow_screen, target_screen, t);
 
             rect := Rect{arrow_screen, arrow_screen}->grow(arrow_size_px);
@@ -1382,7 +1395,7 @@ Player :: class : Player_Base {
         }
         else {
             rect := Rect{target_screen, target_screen}->grow(arrow_size_px);
-            rect = rect->offset_unscaled(0, anim * 50.0);
+            rect = rect->offset(0, anim * 50.0);
 
             // Near target: fixed "down" arrow (270 degrees).
             c := rect->center();
@@ -1393,6 +1406,7 @@ Player :: class : Player_Base {
             UI.push_matrix(Matrix4.translate(v3{-c.x, -c.y, 0}));
             defer UI.pop_matrix();
             UI.quad(rect, arrow_tex, {1, 1, 1, 1});
+        }
         }
     }
 

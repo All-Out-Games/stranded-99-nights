@@ -338,6 +338,10 @@ CraftingSystem :: struct {
             Items.move_item_to_inventory(new_item, inv);
         }
 
+        if recipe.id == "craft_spear" {
+            TutorialSystem.mark_craft_spear_complete(player);
+        }
+
         //Notifier.notify(player, "Crafted: %", {recipe.name});
         return true;
     }

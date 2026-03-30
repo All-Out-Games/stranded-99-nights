@@ -1,0 +1,258 @@
+Survivor_Loot_Entry :: struct {
+    defn: Item_Definition;
+    amount: s64;
+}
+
+Survivor :: class : Interactable {
+    spine_animator: Spine_Animator @ao_serialize;
+    rescue_animation_name: string @ao_serialize;
+    despawn_delay_seconds: float @ao_serialize;
+    loot_item_ids: [..]string @ao_serialize;
+    loot_item_amounts: [..]s64 @ao_serialize;
+    min_reward_count: s64 @ao_serialize;
+    max_reward_count: s64 @ao_serialize;
+    drop_spawn_radius: float @ao_serialize;
+
+    rescued: bool;
+    rescued_time: float;
+    resolved_rescue: bool;
+    survivor_color: Color_Replace_Color;
+    applied_survivor_color: Color_Replace_Color;
+    cry_loop_sound_id: u64;
+
+    CRY_LOOP_SFX_PATH :: "cry_loop.wav";
+
+    ao_start :: method() {
+        this->set_listener(this);
+
+        if radius <= 0.0 {
+            radius = 2.0;
+        }
+        if despawn_delay_seconds < 0.0 {
+            despawn_delay_seconds = 0.0;
+        }
+        if min_reward_count <= 0 {
+            min_reward_count = 1;
+        }
+        if max_reward_count <= 0 {
+            max_reward_count = 1;
+        }
+        if max_reward_count < min_reward_count {
+            max_reward_count = min_reward_count;
+        }
+        if drop_spawn_radius < 0.0 {
+            drop_spawn_radius = 0.0;
+        }
+
+        this->set_text("Rescue");
+        this->set_hold_text("Rescuing...");
+
+        if Game.is_server() && survivor_color == .NONE {
+            rng := rng_seed_time();
+            survivor_color = random_survivor_color(ref rng);
+        }
+
+        apply_survivor_color();
+        
+        cry_sfx := get_asset(SFX_Asset, CRY_LOOP_SFX_PATH);
+        if cry_sfx == null return;
+
+        desc := SFX.default_sfx_desc();
+        desc.loop = true;
+        desc.entity_to_follow = entity.id;
+        desc.channel = .SFX;
+        cry_loop_sound_id = SFX.play(cry_sfx, desc);
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if player == null return false;
+        if rescued return false;
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        if player == null return;
+        if rescued return;
+
+        rescued = true;
+        rescued_time = get_time();
+        this->set_text("Rescued");
+        stop_cry_loop();
+        play_rescue_animation();
+
+        if Game.is_server() {
+            reward_player(player);
+        }
+    }
+
+    ao_update :: method(dt: float) {
+        apply_survivor_color();
+
+        if !rescued return;
+        if resolved_rescue return;
+        if get_time() - rescued_time < despawn_delay_seconds {
+            return;
+        }
+
+        resolved_rescue = true;
+        if Game.is_server() {
+            entity->destroy();
+        }
+    }
+
+    ao_end :: method() {
+        stop_cry_loop();
+    }
+
+    random_survivor_color :: method(rng: ref u64) -> Color_Replace_Color {
+        roll := rng_range_int(ref rng, 0, 18);
+        switch roll {
+            case 0:  return .RED;
+            case 1:  return .CYAN;
+            case 2:  return .GREEN;
+            case 3:  return .YELLOW;
+            case 4:  return .LIGHT_GREEN;
+            case 5:  return .PINK;
+            case 6:  return .ORANGE;
+            case 7:  return .BLACK;
+            case 8:  return .PURPLE;
+            case 9:  return .LIGHT_GRAY;
+            case 10: return .BLACK2;
+            case 11: return .BLUE2;
+            case 12: return .BROWN1;
+            case 13: return .GREEN3;
+            case 14: return .ORANGE2;
+            case 15: return .PURPLE2;
+            case 16: return .PURPLE3;
+            case 17: return .RED2;
+            case 18: return .WHITE1;
+        }
+        return .RED;
+    }
+
+    apply_survivor_color :: method() {
+        if survivor_color == .NONE return;
+        if applied_survivor_color == survivor_color return;
+
+        if spine_animator == null {
+            spine_animator = entity->get_component(Spine_Animator);
+        }
+        if spine_animator == null return;
+
+        spine_animator->awaken();
+        if spine_animator.instance == null return;
+
+        spine_animator.instance->set_color_replace_color(survivor_color);
+        applied_survivor_color = survivor_color;
+    }
+
+    ensure_cry_loop_playing :: method() {
+        if rescued return;
+        if cry_loop_sound_id != 0 return;
+
+        cry_sfx := get_asset(SFX_Asset, CRY_LOOP_SFX_PATH);
+        if cry_sfx == null return;
+
+        desc := SFX.default_sfx_desc();
+        desc.loop = true;
+        desc.entity_to_follow = entity.id;
+        desc.channel = .SFX;
+        cry_loop_sound_id = SFX.play(cry_sfx, desc);
+    }
+
+    stop_cry_loop :: method() {
+        if cry_loop_sound_id == 0 return;
+
+        SFX.stop(cry_loop_sound_id);
+        cry_loop_sound_id = 0;
+    }
+
+    play_rescue_animation :: method() {
+        if rescue_animation_name.count <= 0 return;
+
+        if spine_animator == null {
+            spine_animator = entity->get_component(Spine_Animator);
+        }
+        if spine_animator == null return;
+
+        spine_animator->awaken();
+        if spine_animator.instance == null return;
+
+        spine_animator.instance->set_animation(rescue_animation_name, false, 0);
+    }
+
+    reward_player :: method(player: Player) {
+        if player == null return;
+
+        grant_moon_reward(player);
+        spawn_loot_rewards();
+    }
+
+    grant_moon_reward :: method(player: Player) {
+        manager := get_game_manager();
+        if manager == null return;
+
+        moon_reward := manager->get_survivor_moon_reward_amount();
+        if moon_reward <= 0 return;
+
+        Economy.deposit_currency(player, "Moons", moon_reward);
+    }
+
+    resolve_item_def :: method(item_id: string) -> Item_Definition {
+        if item_id.count <= 0 return null;
+
+        defn := ItemManager.TryFindItem(item_id);
+        if defn != null {
+            return defn;
+        }
+
+        return try_find_reusable_weapon_item_def_by_id(item_id);
+    }
+
+    spawn_loot_rewards :: method() {
+        if loot_item_ids.count <= 0 return;
+
+        reward_entries: [..]Survivor_Loot_Entry;
+        i: s64 = 0;
+        while i < loot_item_ids.count {
+            item_id := loot_item_ids[i];
+            if item_id.count <= 0 {
+                i += 1;
+                continue;
+            }
+
+            defn := resolve_item_def(item_id);
+            if defn != null {
+                amount: s64 = 1;
+                if i < loot_item_amounts.count {
+                    amount = max(loot_item_amounts[i], 1);
+                }
+                reward_entries->append(Survivor_Loot_Entry{defn, amount});
+            }
+            i += 1;
+        }
+
+        if reward_entries.count <= 0 return;
+
+        reward_min := max(min_reward_count, 0);
+        reward_max := max(max_reward_count, reward_min);
+        if reward_max <= 0 return;
+
+        rng := rng_seed_time();
+        center := entity.world_position;
+        reward_count := rng_range_int(ref rng, reward_min, reward_max).(s64);
+        rewarded_count: s64 = 0;
+        while rewarded_count < reward_count {
+            entry_index := rng_range_int(ref rng, 0, reward_entries.count - 1).(s64);
+            entry := reward_entries[entry_index];
+
+            spawn_position := center;
+            if drop_spawn_radius > 0.0 {
+                spawn_position = ItemDrops.random_point_on_circle_edge(center, drop_spawn_radius, ref rng);
+            }
+
+            ItemDrops.spawn_from_definition(spawn_position, entry.defn, entry.amount);
+            rewarded_count += 1;
+        }
+    }
+}

@@ -1,0 +1,361 @@
+import "core:ao"
+
+Tutorial_Step :: enum {
+    NONE;
+    HARVEST_WOOD;
+    FEED_FIRE;
+    CRAFT_SPEAR;
+    DEFEAT_MOB;
+    UPGRADE_BEACON;
+    SURVIVE_5_NIGHTS;
+}
+
+TutorialSystem :: struct {
+    // Keep save keys flat. Dots can be treated as nested JSON paths by the backend.
+    SAVE_KEY_HARVEST_WOOD :: "tutorial_harvest_wood_complete";
+    SAVE_KEY_FEED_FIRE :: "tutorial_feed_fire_complete";
+    SAVE_KEY_CRAFT_SPEAR :: "tutorial_craft_spear_complete";
+    SAVE_KEY_DEFEAT_MOB :: "tutorial_defeat_mob_complete";
+    SAVE_KEY_UPGRADE_BEACON :: "tutorial_upgrade_beacon_complete";
+    SAVE_KEY_SURVIVE_5_NIGHTS :: "tutorial_survive_5_nights_complete";
+    LEGACY_DOTTED_SAVE_ROOT :: "tutorial";
+    LEGACY_DOTTED_SAVE_KEY_HARVEST_WOOD :: "tutorial.harvest_wood_complete";
+    LEGACY_DOTTED_SAVE_KEY_FEED_FIRE :: "tutorial.feed_fire_complete";
+    LEGACY_DOTTED_SAVE_KEY_CRAFT_SPEAR :: "tutorial.craft_spear_complete";
+    LEGACY_DOTTED_SAVE_KEY_DEFEAT_MOB :: "tutorial.defeat_mob_complete";
+    LEGACY_DOTTED_SAVE_KEY_UPGRADE_BEACON :: "tutorial.upgrade_beacon_complete";
+    LEGACY_DOTTED_SAVE_KEY_SURVIVE_5_NIGHTS :: "tutorial.survive_5_nights_complete";
+
+    cleanup_legacy_progress_keys :: proc(player: Player) {
+        if player == null return;
+        if !Game.is_server() return;
+
+        Save.delete_key(player, LEGACY_DOTTED_SAVE_ROOT);
+        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_HARVEST_WOOD);
+        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_FEED_FIRE);
+        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_CRAFT_SPEAR);
+        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_DEFEAT_MOB);
+        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_UPGRADE_BEACON);
+        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_SURVIVE_5_NIGHTS);
+    }
+
+    load_player_progress :: proc(player: Player) {
+        if player == null return;
+        cleanup_legacy_progress_keys(player);
+
+        player.tutorial_harvest_wood_complete = Save.get_int(player, SAVE_KEY_HARVEST_WOOD, 0) != 0;
+        player.tutorial_feed_fire_complete = Save.get_int(player, SAVE_KEY_FEED_FIRE, 0) != 0;
+        player.tutorial_craft_spear_complete = Save.get_int(player, SAVE_KEY_CRAFT_SPEAR, 0) != 0;
+        player.tutorial_defeat_mob_complete = Save.get_int(player, SAVE_KEY_DEFEAT_MOB, 0) != 0;
+        player.tutorial_upgrade_beacon_complete = Save.get_int(player, SAVE_KEY_UPGRADE_BEACON, 0) != 0;
+        player.tutorial_survive_5_nights_complete = Save.get_int(player, SAVE_KEY_SURVIVE_5_NIGHTS, 0) != 0;
+    }
+
+    update_progress :: proc(player: Player) {
+        if player == null return;
+
+        if !player.tutorial_harvest_wood_complete && TutorialSystem.player_has_wood(player) {
+            TutorialSystem.mark_step_complete(player, .HARVEST_WOOD);
+        }
+
+        if TutorialSystem.get_active_step(player) == .SURVIVE_5_NIGHTS {
+            manager := get_game_manager();
+            if manager != null && manager->get_nights() >= 5 {
+                TutorialSystem.mark_step_complete(player, .SURVIVE_5_NIGHTS);
+            }
+        }
+    }
+
+    mark_step_complete :: proc(player: Player, step: Tutorial_Step) {
+        if player == null return;
+
+        save_key := "";
+        already_complete := false;
+
+        switch step {
+            case .HARVEST_WOOD: {
+                already_complete = player.tutorial_harvest_wood_complete;
+                player.tutorial_harvest_wood_complete = true;
+                save_key = SAVE_KEY_HARVEST_WOOD;
+            }
+            case .FEED_FIRE: {
+                already_complete = player.tutorial_feed_fire_complete;
+                player.tutorial_feed_fire_complete = true;
+                save_key = SAVE_KEY_FEED_FIRE;
+            }
+            case .CRAFT_SPEAR: {
+                already_complete = player.tutorial_craft_spear_complete;
+                player.tutorial_craft_spear_complete = true;
+                save_key = SAVE_KEY_CRAFT_SPEAR;
+            }
+            case .DEFEAT_MOB: {
+                already_complete = player.tutorial_defeat_mob_complete;
+                player.tutorial_defeat_mob_complete = true;
+                save_key = SAVE_KEY_DEFEAT_MOB;
+            }
+            case .UPGRADE_BEACON: {
+                already_complete = player.tutorial_upgrade_beacon_complete;
+                player.tutorial_upgrade_beacon_complete = true;
+                save_key = SAVE_KEY_UPGRADE_BEACON;
+            }
+            case .SURVIVE_5_NIGHTS: {
+                already_complete = player.tutorial_survive_5_nights_complete;
+                player.tutorial_survive_5_nights_complete = true;
+                save_key = SAVE_KEY_SURVIVE_5_NIGHTS;
+            }
+            case .NONE: {
+                return;
+            }
+        }
+
+        if already_complete return;
+        if Game.is_server() && save_key.count > 0 {
+            Save.set_int(player, save_key, 1);
+        }
+    }
+
+    mark_feed_fire_complete :: proc(player: Player) {
+        TutorialSystem.mark_step_complete(player, .FEED_FIRE);
+    }
+
+    mark_craft_spear_complete :: proc(player: Player) {
+        TutorialSystem.mark_step_complete(player, .CRAFT_SPEAR);
+    }
+
+    mark_defeat_mob_complete_if_active :: proc(player: Player) {
+        if player == null return;
+        if TutorialSystem.get_active_step(player) != .DEFEAT_MOB return;
+        TutorialSystem.mark_step_complete(player, .DEFEAT_MOB);
+    }
+
+    mark_upgrade_beacon_complete_if_active :: proc(player: Player) {
+        if player == null return;
+        if TutorialSystem.get_active_step(player) != .UPGRADE_BEACON return;
+        TutorialSystem.mark_step_complete(player, .UPGRADE_BEACON);
+    }
+
+    notify_mob_defeated_by_player_id :: proc(player_entity_id: u64) {
+        if player_entity_id == 0 return;
+
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            if player.entity == null continue;
+            if player.entity.id != player_entity_id continue;
+
+            TutorialSystem.mark_defeat_mob_complete_if_active(player);
+            return;
+        }
+    }
+
+    get_active_step :: proc(player: Player) -> Tutorial_Step {
+        if player == null return .NONE;
+
+        if !player.tutorial_harvest_wood_complete return .HARVEST_WOOD;
+        if !player.tutorial_feed_fire_complete return .FEED_FIRE;
+        if !player.tutorial_craft_spear_complete return .CRAFT_SPEAR;
+        if !player.tutorial_defeat_mob_complete return .DEFEAT_MOB;
+        if !player.tutorial_upgrade_beacon_complete return .UPGRADE_BEACON;
+        if !player.tutorial_survive_5_nights_complete return .SURVIVE_5_NIGHTS;
+        return .NONE;
+    }
+
+    player_has_wood :: proc(player: Player) -> bool {
+        if player == null return false;
+        if player.default_inventory == null return false;
+        if player.default_inventory.self == null return false;
+
+        wood := ItemManager.TryFindItem("wood");
+        if wood == null return false;
+
+        return CraftingSystem.get_item_count_in_inventory(player.default_inventory, wood) > 0;
+    }
+
+    get_step_text :: proc(step: Tutorial_Step) -> string {
+        switch step {
+            case .HARVEST_WOOD: return "Harvest some Wood!";
+            case .FEED_FIRE: return "Feed the Fire!";
+            case .CRAFT_SPEAR: return "Craft a Spear!";
+            case .DEFEAT_MOB: return "Defeat a Mob!";
+            case .UPGRADE_BEACON: return "Upgrade the Beacon!";
+            case .SURVIVE_5_NIGHTS: return "Survive 5 Nights!";
+            case .NONE: return "";
+        }
+
+        return "";
+    }
+
+    get_step_target_position :: proc(player: Player, step: Tutorial_Step) -> v2, bool {
+        if step == .HARVEST_WOOD {
+            target_pos, found := TutorialSystem.get_closest_wood_node_position(player);
+            return target_pos, found;
+        }
+        if step == .FEED_FIRE {
+            target_pos, found := TutorialSystem.get_closest_beacon_position(player);
+            return target_pos, found;
+        }
+        if step == .CRAFT_SPEAR {
+            target_pos, found := TutorialSystem.get_closest_crafting_station_position(player);
+            return target_pos, found;
+        }
+        if step == .DEFEAT_MOB {
+            target_pos, found := TutorialSystem.get_closest_mob_position(player);
+            return target_pos, found;
+        }
+        if step == .UPGRADE_BEACON {
+            target_pos, found := TutorialSystem.get_closest_beacon_position(player);
+            return target_pos, found;
+        }
+        if step == .SURVIVE_5_NIGHTS {
+            return v2.{0.0, 0.0}, false;
+        }
+        if step == .NONE {
+            return v2.{0.0, 0.0}, false;
+        }
+
+        return v2.{0.0, 0.0}, false;
+    }
+
+    get_closest_wood_node_position :: proc(player: Player) -> v2, bool {
+        if player == null return v2.{0.0, 0.0}, false;
+        if player.entity == null return v2.{0.0, 0.0}, false;
+
+        player_pos := player.entity.world_position;
+        best_pos := v2.{0.0, 0.0};
+        best_dist_sq := 0.0;
+        found := false;
+
+        foreach node: component_iterator(ResourceNode) {
+            if node == null continue;
+            if node.entity == null continue;
+            if node.resource_type != .WOOD continue;
+            if node.is_depleted continue;
+
+            delta := node.entity.world_position - player_pos;
+            dist_sq := length_squared(delta);
+            if !found || dist_sq < best_dist_sq {
+                best_pos = node.entity.world_position;
+                best_dist_sq = dist_sq;
+                found = true;
+            }
+        }
+
+        return best_pos, found;
+    }
+
+    get_closest_beacon_position :: proc(player: Player) -> v2, bool {
+        if player == null return v2.{0.0, 0.0}, false;
+        if player.entity == null return v2.{0.0, 0.0}, false;
+
+        player_pos := player.entity.world_position;
+        best_pos := v2.{0.0, 0.0};
+        best_dist_sq := 0.0;
+        found := false;
+
+        foreach beacon: component_iterator(Beacon) {
+            if beacon == null continue;
+            if beacon.entity == null continue;
+
+            delta := beacon.entity.world_position - player_pos;
+            dist_sq := length_squared(delta);
+            if !found || dist_sq < best_dist_sq {
+                best_pos = beacon.entity.world_position;
+                best_dist_sq = dist_sq;
+                found = true;
+            }
+        }
+
+        return best_pos, found;
+    }
+
+    get_closest_crafting_station_position :: proc(player: Player) -> v2, bool {
+        if player == null return v2.{0.0, 0.0}, false;
+        if player.entity == null return v2.{0.0, 0.0}, false;
+
+        player_pos := player.entity.world_position;
+        best_pos := v2.{0.0, 0.0};
+        best_dist_sq := 0.0;
+        found := false;
+
+        foreach station: component_iterator(CraftingStationInteractable) {
+            if station == null continue;
+            if station.entity == null continue;
+
+            delta := station.entity.world_position - player_pos;
+            dist_sq := length_squared(delta);
+            if !found || dist_sq < best_dist_sq {
+                best_pos = station.entity.world_position;
+                best_dist_sq = dist_sq;
+                found = true;
+            }
+        }
+
+        return best_pos, found;
+    }
+
+    get_closest_mob_position :: proc(player: Player) -> v2, bool {
+        if player == null return v2.{0.0, 0.0}, false;
+        if player.entity == null return v2.{0.0, 0.0}, false;
+
+        player_pos := player.entity.world_position;
+        best_pos := v2.{0.0, 0.0};
+        best_dist_sq := 0.0;
+        found := false;
+
+        foreach mob: component_iterator(Mob) {
+            if mob == null continue;
+            if mob.entity == null continue;
+            if !mob->is_alive() continue;
+
+            delta := mob.entity.world_position - player_pos;
+            dist_sq := length_squared(delta);
+            if !found || dist_sq < best_dist_sq {
+                best_pos = mob.entity.world_position;
+                best_dist_sq = dist_sq;
+                found = true;
+            }
+        }
+
+        return best_pos, found;
+    }
+
+    draw_ui :: proc(player: Player) {
+        if player == null return;
+
+        manager := get_game_manager();
+        if manager == null return;
+        if manager->get_phase() != .IN_ROUND return;
+        if manager->get_round_start_overlay_alpha() > 0.0 return;
+        if manager->should_draw_round_start_text() return;
+
+        step := TutorialSystem.get_active_step(player);
+        if step == .NONE return;
+
+        UI.push_screen_draw_context();
+        defer UI.pop_draw_context();
+
+        UI.push_layer(850);
+        defer UI.pop_layer();
+
+        step_ts := UI.default_text_settings();
+        step_ts.size = 72;
+        step_ts.halign = .CENTER;
+        step_ts.valign = .CENTER;
+        step_ts.word_wrap = true;
+        step_ts.color = {1, 1, 1, 1};
+        step_ts.do_outline = true;
+        step_ts.outline_thickness = 3;
+        step_ts.outline_color = {0, 0, 0, 1};
+
+        text_rect := UI.get_safe_screen_rect()->center_rect()->grow(110, 620, 110, 620)->offset(0, 230);
+        UI.text(text_rect, step_ts, TutorialSystem.get_step_text(step));
+
+        if player.crafting_ui_open || player.beacon_ui_open || player.merchant_ui_open || player.voyage_prep_ui_open || player.codex_ui_open || player.log_page_ui_open {
+            return;
+        }
+
+        target_pos, has_target := TutorialSystem.get_step_target_position(player, step);
+        if has_target {
+            player->DrawArrowToPosition(target_pos);
+        }
+    }
+}

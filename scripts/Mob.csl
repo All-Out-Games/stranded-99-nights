@@ -276,10 +276,12 @@ Mob :: class : Component {
         game_sfx_play(.DAMAGE_HIT, entity);
 
         if health <= 0.0 {
+            killer_player_id := damage_aggro_target_player_id;
             is_dead = true;
             death_time_seconds = get_time();
             target_player_id = 0;
             damage_aggro_target_player_id = 0;
+            TutorialSystem.notify_mob_defeated_by_player_id(killer_player_id);
             try_spawn_death_drop();
             trigger_death_animation();
             game_sfx_play(.DEATH, entity);

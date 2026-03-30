@@ -407,13 +407,19 @@ GameManager :: class : Component {
     night_event_weight_scale_cap: float @ao_serialize;
     SupplyDropPrefab: string @ao_serialize;
     MoonMerchantPrefab: string @ao_serialize;
+    SurvivorPrefab: string @ao_serialize;
     Island1BossMob: string @ao_serialize;
     moon_merchant_spawn_radius: float @ao_serialize;
     moon_merchant_spawn_sample_attempts: s64 @ao_serialize;
     island1_boss_spawn_point: Entity @ao_serialize;
     SupplyDrops: [..]Entity @ao_serialize;
+    Island1SurvivorSpawnPositions: [..]Entity @ao_serialize;
+    Island2SurvivorSpawnPositions: [..]Entity @ao_serialize;
+    Island3SurvivorSpawnPositions: [..]Entity @ao_serialize;
+    Island4SurvivorSpawnPositions: [..]Entity @ao_serialize;
     active_supply_drop_entity: Entity;
     active_moon_merchant_entity: Entity;
+    active_survivor_entities: [..]Entity;
     active_moon_merchant_spawn_position: v2;
     moon_merchant_spawn_position_ready: bool;
     active_island1_boss_entity: Entity;
@@ -428,7 +434,7 @@ GameManager :: class : Component {
     NIGHT_DURATION_SECONDS :: 60.0;
     DAY_NIGHT_BLEND_TRANSITION_SECONDS :: 5.0;
     NIGHT_WARNING_LEAD_TIME_SECONDS :: 10.0;
-    PLAYERS_REQUIRED_TO_START :: 3;
+    PLAYERS_REQUIRED_TO_START :: 6;
     NIGHT_WARNING_NOTIFICATION_TEXT :: "Night is almost here! Get back to the Beacon!";
     SURVIVED_NIGHT_NOTIFICATION_TEXT :: "You Survived the Night! % more to go!";
     SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT :: "+% % for surviving the night!";
@@ -463,6 +469,7 @@ GameManager :: class : Component {
     ISLAND_TRANSITION_FREEZE_REASON :: "island_transition";
     VOYAGE_DURATION_SECONDS :: 45.0;
     VOYAGE_STARTING_HEALTH :: 300.0;
+    SURVIVORS_PER_ISLAND :: 2;
     GAME_OVER_FADE_OUT_SECONDS :: 1.0;
     GAME_OVER_BLACK_HOLD_SECONDS :: 1.25;
     GAME_OVER_FADE_IN_SECONDS :: 1.0;
@@ -473,8 +480,8 @@ GameManager :: class : Component {
     MOON_MERCHANT_DEFAULT_SPAWN_SAMPLE_ATTEMPTS :: 10;
     DAY_MUSIC_ASSET_PATH :: "Music/WoP.wav";
     NIGHT_MUSIC_ASSET_PATH :: "Music/FtI.wav";
-    LOBBY_MATCHMAKING_PRIORITY :: 1;
-    IN_ROUND_MATCHMAKING_PRIORITY :: 0;
+    MATCHMAKING_PRIORITY_INACTIVE :: 0;
+    MATCHMAKING_PRIORITY_ACTIVE :: 1;
     warned_player_user_ids_for_current_day: [..]string;
     warned_player_entities_for_current_day: [..]Entity;
     round_start_teleport_done: bool;
@@ -670,11 +677,11 @@ GameManager :: class : Component {
         switch phase {
             case .LOBBY: {
                 log_info("GameManager phase -> LOBBY", {});
-                apply_matchmaking_priority_for_phase(phase);
+                update_matchmaking_priority();
             }
             case .IN_ROUND: {
                 log_info("GameManager phase -> IN_ROUND", {});
-                apply_matchmaking_priority_for_phase(phase);
+                update_matchmaking_priority();
                 if !Game.is_server() {
                     game_sfx_play(.ROUND_START);
                 }
@@ -692,25 +699,26 @@ GameManager :: class : Component {
             }
             case .POST_ROUND: {
                 log_info("GameManager phase -> POST_ROUND", {});
+                update_matchmaking_priority();
             }
         }
     }
 
-    apply_matchmaking_priority_for_phase :: method(phase: Game_Phase) {
+    should_use_active_matchmaking_priority :: method() -> bool {
+        if current_phase == .LOBBY return false;
+        if game_over_sequence_active return false;
+        return true;
+    }
+
+    update_matchmaking_priority :: method() {
         if !Game.is_server() return;
 
-        switch phase {
-            case .LOBBY: {
-                Server.set_matchmaking_priority(LOBBY_MATCHMAKING_PRIORITY);
-            }
-            case .IN_ROUND: {
-                Server.set_matchmaking_priority(IN_ROUND_MATCHMAKING_PRIORITY);
-            }
-            case .POST_ROUND: {
-                // Keep matchmaking off while post-round cleanup runs.
-                Server.set_matchmaking_priority(IN_ROUND_MATCHMAKING_PRIORITY);
-            }
+        if should_use_active_matchmaking_priority() {
+            Server.set_matchmaking_priority(MATCHMAKING_PRIORITY_ACTIVE);
+            return;
         }
+
+        Server.set_matchmaking_priority(MATCHMAKING_PRIORITY_INACTIVE);
     }
 
     on_exit_phase :: method(phase: Game_Phase) {
@@ -797,6 +805,10 @@ GameManager :: class : Component {
 
     get_night_survival_reward_amount :: method() -> s64 {
         return this->get_night_survival_credit_amount();
+    }
+
+    get_survivor_moon_reward_amount :: method() -> s64 {
+        return max((Island * 3).(s64), 0);
     }
 
     apply_night_survival_progress :: method() {
@@ -1073,6 +1085,7 @@ GameManager :: class : Component {
             log_info("POI round start complete: %/% spawned.", {spawned_count, total_count});
         }
 
+        spawn_survivors_for_run();
         rebuild_player_navmesh_for_round_start();
     }
 
@@ -1128,6 +1141,87 @@ GameManager :: class : Component {
         if supply_drop_index < 0 return null;
         if supply_drop_index >= SupplyDrops.count return null;
         return SupplyDrops[supply_drop_index];
+    }
+
+    spawn_survivors_for_run :: method() {
+        if !Game.is_server() return;
+
+        despawn_all_survivors_for_restart();
+
+        if SurvivorPrefab.count <= 0 {
+            log_info("Survivor round start skipped: SurvivorPrefab is empty.", {});
+            return;
+        }
+
+        prefab := get_asset(Prefab_Asset, SurvivorPrefab);
+        if prefab == null {
+            log_info("Survivor round start skipped: prefab missing at '%'.", {SurvivorPrefab});
+            return;
+        }
+
+        survivor_rng := rng_seed_time();
+        total_spawned: s64 = 0;
+        total_spawned += spawn_survivors_for_island(ref survivor_rng, 1, Island1SurvivorSpawnPositions, prefab);
+        total_spawned += spawn_survivors_for_island(ref survivor_rng, 2, Island2SurvivorSpawnPositions, prefab);
+        total_spawned += spawn_survivors_for_island(ref survivor_rng, 3, Island3SurvivorSpawnPositions, prefab);
+        total_spawned += spawn_survivors_for_island(ref survivor_rng, 4, Island4SurvivorSpawnPositions, prefab);
+
+        if total_spawned > 0 {
+            log_info("Survivor round start complete: spawned % survivor(s).", {total_spawned});
+        }
+    }
+
+    spawn_survivors_for_island :: method(rng: ref u64, island_number: int, spawn_slots: []Entity, prefab: Prefab_Asset) -> s64 {
+        if prefab == null return 0;
+        if spawn_slots.count <= 0 return 0;
+
+        available_slots: [..]Entity;
+        for slot: spawn_slots {
+            if slot == null continue;
+            available_slots->append(slot);
+        }
+
+        if available_slots.count <= 0 return 0;
+
+        spawn_count := min(SURVIVORS_PER_ISLAND, available_slots.count);
+        spawned_count: s64 = 0;
+        while spawned_count < spawn_count {
+            slot_index := rng_range_int(ref rng, 0, available_slots.count - 1).(s64);
+            slot := available_slots[slot_index];
+            available_slots->unordered_remove_by_index(slot_index);
+
+            survivor_entity := Scene.instantiate(prefab);
+            if survivor_entity == null {
+                continue;
+            }
+
+            survivor_entity->set_parent(slot, false);
+            survivor_entity->set_local_position({0.0, 0.0});
+            active_survivor_entities->append(survivor_entity);
+            spawned_count += 1;
+        }
+
+        if spawned_count > 0 {
+            log_info("Spawned % survivor(s) for island %.", {spawned_count, island_number});
+        }
+        return spawned_count;
+    }
+
+    despawn_all_survivors_for_restart :: method() {
+        if !Game.is_server() return;
+
+        removed_count: s64 = 0;
+        for survivor_entity: active_survivor_entities {
+            if survivor_entity == null continue;
+            if !#alive(survivor_entity) continue;
+            survivor_entity->destroy();
+            removed_count += 1;
+        }
+        active_survivor_entities->clear();
+
+        if removed_count > 0 {
+            log_info("Game cleanup despawned % survivor(s).", {removed_count});
+        }
     }
 
     get_beacon_spawn_position_for_island :: method(island_number: int) -> v2, bool {
@@ -1664,6 +1758,7 @@ GameManager :: class : Component {
         game_over_sequence_restart_done = false;
         game_over_sequence_start_time = get_time();
         game_over_nights_lasted = nights;
+        update_matchmaking_priority();
         if !Game.is_server() {
             game_sfx_play(.GAME_OVER);
         }
@@ -1720,6 +1815,7 @@ GameManager :: class : Component {
         if !Game.is_server() return;
 
         clear_island1_boss();
+        despawn_all_survivors_for_restart();
         despawn_all_pois_for_transition();
         destroy_all_mobs_for_game_over();
         despawn_all_dropped_items_for_game_over();

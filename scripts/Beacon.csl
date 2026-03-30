@@ -554,6 +554,10 @@ BeaconSystem :: struct {
         beacon->apply_level_world_state();
         beacon->refresh_prompt_text();
         beacon.upgrade_feedback_sequence += 1;
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            TutorialSystem.mark_upgrade_beacon_complete_if_active(p);
+        }
 
         if beacon.level == 2 {
             beacon->rebuild_game_navmesh();
@@ -642,6 +646,7 @@ BeaconSystem :: struct {
         }
 
         beacon->add_fuel(1);
+        TutorialSystem.mark_feed_fire_complete(player);
         //Notifier.notify(player, "Added 1 Wood to Beacon fuel. Fuel: %", {beacon.fuel});
         return true;
     }
