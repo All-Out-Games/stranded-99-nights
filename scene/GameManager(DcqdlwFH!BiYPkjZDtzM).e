@@ -31,6 +31,7 @@
     ],
     "VoyageScene": "413939010494160:1773876479751859900",
     "SupplyDropPrefab": "SupplyDrop.prefab",
+    "ReaperPrefab": "Monster.prefab",
     "MoonMerchantPrefab": "MoonMerchant.prefab",
     "SurvivorPrefab": "SchleemSurvivor.prefab",
     "Island1BossMob": "Mimicer.prefab",

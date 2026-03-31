@@ -31,6 +31,7 @@ Weapon_Type :: enum {
     SPEAR;
     SWORD;
     OBSIDIAN_SWORD;
+    SCYTHE;
 }
 
 Fire_Mode :: enum {

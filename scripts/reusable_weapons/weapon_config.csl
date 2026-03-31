@@ -574,6 +574,21 @@ get_weapon_config :: proc(wt: Weapon_Type) -> Weapon_Config {
             config.shoot_trigger = "melee_AL";
             config.use_ik_var = "use_1h_ik";
         }
+        case .SCYTHE: {
+            config.fire_mode = .MELEE;
+            config.hand_type = .ONE_HAND;
+            config.fire_rate = 1.0;
+            config.base_damage = 100.0;
+            config.ammo_per_shot = 0;
+            config.weapon_skin = "012MIM/weapons/scythe";
+            config.weapon_icon_path = "Items/Scythe.png";
+            config.item_id = "scythe";
+            config.item_name = "Scythe";
+            config.ammo_type_index = -1;
+            config.ammo_first_pickup = -1;
+            config.shoot_trigger = "melee_AL";
+            config.use_ik_var = "use_1h_ik";
+        }
     }
 
     return config;

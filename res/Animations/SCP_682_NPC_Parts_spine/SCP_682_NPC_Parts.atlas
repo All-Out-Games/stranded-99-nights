@@ -1,0 +1,39 @@
+706509a89532ffc5.png
+	size: 1112, 260
+	filter: Linear, Linear
+	scale: 0.5
+682/Leg front
+	bounds: 478, 138, 75, 113
+682/back arm bottom
+	bounds: 1023, 175, 76, 38
+	rotate: 90
+682/back arm top
+	bounds: 797, 163, 48, 88
+682/back hand
+	bounds: 1067, 196, 55, 39
+	rotate: 90
+682/body
+	bounds: 241, 6, 245, 135
+	rotate: 90
+682/foot back
+	bounds: 905, 189, 62, 57
+	rotate: 90
+682/foot front
+	bounds: 711, 169, 80, 82
+682/front arm bottom
+	bounds: 850, 169, 82, 64
+	rotate: 90
+682/front arm top
+	bounds: 624, 159, 81, 92
+682/front hand
+	bounds: 968, 184, 67, 49
+	rotate: 90
+682/head
+	bounds: 382, 124, 127, 90
+	rotate: 90
+682/tail
+	bounds: 6, 56, 230, 195
+shadow
+	bounds: 559, 135, 116, 59
+	offsets: 3, 3, 122, 64
+	rotate: 90

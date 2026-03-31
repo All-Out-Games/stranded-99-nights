@@ -1,0 +1,50 @@
+Reaper.png
+	size: 756, 756
+	filter: Linear, Linear
+Grim_Body
+	bounds: 583, 381, 159, 180
+Grim_Hand_Bot
+	bounds: 504, 388, 78, 71
+	rotate: 90
+Grim_Hand_Top
+	bounds: 651, 145, 77, 86
+Grim_Head
+	bounds: 583, 563, 191, 164
+	rotate: 90
+Grim_Scythe
+	bounds: 333, 468, 248, 286
+Skeleton Lock/scythe_key
+	bounds: 2, 50, 206, 372
+	offsets: 1, 1, 208, 374
+Skeleton Lock/souls
+	bounds: 504, 183, 141, 196
+	offsets: 1, 1, 143, 198
+hand_L_finditem
+	bounds: 647, 233, 146, 70
+	offsets: 1, 1, 148, 72
+	rotate: 90
+items/heart
+	bounds: 210, 51, 72, 58
+	offsets: 1, 1, 74, 60
+items/shine_finditem
+	bounds: 2, 424, 329, 330
+	offsets: 7, 10, 343, 349
+items/slowmo
+	bounds: 504, 40, 145, 141
+	offsets: 1, 1, 147, 143
+items/teleporter
+	bounds: 325, 10, 123, 118
+	offsets: 1, 1, 125, 120
+reaper_search
+	bounds: 315, 130, 187, 292
+repear_hand_search
+	bounds: 651, 76, 76, 67
+	offsets: 1, 1, 78, 69
+scythe_slice
+	bounds: 2, 2, 46, 321
+	offsets: 1, 1, 48, 324
+	rotate: 90
+shadowpool/shadowpool
+	bounds: 210, 111, 311, 103
+	offsets: 1, 1, 313, 105
+	rotate: 90

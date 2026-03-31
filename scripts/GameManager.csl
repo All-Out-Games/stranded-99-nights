@@ -26,6 +26,7 @@ Night_Event_Type :: enum {
     NONE;
     RAID;
     SUPPLY_DROP;
+    REAPER;
     MOON_MERCHANT;
 }
 
@@ -33,6 +34,7 @@ night_event_type_to_text :: proc(event_type: Night_Event_Type) -> string {
     switch event_type {
         case .RAID:          return "Raid";
         case .SUPPLY_DROP:   return "Supply Drop";
+        case .REAPER:        return "Monster";
         case .MOON_MERCHANT: return "Moon Merchant";
         case .NONE:          return "None";
     }
@@ -371,6 +373,21 @@ merchant :: proc(player: Player) {
     log_info("% queued a forced Moon Merchant event via /merchant", {player->get_username()});
 } @chat_command @youtuber
 
+monster :: proc(player: Player) {
+    if !Game.is_server() return;
+    if player == null return;
+
+    manager := ensure_game_manager_exists();
+    if manager == null {
+        Notifier.notify(player, "GameManager is unavailable.");
+        return;
+    }
+
+    manager->set_forced_next_night_event(.REAPER);
+    Notifier.notify(player, "Next night event forced to Monster.");
+    log_info("% queued a forced Monster event via /monster", {player->get_username()});
+} @chat_command @youtuber
+
 GameManager :: class : Component {
 
     damage_numbers: [..]DamageNumbers;
@@ -406,6 +423,7 @@ GameManager :: class : Component {
     night_event_weight_scale_gain_per_completed_night: float @ao_serialize;
     night_event_weight_scale_cap: float @ao_serialize;
     SupplyDropPrefab: string @ao_serialize;
+    ReaperPrefab: string @ao_serialize;
     MoonMerchantPrefab: string @ao_serialize;
     SurvivorPrefab: string @ao_serialize;
     Island1BossMob: string @ao_serialize;
@@ -418,6 +436,7 @@ GameManager :: class : Component {
     Island3SurvivorSpawnPositions: [..]Entity @ao_serialize;
     Island4SurvivorSpawnPositions: [..]Entity @ao_serialize;
     active_supply_drop_entity: Entity;
+    active_reaper_entity: Entity;
     active_moon_merchant_entity: Entity;
     active_survivor_entities: [..]Entity;
     active_moon_merchant_spawn_position: v2;
@@ -445,12 +464,15 @@ GameManager :: class : Component {
     NIGHT_SURVIVAL_SAVE_KEY_FORMAT :: "night_survived_%";
     NIGHT_EVENT_NOTIFICATION_TEXT :: "Night Event: %!";
     RAID_INCOMING_NOTIFICATION_TEXT :: "Raid Incoming!";
+    REAPER_NOTIFICATION_TEXT :: "A Monster has Spawned on the Island!";
     MOON_MERCHANT_NOTIFICATION_TEXT :: "A Moon Merchant has appeared!";
     PLAYER_DOWNED_NOTIFICATION_TEXT :: "% has been downed!";
     VOYAGE_FAILED_NOTIFICATION_TEXT :: "Voyage Failed! Try Again!";
     BROADCAST_NOTIFICATION_DURATION_SECONDS :: 5.0;
     RAID_RETARGET_DISTANCE :: 20.0;
     SUPPLY_DROP_NIGHTLY_CHANCE_PERCENT :: 15.0;
+    REAPER_MIN_NIGHT_NUMBER :: 5;
+    REAPER_NIGHTLY_CHANCE_PERCENT :: 10.0;
     MOON_MERCHANT_NIGHTLY_CHANCE_PERCENT :: 30.0;
     RAID_MIN_NIGHT_NUMBER :: 15;
     RAID_COOLDOWN_NIGHTS_AFTER_TRIGGER :: 5;
@@ -1143,6 +1165,26 @@ GameManager :: class : Component {
         return SupplyDrops[supply_drop_index];
     }
 
+    get_survivor_spawn_positions_for_island :: method(island_number: int) -> []Entity {
+        switch island_number {
+            case 1: return Island1SurvivorSpawnPositions;
+            case 2: return Island2SurvivorSpawnPositions;
+            case 3: return Island3SurvivorSpawnPositions;
+            case 4: return Island4SurvivorSpawnPositions;
+        }
+        return Island1SurvivorSpawnPositions;
+    }
+
+    get_current_player_island_number :: method() -> int {
+        if loaded_island > 0 {
+            return loaded_island;
+        }
+        if Island > 0 {
+            return Island;
+        }
+        return 1;
+    }
+
     spawn_survivors_for_run :: method() {
         if !Game.is_server() return;
 
@@ -1674,7 +1716,6 @@ GameManager :: class : Component {
                 day_night_phase_time_seconds = 0.0;
                 begin_day_night_blend_transition();
                 roll_and_apply_night_event();
-                spawn_island1_boss_for_night();
                 if !Game.is_server() {
                     game_sfx_play(.NIGHT_START);
                 }
@@ -1966,6 +2007,11 @@ GameManager :: class : Component {
         return MOON_MERCHANT_NIGHTLY_CHANCE_PERCENT;
     }
 
+    get_reaper_night_chance_percent :: method(upcoming_night_number: s64) -> float {
+        if upcoming_night_number < REAPER_MIN_NIGHT_NUMBER return 0.0;
+        return REAPER_NIGHTLY_CHANCE_PERCENT;
+    }
+
     mark_raid_night_triggered :: method(raid_night_number: s64) {
         next_raid_allowed_night_number = raid_night_number + RAID_COOLDOWN_NIGHTS_AFTER_TRIGGER + 1;
     }
@@ -1999,9 +2045,10 @@ GameManager :: class : Component {
         upcoming_night_number := this->get_upcoming_night_number();
         raid_chance_percent := this->get_raid_night_chance_percent(upcoming_night_number);
         supply_chance_percent := this->get_supply_drop_night_chance_percent();
+        reaper_chance_percent := this->get_reaper_night_chance_percent(upcoming_night_number);
         moon_merchant_chance_percent := this->get_moon_merchant_night_chance_percent();
-        none_chance_percent := max(100.0 - raid_chance_percent - supply_chance_percent - moon_merchant_chance_percent, 0.0);
-        total_chance_percent := none_chance_percent + raid_chance_percent + supply_chance_percent + moon_merchant_chance_percent;
+        none_chance_percent := max(100.0 - raid_chance_percent - supply_chance_percent - reaper_chance_percent - moon_merchant_chance_percent, 0.0);
+        total_chance_percent := none_chance_percent + raid_chance_percent + supply_chance_percent + reaper_chance_percent + moon_merchant_chance_percent;
         if total_chance_percent <= 0.0 return;
 
         roll_rng := rng_seed_time();
@@ -2012,6 +2059,8 @@ GameManager :: class : Component {
             current_night_event = .RAID;
         } else if roll < none_chance_percent + raid_chance_percent + supply_chance_percent {
             current_night_event = .SUPPLY_DROP;
+        } else if roll < none_chance_percent + raid_chance_percent + supply_chance_percent + reaper_chance_percent {
+            current_night_event = .REAPER;
         } else {
             current_night_event = .MOON_MERCHANT;
         }
@@ -2020,10 +2069,11 @@ GameManager :: class : Component {
 
         apply_active_night_event();
         notify_all_players_night_event_started();
-        log_info("Night event roll applied for night %0 (raid %1%%, supply %2%%, merchant %3%%, none %4%%).", {
+        log_info("Night event roll applied for night %0 (raid %1%%, supply %2%%, reaper %3%%, merchant %4%%, none %5%%).", {
             upcoming_night_number,
             format_float(raid_chance_percent, decimals=2),
             format_float(supply_chance_percent, decimals=2),
+            format_float(reaper_chance_percent, decimals=2),
             format_float(moon_merchant_chance_percent, decimals=2),
             format_float(none_chance_percent, decimals=2)
         });
@@ -2043,6 +2093,9 @@ GameManager :: class : Component {
             case .SUPPLY_DROP: {
                 apply_supply_drop_event();
             }
+            case .REAPER: {
+                apply_reaper_event();
+            }
             case .NONE: {
             }
         }
@@ -2052,6 +2105,7 @@ GameManager :: class : Component {
         if Game.is_server() {
             clear_raid_event();
             clear_supply_drop_event();
+            clear_reaper_event();
         }
         clear_moon_merchant_event();
         current_night_event = .NONE;
@@ -2145,6 +2199,62 @@ GameManager :: class : Component {
             active_supply_drop_entity->destroy();
         }
         active_supply_drop_entity = null;
+    }
+
+    apply_reaper_event :: method() {
+        if ReaperPrefab.count <= 0 {
+            log_info("Night event Monster skipped: ReaperPrefab is empty.", {});
+            return;
+        }
+
+        prefab := get_asset(Prefab_Asset, ReaperPrefab);
+        if prefab == null {
+            log_info("Night event Monster skipped: prefab missing at '%'.", {ReaperPrefab});
+            return;
+        }
+
+        if active_reaper_entity != null && #alive(active_reaper_entity) {
+            return;
+        }
+
+        island_number := this->get_current_player_island_number();
+        spawn_slots := this->get_survivor_spawn_positions_for_island(island_number);
+        if spawn_slots.count <= 0 {
+            log_info("Night event Monster skipped: island % has no survivor spawn positions assigned.", {island_number});
+            return;
+        }
+
+        available_slots: [..]Entity;
+        for slot: spawn_slots {
+            if slot == null continue;
+            available_slots->append(slot);
+        }
+
+        if available_slots.count <= 0 {
+            log_info("Night event Monster skipped: island % has no valid survivor spawn slots.", {island_number});
+            return;
+        }
+
+        reaper_rng := rng_seed_time();
+        slot_index := rng_range_int(ref reaper_rng, 0, available_slots.count - 1).(s64);
+        spawn_slot := available_slots[slot_index];
+        spawn_pos := spawn_slot.world_position;
+
+        active_reaper_entity = Scene.instantiate(prefab);
+        if active_reaper_entity == null {
+            log_info("Night event Monster failed to instantiate prefab '%'.", {ReaperPrefab});
+            return;
+        }
+
+        active_reaper_entity->set_local_position(spawn_pos);
+        log_info("Night event started: MONSTER on island % at (%, %).", {island_number, spawn_pos.x, spawn_pos.y});
+    }
+
+    clear_reaper_event :: method() {
+        if active_reaper_entity != null && #alive(active_reaper_entity) {
+            active_reaper_entity->destroy();
+        }
+        active_reaper_entity = null;
     }
 
     sync_moon_merchant_event_entity :: method() {
@@ -2379,6 +2489,8 @@ GameManager :: class : Component {
         message := format_string(NIGHT_EVENT_NOTIFICATION_TEXT, {event_name});
         if current_night_event == .RAID {
             message = RAID_INCOMING_NOTIFICATION_TEXT;
+        } else if current_night_event == .REAPER {
+            message = REAPER_NOTIFICATION_TEXT;
         } else if current_night_event == .MOON_MERCHANT {
             message = MOON_MERCHANT_NOTIFICATION_TEXT;
         }
@@ -2425,6 +2537,10 @@ GameManager :: class : Component {
 
     is_supply_drop_event_active :: method() -> bool {
         return current_night_event == .SUPPLY_DROP;
+    }
+
+    is_reaper_event_active :: method() -> bool {
+        return current_night_event == .REAPER;
     }
 
     is_moon_merchant_event_active :: method() -> bool {

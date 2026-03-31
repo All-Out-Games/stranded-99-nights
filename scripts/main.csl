@@ -1231,6 +1231,12 @@ Player :: class : Player_Base {
             } else if manager->is_supply_drop_event_active() {
                 event_icon = get_asset(Texture_Asset, "UI/Star.png");
                 event_label = "Supply Drop";
+            } else if manager->is_reaper_event_active() {
+                event_icon = get_asset(Texture_Asset, "Items/scp_682.png");
+                if event_icon == null {
+                    event_icon = get_asset(Texture_Asset, "Items/Scythe.png");
+                }
+                event_label = "Monster";
             } else if manager->is_moon_merchant_event_active() {
                 event_icon = get_asset(Texture_Asset, "Items/Moon.png");
                 event_label = "Moon Merchant";

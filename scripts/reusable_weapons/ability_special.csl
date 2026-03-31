@@ -13,6 +13,9 @@ get_melee_damage :: proc(player: Player) -> float {
     if player.equipped_weapon_type == .OBSIDIAN_SWORD {
         return get_weapon_config(.OBSIDIAN_SWORD).base_damage;
     }
+    if player.equipped_weapon_type == .SCYTHE {
+        return get_weapon_config(.SCYTHE).base_damage;
+    }
     return BASE_MELEE_DAMAGE;
 }
 
@@ -24,6 +27,9 @@ get_melee_range :: proc(player: Player) -> float {
         return SWORD_MELEE_RANGE;
     }
     if player.equipped_weapon_type == .OBSIDIAN_SWORD {
+        return SWORD_MELEE_RANGE;
+    }
+    if player.equipped_weapon_type == .SCYTHE {
         return SWORD_MELEE_RANGE;
     }
     return BASE_MELEE_RANGE;
