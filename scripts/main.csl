@@ -66,6 +66,8 @@ PLAYER_DOWNED_REVIVE_HEALTH :: 25.0;
 PLAYER_DOWNED_REVIVE_HOLD_SECONDS :: 1.25;
 PLAYER_DEATH_DROP_SELF_PICKUP_BLOCK_SECONDS :: 5.0;
 PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS :: 2.5;
+PLAYER_BEACON_HEAL_INTERVAL_SECONDS :: 1.0;
+PLAYER_BEACON_HEAL_AMOUNT :: 1.0;
 GHOST_HIDE_FROM_LIVING_REASON :: "ghost_hide_from_living";
 GHOST_FACING_DELTA_THRESHOLD :: 0.01;
 ISLAND1_RESPAWN_ENTITY_NAME :: "Island1Spawn";
@@ -355,6 +357,7 @@ Player :: class : Player_Base {
 	clock_cur_rotation: float;
     default_camera_size: float;
     damage_pulse_elapsed_seconds: float;
+    beacon_heal_elapsed_seconds: float;
 
     ao_start :: method() {
         health = 100.0;
@@ -381,6 +384,7 @@ Player :: class : Player_Base {
         ghost_last_world_position = entity.world_position;
         ghost_last_world_position_initialized = true;
         damage_pulse_elapsed_seconds = PLAYER_DAMAGE_PULSE_DURATION_SECONDS;
+        beacon_heal_elapsed_seconds = 0.0;
         default_camera_size = max(camera.size, 1.0);
         camera.size = max(default_camera_size * PLAYER_CAMERA_NORMAL_ZOOM_OUT_MULTIPLIER, 1.0);
 
@@ -414,6 +418,7 @@ Player :: class : Player_Base {
     ao_update :: method(dt: float) {
         // Called once per frame
         this->update_damage_pulse(dt);
+        this->update_beacon_healing(dt);
         this->update_ghost_mode_animation();
         this->update_ghost_visibility_for_local_view();
         if this->is_local() {
@@ -425,6 +430,36 @@ Player :: class : Player_Base {
 			}
             this->update_melee_weapon_idle_aim();
             TutorialSystem.update_progress(this);
+        }
+    }
+
+    update_beacon_healing :: method(dt: float) {
+        if entity == null return;
+        if dt <= 0.0 return;
+        if health <= 0.0 {
+            beacon_heal_elapsed_seconds = 0.0;
+            return;
+        }
+        if this->is_dead_for_night_state() {
+            beacon_heal_elapsed_seconds = 0.0;
+            return;
+        }
+        if !BeaconSystem.is_position_inside_active_safety_zone(entity.world_position) {
+            beacon_heal_elapsed_seconds = 0.0;
+            return;
+        }
+
+        beacon_heal_elapsed_seconds += dt;
+        while beacon_heal_elapsed_seconds >= PLAYER_BEACON_HEAL_INTERVAL_SECONDS {
+            beacon_heal_elapsed_seconds -= PLAYER_BEACON_HEAL_INTERVAL_SECONDS;
+
+            if health >= max_health continue;
+
+            previous_health := health;
+            health = min(health + PLAYER_BEACON_HEAL_AMOUNT, max_health);
+            if health > previous_health {
+                spawn_fish_heal_effect(this);
+            }
         }
     }
 
@@ -514,7 +549,7 @@ Player :: class : Player_Base {
                     drop_navmesh = manager.player_navmesh;
                 }
 
-                drop_rng := rng_seed_time();
+                drop_rng := rng_root_seed();
                 dropped_item->do_spawn_animation(ref drop_rng, drop_navmesh);
                 this->register_pickup_block(dropped_item, PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS);
                 game_sfx_play(.ITEM_DROP, entity);
@@ -586,14 +621,16 @@ Player :: class : Player_Base {
 
     ao_can_use_ability :: method(ability: Ability_Base) -> bool {
         // Called to determine if the player is allowed to use the given ability
-        if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect return false;
+        active_effect := entity->get_active_effect();
+        if active_effect != null && active_effect.#type == Player_Death_Effect return false;
         if this->is_dead_for_night_state() return false;
         return true;
     }
 
     ao_can_use_interactable :: method(interactable: Interactable) -> bool {
         // Called to determine if the player is allowed to use the given interactable
-        if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect return false;
+        active_effect := entity->get_active_effect();
+        if active_effect != null && active_effect.#type == Player_Death_Effect return false;
         if this->is_dead_for_night_state() return false;
         if this->is_death_drop_pickup_blocked(interactable) return false;
         return true;
@@ -860,7 +897,7 @@ Player :: class : Player_Base {
         }
 
         drop_origin := entity.world_position;
-        drop_rng := rng_seed_time();
+        drop_rng := rng_root_seed();
         for i: 0..default_inventory.capacity-1 {
             item := default_inventory->get_item(i);
             if item == null continue;
@@ -915,20 +952,23 @@ Player :: class : Player_Base {
 
     begin_death_effect :: method() {
         if this->is_dead_for_night_state() return;
-        if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect return;
+        active_effect := entity->get_active_effect();
+        if active_effect != null && active_effect.#type == Player_Death_Effect return;
         effect := new(Player_Death_Effect);
         entity->set_active_effect(effect);
     }
 
     begin_downed_effect :: method() {
         if this->is_dead_for_night_state() return;
-        if entity.active_effect != null && entity.active_effect.#type == Player_Downed_Effect return;
+        active_effect := entity->get_active_effect();
+        if active_effect != null && active_effect.#type == Player_Downed_Effect return;
         effect := new(Player_Downed_Effect);
         entity->set_active_effect(effect);
     }
 
     is_downed_for_night :: method() -> bool {
-        return entity.active_effect != null && entity.active_effect.#type == Player_Downed_Effect;
+        active_effect := entity->get_active_effect();
+        return active_effect != null && active_effect.#type == Player_Downed_Effect;
     }
 
     is_dead_for_night_state :: method() -> bool {
@@ -938,14 +978,14 @@ Player :: class : Player_Base {
 
     revive_from_downed :: method(revive_health: float) -> bool {
         if !this->is_downed_for_night() return false;
-        downed := entity.active_effect.(Player_Downed_Effect);
+        downed := entity->get_active_effect().(Player_Downed_Effect);
         downed->revive_in_place(revive_health);
         return true;
     }
 
     revive_for_day_start :: method() {
         if this->is_downed_for_night() {
-            downed := entity.active_effect.(Player_Downed_Effect);
+            downed := entity->get_active_effect().(Player_Downed_Effect);
             downed->revive_at_respawn();
             return;
         }
@@ -1034,11 +1074,12 @@ Player :: class : Player_Base {
 
     reset_for_game_restart :: method() {
         this->set_ghost_mode_enabled(false);
+        active_effect := entity->get_active_effect();
         if this->is_downed_for_night() {
-            downed := entity.active_effect.(Player_Downed_Effect);
+            downed := entity->get_active_effect().(Player_Downed_Effect);
             downed->revive_at_respawn();
-        } else if entity.active_effect != null && entity.active_effect.#type == Player_Death_Effect {
-            death_effect := entity.active_effect.(Player_Death_Effect);
+        } else if active_effect != null && active_effect.#type == Player_Death_Effect {
+            death_effect := active_effect.(Player_Death_Effect);
             death_effect->remove_effect(true);
             health = max_health;
             entity->set_local_position(get_respawn_position(this));
@@ -1360,7 +1401,7 @@ Player :: class : Player_Base {
         player_screen := world_to_screen(entity.world_position + v2{0, 1.5});
 
         delta_screen := target_screen - player_screen;
-        dir := normalize(delta_screen);
+        dir := normalize_or_zero(delta_screen);
         if length_squared(dir) < 0.00001 {
             dir = {1, 0};
         }
@@ -1472,17 +1513,32 @@ Player :: class : Player_Base {
         UI.text(text_rect, ts, "Waiting for Players to Start: %/%", {player_count, required_players});
     }
 
+    draw_end_sequence_line :: method(text: string, text_rect: Rect, ts: Text_Settings, elapsed: float, reveal_delay: float) {
+        if elapsed < reveal_delay return;
+
+        appear_t := clamp((elapsed - reveal_delay) / 0.45, 0.0, 1.0);
+        ease_t := 1.0 - pow(1.0 - appear_t, 3.0);
+        line_ts := ts;
+        line_ts.color.w *= ease_t;
+        line_rect := text_rect->offset(lerp(-90.0, 0.0, ease_t), 0.0);
+        UI.text(line_rect, line_ts, text);
+    }
+
     draw_round_start_intro :: method() {
         manager := get_game_manager();
         if manager == null return;
 
         overlay_alpha := max(
             manager->get_round_start_overlay_alpha(),
-            max(manager->get_game_over_overlay_alpha(), manager->get_island_transition_overlay_alpha())
+            max(
+                manager->get_game_over_overlay_alpha(),
+                max(manager->get_island_transition_overlay_alpha(), manager->get_run_complete_overlay_alpha())
+            )
         );
         should_draw_text := manager->should_draw_round_start_text();
         should_draw_game_over_text := manager->should_draw_game_over_text();
-        if overlay_alpha <= 0.0 && !should_draw_text && !should_draw_game_over_text return;
+        should_draw_run_complete_text := manager->should_draw_run_complete_text();
+        if overlay_alpha <= 0.0 && !should_draw_text && !should_draw_game_over_text && !should_draw_run_complete_text return;
 
         UI.push_screen_draw_context();
         defer UI.pop_draw_context();
@@ -1533,6 +1589,52 @@ Player :: class : Player_Base {
             detail_ts.outline_thickness = 2;
             detail_ts.outline_color = {0, 0, 0, 1};
             UI.text(nights_rect, detail_ts, "Nights Survived: %", {manager->get_game_over_nights_lasted()});
+        }
+
+        if should_draw_run_complete_text {
+            elapsed := manager->get_run_complete_sequence_elapsed_seconds();
+            title_rect := UI.get_safe_screen_rect()->center_rect()->grow(160, 660, 160, 660)->offset(0, 120);
+            island_rect := title_rect->offset(0, -140)->grow(0, -140, 0, -140);
+            rex_rect := island_rect->offset(0, -88);
+            moons_rect := rex_rect->offset(0, -88);
+
+            title_ts := UI.default_text_settings();
+            title_ts.size = 112;
+            title_ts.halign = .CENTER;
+            title_ts.valign = .CENTER;
+            title_ts.color = {0.95, 0.86, 0.30, 1.0};
+            title_ts.do_outline = true;
+            title_ts.outline_thickness = 3;
+            title_ts.outline_color = {0, 0, 0, 1};
+
+            detail_ts := UI.default_text_settings();
+            detail_ts.size = 52;
+            detail_ts.halign = .CENTER;
+            detail_ts.valign = .CENTER;
+            detail_ts.color = {1, 1, 1, 1};
+            detail_ts.do_outline = true;
+            detail_ts.outline_thickness = 2;
+            detail_ts.outline_color = {0, 0, 0, 1};
+
+            reward_ts := detail_ts;
+            reward_ts.color = {0.75, 1.0, 0.78, 1.0};
+
+            draw_end_sequence_line("Run Complete!", title_rect, title_ts, elapsed, 0.0);
+            draw_end_sequence_line(
+                format_string("Reached Island %", {manager->get_run_complete_highest_island()}),
+                island_rect,
+                detail_ts,
+                elapsed,
+                2.0
+            );
+            draw_end_sequence_line("Defeated the Rex? YES/NO", rex_rect, detail_ts, elapsed, 4.0);
+            draw_end_sequence_line(
+                format_string("+% Moons", {manager->get_run_complete_moon_reward_amount()}),
+                moons_rect,
+                reward_ts,
+                elapsed,
+                6.0
+            );
         }
     }
 

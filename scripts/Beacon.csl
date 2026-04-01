@@ -490,7 +490,7 @@ BeaconSystem :: struct {
                 }
             }
 
-            dir := normalize(delta);
+            dir := normalize_or_zero(delta);
             adjusted = beacon_pos + dir * padded_radius;
         }
         return adjusted;

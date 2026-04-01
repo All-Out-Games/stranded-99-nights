@@ -188,7 +188,7 @@ ResourceNode :: class : Interactable {
 
         spawn_position := spawn_center;
         if spawn_radius > 0.0 {
-            rng := rng_seed_time();
+            rng := rng_root_seed();
             if use_fish_scatter {
                 angle := rng_range_float(ref rng, 0.0, 1.0) * (PI * 2.0);
                 dist := sqrt(rng_range_float(ref rng, 0.0, 1.0)) * spawn_radius;

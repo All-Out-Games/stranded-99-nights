@@ -218,7 +218,7 @@ Mob :: class : Component {
 
             if length_squared(boss_last_path_destination - self_pos) <= MOB_BOSS_PATH_ARRIVAL_EPSILON_SQ {
                 movement_agent.velocity = {0.0, 0.0};
-                face_from_movement_direction(normalize(to_target));
+                face_from_movement_direction(normalize_or_zero(to_target));
                 return;
             }
 
@@ -227,7 +227,7 @@ Mob :: class : Component {
                 face_from_movement_direction(path_result.move_direction);
             } else {
                 fallback_dir := v2{boss_last_path_destination.x - self_pos.x, boss_last_path_destination.y - self_pos.y};
-                face_from_movement_direction(normalize(fallback_dir));
+                face_from_movement_direction(normalize_or_zero(fallback_dir));
             }
             return;
         }
@@ -252,7 +252,7 @@ Mob :: class : Component {
         } else {
             // Fallback while waiting for path result on the first frame.
             fallback_dir := v2{destination.x - self_pos.x, destination.y - self_pos.y};
-            face_from_movement_direction(normalize(fallback_dir));
+            face_from_movement_direction(normalize_or_zero(fallback_dir));
         }
     }
 
@@ -512,7 +512,7 @@ Mob :: class : Component {
         self_pos := entity.world_position;
         keep_away_distance := get_boss_keep_away_distance();
         to_self := self_pos - target_pos;
-        radial_dir := normalize(to_self);
+        radial_dir := normalize_or_zero(to_self);
         if length_squared(radial_dir) <= 0.0001 {
             radial_dir = v2{1.0, 0.0};
         }
@@ -623,7 +623,7 @@ Mob :: class : Component {
             if dist >= separation_radius continue;
 
             strength := (separation_radius - dist) / separation_radius;
-            away := normalize(delta);
+            away := normalize_or_zero(delta);
             push.x += away.x * strength;
             push.y += away.y * strength;
         }
@@ -741,7 +741,7 @@ Mob :: class : Component {
         defn := ItemManager.TryFindItem(death_drop_item_id);
         if defn == null return;
 
-        rng := rng_seed_time();
+        rng := rng_root_seed();
         roll := rng_range_float(ref rng, 0.0, 1.0);
         if roll > MOB_DEATH_DROP_CHANCE return;
 

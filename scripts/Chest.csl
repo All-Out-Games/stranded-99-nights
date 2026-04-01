@@ -138,7 +138,7 @@ Chest :: class : Interactable {
         max_count := max(max_drop_count, min_count);
         if max_count < 0 return;
 
-        rng := rng_seed_time();
+        rng := rng_root_seed();
         drop_total := rng_range_int(ref rng, min_count, max_count).(s64);
 
         center := entity.world_position;

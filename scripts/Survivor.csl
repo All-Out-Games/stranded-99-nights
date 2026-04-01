@@ -48,7 +48,7 @@ Survivor :: class : Interactable {
         this->set_hold_text("Rescuing...");
 
         if Game.is_server() && survivor_color == .NONE {
-            rng := rng_seed_time();
+            rng := rng_root_seed();
             survivor_color = random_survivor_color(ref rng);
         }
 
@@ -234,7 +234,7 @@ Survivor :: class : Interactable {
         reward_max := max(max_reward_count, reward_min);
         if reward_max <= 0 return;
 
-        rng := rng_seed_time();
+        rng := rng_root_seed();
         center := entity.world_position;
         reward_count := rng_range_int(ref rng, reward_min, reward_max).(s64);
         rewarded_count: s64 = 0;

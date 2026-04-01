@@ -3,7 +3,7 @@ beam_line_damage :: proc(player: Player, origin: v2, direction: v2, range: float
     nearby: [..]Mob;
     Scene.get_all_components_in_range(origin, range, ref nearby);
 
-    dir := normalize(direction);
+    dir := normalize_or_zero(direction);
 
     for mob: nearby {
         if mob == null continue;
@@ -33,7 +33,7 @@ beam_cone_damage :: proc(player: Player, origin: v2, direction: v2, range: float
     nearby: [..]Mob;
     Scene.get_all_components_in_range(origin, range, ref nearby);
 
-    dir := normalize(direction);
+    dir := normalize_or_zero(direction);
     half_angle := cone_angle_deg * 0.5 * 3.14159 / 180.0;
     cos_half := cos(half_angle);
 
@@ -46,7 +46,7 @@ beam_cone_damage :: proc(player: Player, origin: v2, direction: v2, range: float
         dist := length(to_target);
         if dist < 0.1 || dist > range continue;
 
-        to_target_norm := normalize(to_target);
+        to_target_norm := normalize_or_zero(to_target);
 
         dot := dir.x * to_target_norm.x + dir.y * to_target_norm.y;
         if dot > 1.0 { dot = 1.0; }

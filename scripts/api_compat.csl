@@ -1,0 +1,16 @@
+min :: proc(a: $T, b: T) -> T {
+    if a < b return a;
+    return b;
+}
+
+max :: proc(a: $T, b: T) -> T {
+    if a > b return a;
+    return b;
+}
+
+normalize_or_zero :: proc(v: $T) -> T {
+    if length_squared(v) <= 0.000001 {
+        return {};
+    }
+    return normalize(v);
+}

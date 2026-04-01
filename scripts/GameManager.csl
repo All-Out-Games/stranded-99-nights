@@ -55,6 +55,8 @@ Voyage_State :: enum {
 }
 
 g_start_music_sound_id: u64;
+g_local_run_complete_sfx_sequence_start_time: float = -1.0;
+g_local_run_complete_sfx_stage_played: int = -1;
 
 Game_Sfx_Event :: enum {
     NONE;
@@ -62,6 +64,8 @@ Game_Sfx_Event :: enum {
     NIGHT_START;
     DAY_START;
     GAME_OVER;
+    RUN_COMPLETE;
+    RUN_COMPLETE_STEP;
     RESOURCE_GATHER;
     ITEM_PICKUP;
     UI_CLICK;
@@ -84,6 +88,8 @@ game_sfx_path_for_event :: proc(event: Game_Sfx_Event) -> string {
         case .NIGHT_START:     return "Unknown/night_time_change.wav";
         case .DAY_START:       return "Music/day_night_change.wav";
         case .GAME_OVER:       return "decline_fight.wav";
+        case .RUN_COMPLETE:    return "reward.wav";
+        case .RUN_COMPLETE_STEP:return "ui_click.wav";
         case .RESOURCE_GATHER: return "SFX/gather_material.wav";
         case .ITEM_PICKUP:     return "pickup_item.wav";
         case .UI_CLICK:        return "ui_click.wav";
@@ -109,6 +115,8 @@ game_sfx_default_volume_for_event :: proc(event: Game_Sfx_Event) -> float {
         case .NIGHT_START:     return 0.35;
         case .DAY_START:       return 0.30;
         case .GAME_OVER:       return 0.45;
+        case .RUN_COMPLETE:    return 0.55;
+        case .RUN_COMPLETE_STEP:return 0.32;
         case .RESOURCE_GATHER: return 0.28;
         case .ITEM_PICKUP:     return 0.35;
         case .UI_CLICK:        return 0.30;
@@ -145,6 +153,28 @@ game_sfx_play :: proc(event: Game_Sfx_Event, follow_entity: Entity = null, volum
     }
     desc.volume = clamp(game_sfx_default_volume_for_event(event) * max(volume_scale, 0.0), 0.0, 1.0);
     SFX.play(sfx, desc);
+}
+
+reset_local_run_complete_sfx_state :: proc() {
+    g_local_run_complete_sfx_sequence_start_time = -1.0;
+    g_local_run_complete_sfx_stage_played = -1;
+}
+
+play_local_run_complete_stage_sfx :: proc(stage: int) {
+    switch stage {
+        case 0: {
+            game_sfx_play(.RUN_COMPLETE);
+        }
+        case 1: {
+            game_sfx_play(.RUN_COMPLETE_STEP);
+        }
+        case 2: {
+            game_sfx_play(.RUN_COMPLETE_STEP);
+        }
+        case 3: {
+            game_sfx_play(.BEACON_UPGRADE);
+        }
+    }
 }
 
 get_game_manager :: proc() -> GameManager {
@@ -185,6 +215,9 @@ try_force_start_game :: proc(player: Player, source: string) {
         }
         return;
     }
+    if manager.run_complete_sequence_active {
+        return;
+    }
 
     manager->start_game();
 
@@ -198,6 +231,20 @@ try_force_start_game :: proc(player: Player, source: string) {
 
 start :: proc(player: Player) {
     try_force_start_game(player, "/start");
+} @chat_command @youtuber
+
+win :: proc(player: Player) {
+    if !Game.is_server() return;
+    if player == null return;
+
+    manager := ensure_game_manager_exists();
+    if manager == null {
+        Notifier.notify(player, "GameManager is unavailable.");
+        return;
+    }
+
+    manager->start_run_complete_sequence();
+    log_info("% triggered /win", {player->get_username()});
 } @chat_command @youtuber
 
 get_give_command_max_stack :: proc(item_id: string) -> s64 {
@@ -496,6 +543,15 @@ GameManager :: class : Component {
     GAME_OVER_BLACK_HOLD_SECONDS :: 1.25;
     GAME_OVER_FADE_IN_SECONDS :: 1.0;
     GAME_OVER_TEXT_DURATION_SECONDS :: 10.0;
+    RUN_COMPLETE_ISLAND_TEXT_DELAY_SECONDS :: 2.0;
+    RUN_COMPLETE_REX_TEXT_DELAY_SECONDS :: 4.0;
+    RUN_COMPLETE_REWARD_TEXT_DELAY_SECONDS :: 6.0;
+    RUN_COMPLETE_POST_REWARD_WAIT_SECONDS :: 8.0;
+    RUN_COMPLETE_OVERLAY_FADE_IN_SECONDS :: 0.6;
+    RUN_COMPLETE_OVERLAY_FADE_OUT_SECONDS :: 1.0;
+    RUN_COMPLETE_OVERLAY_MAX_ALPHA :: 0.78;
+    RUN_COMPLETE_MOON_REWARD_MULTIPLIER :: 50;
+    RUN_COMPLETE_FREEZE_REASON :: "run_complete";
     ISLAND1_BOSS_SPAWN_RADIUS :: 20.0;
     ISLAND1_BOSS_SPAWN_SAMPLE_ATTEMPTS :: 8;
     MOON_MERCHANT_DEFAULT_SPAWN_RADIUS :: 14.0;
@@ -522,6 +578,17 @@ GameManager :: class : Component {
     game_over_sequence_restart_done: bool;
     game_over_sequence_start_time: float;
     game_over_nights_lasted: s64;
+    highest_island_reached_this_run: int;
+    run_complete_sequence_active: bool;
+    run_complete_sequence_reward_done: bool;
+    run_complete_sequence_start_time: float;
+    run_complete_sequence_highest_island: int;
+    run_complete_sequence_moon_reward: s64;
+    run_complete_sequence_island_line_sfx_played: bool;
+    run_complete_sequence_rex_line_sfx_played: bool;
+    run_complete_sequence_reward_line_sfx_played: bool;
+    run_complete_freeze_applied: bool;
+    run_complete_reward_user_ids: [..]string;
     picked_up_log_page_indices: [..]int;
 
     ao_start :: method() {
@@ -562,18 +629,16 @@ GameManager :: class : Component {
         last_enabled_island_number = -1;
         apply_navmesh_lock_to_all_players();
         sync_active_island_entity();
-        if !Game.is_server() {
-            if g_start_music_sound_id == 0 {
-                music_asset := get_asset(SFX_Asset, DAY_MUSIC_ASSET_PATH);
-                if music_asset != null {
-                    desc := SFX.default_sfx_desc();
-                    desc.loop = true;
-                    desc.channel = .MUSIC;
-                    desc.volume = 0.35;
-                    g_start_music_sound_id = SFX.play(music_asset, desc);
-                } else {
-                    log_info("Startup music asset missing: %", {DAY_MUSIC_ASSET_PATH});
-                }
+        if g_start_music_sound_id == 0 {
+            music_asset := get_asset(SFX_Asset, DAY_MUSIC_ASSET_PATH);
+            if music_asset != null {
+                desc := SFX.default_sfx_desc();
+                desc.loop = true;
+                desc.channel = .MUSIC;
+                desc.volume = 0.35;
+                g_start_music_sound_id = SFX.play(music_asset, desc);
+            } else {
+                log_info("Startup music asset missing: %", {DAY_MUSIC_ASSET_PATH});
             }
         }
     }
@@ -584,7 +649,7 @@ GameManager :: class : Component {
        // }
 
         // Keep core game state authoritative on the server.
-        // Music playback is client-side so each player always hears it.
+        // Music playback runs on both server and client.
 
         sync_active_island_entity();
         disable_island1_boss_spawns_for_current_run();
@@ -592,7 +657,15 @@ GameManager :: class : Component {
         try_start_island_transition_if_needed();
         update_island_transition();
         sync_island_transition_freeze_state();
+        sync_run_complete_freeze_state();
         if island_transition_active return;
+        if current_phase == .IN_ROUND {
+            record_island_reached_for_run(Island);
+        }
+        if run_complete_sequence_active {
+            update_run_complete_sequence();
+            return;
+        }
         update_voyage_timer();
 
         game_time_seconds += dt;
@@ -637,11 +710,9 @@ GameManager :: class : Component {
     }
 
     ao_end :: method() {
-        if !Game.is_server() {
-            if g_start_music_sound_id != 0 {
-                SFX.stop(g_start_music_sound_id);
-                g_start_music_sound_id = 0;
-            }
+        if g_start_music_sound_id != 0 {
+            SFX.stop(g_start_music_sound_id);
+            g_start_music_sound_id = 0;
         }
         if g_game_manager == this {
             g_game_manager = null;
@@ -665,6 +736,7 @@ GameManager :: class : Component {
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;
         Island = 1;
+        record_island_reached_for_run(Island);
         loaded_island = Island;
         island_transition_target_island = Island;
         island_transition_active = false;
@@ -681,6 +753,21 @@ GameManager :: class : Component {
         next_raid_allowed_night_number = 0;
         island1_boss_defeated_for_run = false;
         island1_boss_spawns_enabled_for_run = true;
+        highest_island_reached_this_run = max(Island, 1);
+        run_complete_sequence_active = false;
+        run_complete_sequence_reward_done = false;
+        run_complete_sequence_start_time = 0.0;
+        run_complete_sequence_highest_island = 0;
+        run_complete_sequence_moon_reward = 0;
+        run_complete_sequence_island_line_sfx_played = false;
+        run_complete_sequence_rex_line_sfx_played = false;
+        run_complete_sequence_reward_line_sfx_played = false;
+        run_complete_freeze_applied = false;
+        run_complete_reward_user_ids->clear();
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            player->remove_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
+        }
         sync_active_island_entity();
         current_phase = .LOBBY;
         on_enter_phase(current_phase);
@@ -718,6 +805,21 @@ GameManager :: class : Component {
                 game_over_sequence_active = false;
                 game_over_sequence_restart_done = false;
                 game_over_sequence_start_time = 0.0;
+                run_complete_sequence_active = false;
+                run_complete_sequence_reward_done = false;
+                run_complete_sequence_start_time = 0.0;
+                run_complete_sequence_highest_island = 0;
+                run_complete_sequence_moon_reward = 0;
+                run_complete_sequence_island_line_sfx_played = false;
+                run_complete_sequence_rex_line_sfx_played = false;
+                run_complete_sequence_reward_line_sfx_played = false;
+                run_complete_freeze_applied = false;
+                run_complete_reward_user_ids->clear();
+                highest_island_reached_this_run = max(Island, 1);
+                foreach player: component_iterator(Player) {
+                    if player == null continue;
+                    player->remove_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
+                }
             }
             case .POST_ROUND: {
                 log_info("GameManager phase -> POST_ROUND", {});
@@ -729,6 +831,7 @@ GameManager :: class : Component {
     should_use_active_matchmaking_priority :: method() -> bool {
         if current_phase == .LOBBY return false;
         if game_over_sequence_active return false;
+        if run_complete_sequence_active return false;
         return true;
     }
 
@@ -831,6 +934,11 @@ GameManager :: class : Component {
 
     get_survivor_moon_reward_amount :: method() -> s64 {
         return max((Island * 3).(s64), 0);
+    }
+
+    record_island_reached_for_run :: method(island_number: int) {
+        if island_number <= 0 return;
+        highest_island_reached_this_run = max(highest_island_reached_this_run, island_number);
     }
 
     apply_night_survival_progress :: method() {
@@ -946,6 +1054,9 @@ GameManager :: class : Component {
         lock_player_to_navmesh(player);
         if island_transition_active && player != null {
             player->add_freeze_reason(ISLAND_TRANSITION_FREEZE_REASON);
+        }
+        if run_complete_sequence_active && run_complete_freeze_applied && player != null {
+            player->add_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
         }
         teleport_player_to_phase_spawn(player);
     }
@@ -1092,7 +1203,7 @@ GameManager :: class : Component {
     }
 
     run_round_start_poi_setup :: method() {
-        poi_rng := rng_seed_time();
+        poi_rng := rng_root_seed();
         spawned_count: s64 = 0;
         total_count: s64 = 0;
         foreach poi: component_iterator(POI) {
@@ -1201,7 +1312,7 @@ GameManager :: class : Component {
             return;
         }
 
-        survivor_rng := rng_seed_time();
+        survivor_rng := rng_root_seed();
         total_spawned: s64 = 0;
         total_spawned += spawn_survivors_for_island(ref survivor_rng, 1, Island1SurvivorSpawnPositions, prefab);
         total_spawned += spawn_survivors_for_island(ref survivor_rng, 2, Island2SurvivorSpawnPositions, prefab);
@@ -1314,11 +1425,12 @@ GameManager :: class : Component {
 
         next_island := Island + 1;
         if get_island_entity(next_island) == null {
-            log_info("Voyage start skipped: island % is not assigned in Islands.", {next_island});
-            return false;
+            start_run_complete_sequence();
+            return run_complete_sequence_active;
         }
 
         Island = next_island;
+        record_island_reached_for_run(Island);
         return true;
     }
 
@@ -1636,6 +1748,7 @@ GameManager :: class : Component {
         }
 
         Island = target_island;
+        record_island_reached_for_run(Island);
         island_transition_target_island = target_island;
         island_transition_active = true;
         island_transition_disable_done = false;
@@ -1795,6 +1908,7 @@ GameManager :: class : Component {
 
     start_game_over_sequence :: method() {
         if game_over_sequence_active return;
+        if run_complete_sequence_active return;
         game_over_sequence_active = true;
         game_over_sequence_restart_done = false;
         game_over_sequence_start_time = get_time();
@@ -1804,6 +1918,172 @@ GameManager :: class : Component {
             game_sfx_play(.GAME_OVER);
         }
         log_info("Game Over sequence started.", {});
+    }
+
+    get_run_complete_total_duration_seconds :: method() -> float {
+        return RUN_COMPLETE_REWARD_TEXT_DELAY_SECONDS + RUN_COMPLETE_POST_REWARD_WAIT_SECONDS;
+    }
+
+    start_run_complete_sequence :: method() {
+        if run_complete_sequence_active return;
+        if game_over_sequence_active return;
+
+        if Game.is_server() {
+            prepare_lobby_for_run_complete_sequence();
+            game_sfx_play(.RUN_COMPLETE);
+        }
+        run_complete_sequence_active = true;
+        run_complete_sequence_reward_done = false;
+        run_complete_sequence_start_time = get_time();
+        run_complete_sequence_highest_island = max(highest_island_reached_this_run, max(Island, 1));
+        run_complete_sequence_moon_reward = max((run_complete_sequence_highest_island * RUN_COMPLETE_MOON_REWARD_MULTIPLIER).(s64), 0);
+        run_complete_sequence_island_line_sfx_played = false;
+        run_complete_sequence_rex_line_sfx_played = false;
+        run_complete_sequence_reward_line_sfx_played = false;
+        run_complete_reward_user_ids->clear();
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            user_id := p->get_user_id();
+            if user_id.count <= 0 continue;
+            run_complete_reward_user_ids->append(user_id);
+        }
+        update_matchmaking_priority();
+        log_info("Run Complete sequence started on island %.", {run_complete_sequence_highest_island});
+    }
+
+    sync_run_complete_reveal_sfx :: method(elapsed: float) {
+        if !Game.is_server() return;
+
+        if !run_complete_sequence_island_line_sfx_played && elapsed >= RUN_COMPLETE_ISLAND_TEXT_DELAY_SECONDS {
+            run_complete_sequence_island_line_sfx_played = true;
+            game_sfx_play(.RUN_COMPLETE_STEP);
+        }
+        if !run_complete_sequence_rex_line_sfx_played && elapsed >= RUN_COMPLETE_REX_TEXT_DELAY_SECONDS {
+            run_complete_sequence_rex_line_sfx_played = true;
+            game_sfx_play(.RUN_COMPLETE_STEP);
+        }
+        if !run_complete_sequence_reward_line_sfx_played && elapsed >= RUN_COMPLETE_REWARD_TEXT_DELAY_SECONDS {
+            run_complete_sequence_reward_line_sfx_played = true;
+            game_sfx_play(.BEACON_UPGRADE);
+        }
+    }
+
+    should_reward_player_for_run_complete :: method(player: Player) -> bool {
+        if player == null return false;
+
+        user_id := player->get_user_id();
+        if user_id.count <= 0 return false;
+
+        for rewarded_user_id: run_complete_reward_user_ids {
+            if rewarded_user_id == user_id {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    grant_run_complete_moon_rewards :: method() {
+        if !Game.is_server() return;
+        if run_complete_sequence_moon_reward <= 0 return;
+
+        rewarded_count: s64 = 0;
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            if !should_reward_player_for_run_complete(p) continue;
+            Economy.deposit_currency(p, "Moons", run_complete_sequence_moon_reward);
+            rewarded_count += 1;
+        }
+
+        log_info("Granted % Moons to % player(s) for run completion.", {
+            run_complete_sequence_moon_reward,
+            rewarded_count
+        });
+    }
+
+    stop_run_complete_sequence :: method() {
+        run_complete_sequence_active = false;
+        run_complete_sequence_reward_done = false;
+        run_complete_sequence_start_time = 0.0;
+        run_complete_sequence_highest_island = 0;
+        run_complete_sequence_moon_reward = 0;
+        run_complete_sequence_island_line_sfx_played = false;
+        run_complete_sequence_rex_line_sfx_played = false;
+        run_complete_sequence_reward_line_sfx_played = false;
+        run_complete_reward_user_ids->clear();
+        reset_local_run_complete_sfx_state();
+        run_complete_freeze_applied = false;
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            player->remove_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
+        }
+    }
+
+    update_run_complete_sequence :: method() {
+        if !run_complete_sequence_active return;
+
+        elapsed := get_time() - run_complete_sequence_start_time;
+        sync_run_complete_reveal_sfx(elapsed);
+
+        if !run_complete_sequence_reward_done && elapsed >= RUN_COMPLETE_REWARD_TEXT_DELAY_SECONDS {
+            if Game.is_server() {
+                grant_run_complete_moon_rewards();
+            }
+            run_complete_sequence_reward_done = true;
+        }
+
+        if elapsed < this->get_run_complete_total_duration_seconds() return;
+
+        stop_run_complete_sequence();
+        if Game.is_server() {
+            run_game_over_restart();
+        }
+    }
+
+    prepare_lobby_for_run_complete_sequence :: method() {
+        if !Game.is_server() return;
+
+        cleanup_world_for_game_restart();
+
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            p->reset_for_game_restart();
+        }
+
+        reset_log_pages_for_full_restart();
+        reset_beacons_for_full_restart();
+        reset_voyage_preps_for_full_restart();
+        transition_to_phase(.LOBBY);
+
+        clear_active_night_event();
+        clear_island1_boss();
+        clear_broadcast_notification();
+        forced_next_night_event = .NONE;
+        game_time_seconds = 0.0;
+        phase_time_seconds = 0.0;
+        Island = 1;
+        loaded_island = Island;
+        island_transition_target_island = Island;
+        island_transition_active = false;
+        island_transition_disable_done = false;
+        island_transition_applied = false;
+        island_transition_freeze_applied = false;
+        island_transition_start_time = 0.0;
+        voyage_state = .NONE;
+        voyage_timer_start_time = 0.0;
+        voyage_returning_after_destruction = false;
+        VoyageHealth = VOYAGE_STARTING_HEALTH;
+        last_enabled_island_number = -1;
+        nights = 0;
+        next_raid_allowed_night_number = 0;
+        island1_boss_defeated_for_run = false;
+        island1_boss_spawns_enabled_for_run = true;
+        sync_active_island_entity();
+
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            p->remove_freeze_reason(ISLAND_TRANSITION_FREEZE_REASON);
+            teleport_player_to_lobby_spawn(p);
+        }
     }
 
     update_game_over_sequence :: method() {
@@ -1991,6 +2271,27 @@ GameManager :: class : Component {
         log_info("Broadcasted survived-night notification (remaining: %).", {remaining_nights});
     }
 
+    sync_run_complete_freeze_state :: method() {
+        if run_complete_sequence_active {
+            if run_complete_freeze_applied return;
+
+            run_complete_freeze_applied = true;
+            foreach player: component_iterator(Player) {
+                if player == null continue;
+                player->add_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
+            }
+            return;
+        }
+
+        if !run_complete_freeze_applied return;
+
+        run_complete_freeze_applied = false;
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            player->remove_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
+        }
+    }
+
     set_forced_next_night_event :: method(event_type: Night_Event_Type) {
         forced_next_night_event = event_type;
     }
@@ -2051,7 +2352,7 @@ GameManager :: class : Component {
         total_chance_percent := none_chance_percent + raid_chance_percent + supply_chance_percent + reaper_chance_percent + moon_merchant_chance_percent;
         if total_chance_percent <= 0.0 return;
 
-        roll_rng := rng_seed_time();
+        roll_rng := rng_root_seed();
         roll := rng_range_float(ref roll_rng, 0.0, total_chance_percent);
         if roll < none_chance_percent {
             current_night_event = .NONE;
@@ -2128,7 +2429,7 @@ GameManager :: class : Component {
             return;
         }
 
-        raid_rng := rng_seed_time();
+        raid_rng := rng_root_seed();
         retargeted_mob_count: s64 = 0;
         foreach mob: component_iterator(Mob) {
             if mob == null continue;
@@ -2235,7 +2536,7 @@ GameManager :: class : Component {
             return;
         }
 
-        reaper_rng := rng_seed_time();
+        reaper_rng := rng_root_seed();
         slot_index := rng_range_int(ref reaper_rng, 0, available_slots.count - 1).(s64);
         spawn_slot := available_slots[slot_index];
         spawn_pos := spawn_slot.world_position;
@@ -2286,7 +2587,7 @@ GameManager :: class : Component {
         }
 
         navmesh := player_navmesh;
-        rng := rng_seed_time();
+        rng := rng_root_seed();
 
         if navmesh != null {
             radius_sq := radius * radius;
@@ -2387,7 +2688,7 @@ GameManager :: class : Component {
 
         center := get_island1_boss_spawn_center();
         radius_sq := ISLAND1_BOSS_SPAWN_RADIUS * ISLAND1_BOSS_SPAWN_RADIUS;
-        rng := rng_seed_time();
+        rng := rng_root_seed();
         hint_as_int: int = 0;
 
         for attempt: 0..ISLAND1_BOSS_SPAWN_SAMPLE_ATTEMPTS-1 {
@@ -2680,6 +2981,25 @@ GameManager :: class : Component {
         return 0.0;
     }
 
+    get_run_complete_overlay_alpha :: method() -> float {
+        if !run_complete_sequence_active return 0.0;
+
+        elapsed := get_time() - run_complete_sequence_start_time;
+        total_time := this->get_run_complete_total_duration_seconds();
+        fade_out_start := max(total_time - RUN_COMPLETE_OVERLAY_FADE_OUT_SECONDS, RUN_COMPLETE_OVERLAY_FADE_IN_SECONDS);
+
+        if elapsed <= RUN_COMPLETE_OVERLAY_FADE_IN_SECONDS {
+            return clamp(elapsed / RUN_COMPLETE_OVERLAY_FADE_IN_SECONDS, 0.0, 1.0) * RUN_COMPLETE_OVERLAY_MAX_ALPHA;
+        }
+
+        if elapsed >= fade_out_start {
+            fade_out_t := clamp((elapsed - fade_out_start) / RUN_COMPLETE_OVERLAY_FADE_OUT_SECONDS, 0.0, 1.0);
+            return (1.0 - fade_out_t) * RUN_COMPLETE_OVERLAY_MAX_ALPHA;
+        }
+
+        return RUN_COMPLETE_OVERLAY_MAX_ALPHA;
+    }
+
     get_island_transition_overlay_alpha :: method() -> float {
         if !island_transition_active return 0.0;
 
@@ -2710,6 +3030,25 @@ GameManager :: class : Component {
         return elapsed <= GAME_OVER_TEXT_DURATION_SECONDS;
     }
 
+    should_draw_run_complete_text :: method() -> bool {
+        if !run_complete_sequence_active return false;
+        elapsed := get_time() - run_complete_sequence_start_time;
+        return elapsed <= this->get_run_complete_total_duration_seconds();
+    }
+
+    get_run_complete_sequence_elapsed_seconds :: method() -> float {
+        if !run_complete_sequence_active return 0.0;
+        return get_time() - run_complete_sequence_start_time;
+    }
+
+    get_run_complete_highest_island :: method() -> int {
+        return run_complete_sequence_highest_island;
+    }
+
+    get_run_complete_moon_reward_amount :: method() -> s64 {
+        return run_complete_sequence_moon_reward;
+    }
+
     get_game_over_nights_lasted :: method() -> s64 {
         return game_over_nights_lasted;
     }
@@ -2725,6 +3064,7 @@ GameManager :: class : Component {
     try_auto_start_from_lobby :: method() {
         if current_phase != .LOBBY return;
         if game_over_sequence_active return;
+        if run_complete_sequence_active return;
 
         player_count := get_player_count();
         if player_count < PLAYERS_REQUIRED_TO_START return;

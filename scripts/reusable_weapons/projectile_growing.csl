@@ -75,13 +75,13 @@ spawn_growing_projectile :: proc(player: Player, direction: v2, wt: Weapon_Type)
     config := get_weapon_config(wt);
     bone_local := player.animator.instance->get_bone_local_position("PROJECTILE");
     barrel_dist := length(bone_local);
-    dir := normalize(direction);
+    dir := normalize_or_zero(direction);
     spawn_pos := v2{player.animator.entity.world_position.x + dir.x * barrel_dist, player.animator.entity.world_position.y + dir.y * barrel_dist};
 
     proj_entity := Scene.create_entity();
     proj_entity->set_local_position(spawn_pos);
 
-    angle := atan2(direction.y, direction.x);
+    angle := atan2(dir.y, dir.x);
     proj_entity->set_local_rotation(to_degrees(angle));
 
     // Use the laser bolt texture for plasma
@@ -93,7 +93,7 @@ spawn_growing_projectile :: proc(player: Player, direction: v2, wt: Weapon_Type)
 
     proj := proj_entity->add_component(Growing_Projectile);
     proj.damage = config.base_damage;
-    proj.direction = normalize(direction);
+    proj.direction = normalize_or_zero(direction);
     proj.owner_id = player.entity.id;
     proj.speed = config.projectile_speed;
     proj.max_lifetime = 5.0;
