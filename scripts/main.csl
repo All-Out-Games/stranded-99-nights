@@ -67,7 +67,6 @@ PLAYER_DOWNED_REVIVE_HOLD_SECONDS :: 1.25;
 PLAYER_DEATH_DROP_SELF_PICKUP_BLOCK_SECONDS :: 5.0;
 PLAYER_MANUAL_DROP_SELF_PICKUP_BLOCK_SECONDS :: 2.5;
 PLAYER_BEACON_HEAL_INTERVAL_SECONDS :: 1.0;
-PLAYER_BEACON_HEAL_AMOUNT :: 1.0;
 GHOST_HIDE_FROM_LIVING_REASON :: "ghost_hide_from_living";
 GHOST_FACING_DELTA_THRESHOLD :: 0.01;
 ISLAND1_RESPAWN_ENTITY_NAME :: "Island1Spawn";
@@ -444,7 +443,8 @@ Player :: class : Player_Base {
             beacon_heal_elapsed_seconds = 0.0;
             return;
         }
-        if !BeaconSystem.is_position_inside_active_safety_zone(entity.world_position) {
+        beacon_heal_amount := this->get_beacon_heal_amount();
+        if beacon_heal_amount <= 0.0 {
             beacon_heal_elapsed_seconds = 0.0;
             return;
         }
@@ -456,11 +456,32 @@ Player :: class : Player_Base {
             if health >= max_health continue;
 
             previous_health := health;
-            health = min(health + PLAYER_BEACON_HEAL_AMOUNT, max_health);
+            health = min(health + beacon_heal_amount, max_health);
             if health > previous_health {
                 spawn_fish_heal_effect(this);
             }
         }
+    }
+
+    get_beacon_heal_amount :: method() -> float {
+        if entity == null return 0.0;
+
+        max_beacon_level: s64 = 0;
+        foreach beacon: component_iterator(Beacon) {
+            if beacon == null continue;
+            if beacon.entity == null continue;
+            if !beacon->has_active_fuel() continue;
+
+            safety_radius := beacon->get_current_safety_radius();
+            if safety_radius <= 0.0 continue;
+
+            delta := entity.world_position - beacon.entity.world_position;
+            if length_squared(delta) > safety_radius * safety_radius continue;
+
+            max_beacon_level = max(max_beacon_level, beacon.level).(s64);
+        }
+
+        return max_beacon_level.(float);
     }
 
     update_voyage_camera_zoom :: method() {

@@ -55,6 +55,7 @@ Voyage_State :: enum {
 }
 
 g_start_music_sound_id: u64;
+g_current_music_track: Music_Track;
 g_local_run_complete_sfx_sequence_start_time: float = -1.0;
 g_local_run_complete_sfx_stage_played: int = -1;
 
@@ -153,6 +154,51 @@ game_sfx_play :: proc(event: Game_Sfx_Event, follow_entity: Entity = null, volum
     }
     desc.volume = clamp(game_sfx_default_volume_for_event(event) * max(volume_scale, 0.0), 0.0, 1.0);
     SFX.play(sfx, desc);
+}
+
+music_track_asset_path :: proc(track: Music_Track) -> string {
+    switch track {
+        case .DAY:   return "Music/WoP.wav";
+        case .NIGHT: return "Music/FtI.wav";
+        case .NONE:  return "";
+    }
+
+    return "";
+}
+
+stop_current_music_track :: proc() {
+    if g_start_music_sound_id != 0 {
+        SFX.stop(g_start_music_sound_id);
+        g_start_music_sound_id = 0;
+    }
+
+    g_current_music_track = .NONE;
+}
+
+play_music_track :: proc(track: Music_Track) {
+    if track == .NONE {
+        stop_current_music_track();
+        return;
+    }
+    if g_current_music_track == track && g_start_music_sound_id != 0 return;
+
+    stop_current_music_track();
+
+    asset_path := music_track_asset_path(track);
+    if asset_path.count <= 0 return;
+
+    music_asset := get_asset(SFX_Asset, asset_path);
+    if music_asset == null {
+        log_info("Music asset missing: %", {asset_path});
+        return;
+    }
+
+    desc := SFX.default_sfx_desc();
+    desc.loop = true;
+    desc.channel = .MUSIC;
+    desc.volume = 0.35;
+    g_start_music_sound_id = SFX.play(music_asset, desc);
+    g_current_music_track = track;
 }
 
 reset_local_run_complete_sfx_state :: proc() {
@@ -556,8 +602,6 @@ GameManager :: class : Component {
     ISLAND1_BOSS_SPAWN_SAMPLE_ATTEMPTS :: 8;
     MOON_MERCHANT_DEFAULT_SPAWN_RADIUS :: 14.0;
     MOON_MERCHANT_DEFAULT_SPAWN_SAMPLE_ATTEMPTS :: 10;
-    DAY_MUSIC_ASSET_PATH :: "Music/WoP.wav";
-    NIGHT_MUSIC_ASSET_PATH :: "Music/FtI.wav";
     MATCHMAKING_PRIORITY_INACTIVE :: 0;
     MATCHMAKING_PRIORITY_ACTIVE :: 1;
     warned_player_user_ids_for_current_day: [..]string;
@@ -629,18 +673,7 @@ GameManager :: class : Component {
         last_enabled_island_number = -1;
         apply_navmesh_lock_to_all_players();
         sync_active_island_entity();
-        if g_start_music_sound_id == 0 {
-            music_asset := get_asset(SFX_Asset, DAY_MUSIC_ASSET_PATH);
-            if music_asset != null {
-                desc := SFX.default_sfx_desc();
-                desc.loop = true;
-                desc.channel = .MUSIC;
-                desc.volume = 0.35;
-                g_start_music_sound_id = SFX.play(music_asset, desc);
-            } else {
-                log_info("Startup music asset missing: %", {DAY_MUSIC_ASSET_PATH});
-            }
-        }
+        play_music_track(.DAY);
     }
 
     ao_update :: method(dt: float) {
@@ -658,6 +691,7 @@ GameManager :: class : Component {
         update_island_transition();
         sync_island_transition_freeze_state();
         sync_run_complete_freeze_state();
+        sync_music_track_for_game_state();
         if island_transition_active return;
         if current_phase == .IN_ROUND {
             record_island_reached_for_run(Island);
@@ -710,10 +744,7 @@ GameManager :: class : Component {
     }
 
     ao_end :: method() {
-        if g_start_music_sound_id != 0 {
-            SFX.stop(g_start_music_sound_id);
-            g_start_music_sound_id = 0;
-        }
+        stop_current_music_track();
         if g_game_manager == this {
             g_game_manager = null;
         }
@@ -735,6 +766,7 @@ GameManager :: class : Component {
         forced_next_night_event = .NONE;
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;
+        reset_day_night_cycle();
         Island = 1;
         record_island_reached_for_run(Island);
         loaded_island = Island;
@@ -861,6 +893,7 @@ GameManager :: class : Component {
                 day_night_blend_from = 0.0;
                 day_night_blend_to = 0.0;
                 day_night_blend_transition_time_seconds = 0.0;
+                play_music_track(.DAY);
             }
             case .POST_ROUND: {
                 // Exit post-round hooks go here.
@@ -1793,6 +1826,7 @@ GameManager :: class : Component {
         day_night_blend_from = 0.0;
         day_night_blend_to = 0.0;
         day_night_blend_transition_time_seconds = 0.0;
+        play_music_track(.DAY);
     }
 
     get_voyage_progress_t :: method() -> float {
@@ -1811,6 +1845,7 @@ GameManager :: class : Component {
         day_night_blend_transition_time_seconds = 0.0;
         warned_player_user_ids_for_current_day->clear();
         warned_player_entities_for_current_day->clear();
+        play_music_track(.DAY);
         log_info("Day/Night -> DAY", {});
     }
 
@@ -1829,6 +1864,7 @@ GameManager :: class : Component {
                 day_night_phase_time_seconds = 0.0;
                 begin_day_night_blend_transition();
                 roll_and_apply_night_event();
+                play_music_track(.NIGHT);
                 if !Game.is_server() {
                     game_sfx_play(.NIGHT_START);
                 }
@@ -1849,11 +1885,21 @@ GameManager :: class : Component {
             grant_night_survival_currency_rewards();
             revive_dead_players_for_day_start();
             notify_all_players_survived_night();
+            play_music_track(.DAY);
             if !Game.is_server() {
                 game_sfx_play(.DAY_START);
             }
             log_info("Day/Night -> DAY (Nights: %)", {nights});
         }
+    }
+
+    sync_music_track_for_game_state :: method() {
+        desired_track: Music_Track = .DAY;
+        if current_phase == .IN_ROUND && day_night_phase == .NIGHT {
+            desired_track = .NIGHT;
+        }
+
+        play_music_track(desired_track);
     }
 
     grant_night_survival_currency_rewards :: method() {
