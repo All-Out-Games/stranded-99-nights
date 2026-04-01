@@ -1,0 +1,26 @@
+13
+5304284610561
+206782949613846 1774474965525237000
+{
+  "name": "Tree2.png",
+  "local_enabled": true,
+  "local_position": {
+
+  },
+  "local_rotation": 0,
+  "local_scale": {
+    "X": 1,
+    "Y": 1
+  },
+  "parent": "206782949574572:1774474965525218900"
+},
+{
+  "cid": 1,
+  "aoid": "206782949731813:1774474965525292800",
+  "component_type": "Internal_Component",
+  "internal_component_type": "Sprite_Renderer",
+  "data": {
+    "texture": "vegetation/Tree2.png",
+    "depth_offset": -1.9529523849487305
+  }
+}

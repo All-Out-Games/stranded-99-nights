@@ -1,0 +1,41 @@
+13
+2044404432900
+382784873323922 1773861728733928500
+{
+  "name": "Fish",
+  "local_enabled": true,
+  "local_position": {
+    "X": 322.3804626464843750,
+    "Y": -67.3097305297851562
+  },
+  "local_rotation": 0,
+  "local_scale": {
+    "X": 1,
+    "Y": 1
+  },
+  "previous_sibling": "382726775924434:1773861701225678900",
+  "next_sibling": "382791496689218:1773861731869993100",
+  "parent": "382920085115008:1773861792754689100"
+},
+{
+  "cid": 1,
+  "aoid": "382784873479070:1773861728734002200",
+  "component_type": "Internal_Component",
+  "internal_component_type": "ResourceNode",
+  "data": {
+    "radius": 2,
+    "offset": {
+      "Y": 2
+    },
+    "required_hold_time": 2,
+    "prompt_offset": {
+      "Y": 1
+    },
+    "resource_type": 4,
+    "respawn_time_seconds": 30,
+    "drop_count": 1,
+    "drop_spawn_radius": 1,
+    "visual_target": "382784873354828:1773861728733942800",
+    "animation_target": "382784873354828:1773861728733942800"
+  }
+}

@@ -1,0 +1,17 @@
+13
+2065879269380
+384312862989816 1773862452214178900
+{
+  "name": "Island2",
+  "local_enabled": true,
+  "local_position": {
+    "X": 260
+  },
+  "local_rotation": 0,
+  "local_scale": {
+    "X": 1,
+    "Y": 1
+  },
+  "previous_sibling": "385227790221607:1773862885418537200",
+  "next_sibling": "3615941048855:1774378769052151600"
+}
