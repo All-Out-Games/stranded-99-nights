@@ -90,10 +90,10 @@ game_sfx_path_for_event :: proc(event: Game_Sfx_Event) -> string {
         case .DAY_START:       return "Music/day_night_change.wav";
         case .GAME_OVER:       return "decline_fight.wav";
         case .RUN_COMPLETE:    return "reward.wav";
-        case .RUN_COMPLETE_STEP:return "ui_click.wav";
+        case .RUN_COMPLETE_STEP:return "ui_click2.wav";
         case .RESOURCE_GATHER: return "SFX/gather_material.wav";
         case .ITEM_PICKUP:     return "pickup_item.wav";
-        case .UI_CLICK:        return "ui_click.wav";
+        case .UI_CLICK:        return "ui_click2.wav";
         case .UI_ERROR:        return "Unknown/ui_error.wav";
         case .CRAFT_SUCCESS:   return "SFX/craft_item.wav";
         case .CHEST_OPEN:      return "chest_open.wav";
@@ -120,7 +120,7 @@ game_sfx_default_volume_for_event :: proc(event: Game_Sfx_Event) -> float {
         case .RUN_COMPLETE_STEP:return 0.32;
         case .RESOURCE_GATHER: return 0.28;
         case .ITEM_PICKUP:     return 0.35;
-        case .UI_CLICK:        return 0.30;
+        case .UI_CLICK:        return 0.50;
         case .UI_ERROR:        return 0.35;
         case .CRAFT_SUCCESS:   return 0.45;
         case .CHEST_OPEN:      return 0.45;
@@ -137,9 +137,25 @@ game_sfx_default_volume_for_event :: proc(event: Game_Sfx_Event) -> float {
     return 0.35;
 }
 
+is_local_player_entity :: proc(target: Entity) -> bool {
+    if target == null return false;
+
+    foreach player: component_iterator(Player) {
+        if player == null || player.entity == null continue;
+        if player.entity.id != target.id continue;
+        return player->is_local();
+    }
+
+    return false;
+}
+
 game_sfx_play :: proc(event: Game_Sfx_Event, follow_entity: Entity = null, volume_scale: float = 1.0) {
     if event == .NONE return;
     if event == .NIGHT_WARNING && Game.is_server() return;
+    if event == .UI_CLICK {
+        // UI clicks should only be heard by the player who triggered them.
+        if !is_local_player_entity(follow_entity) return;
+    }
 
     path := game_sfx_path_for_event(event);
     if path.count <= 0 return;
@@ -539,11 +555,9 @@ GameManager :: class : Component {
     island1_boss_spawns_enabled_for_run: bool;
     next_raid_allowed_night_number: s64;
     last_notified_night_event: Night_Event_Type;
-    broadcast_notification_text: string;
-    broadcast_notification_end_time: float;
 
-    DAY_DURATION_SECONDS :: 90.0;
-    NIGHT_DURATION_SECONDS :: 60.0;
+    DAY_DURATION_SECONDS :: 60.0;
+    NIGHT_DURATION_SECONDS :: 45.0;
     DAY_NIGHT_BLEND_TRANSITION_SECONDS :: 5.0;
     NIGHT_WARNING_LEAD_TIME_SECONDS :: 10.0;
     PLAYERS_REQUIRED_TO_START :: 6;
@@ -561,7 +575,6 @@ GameManager :: class : Component {
     MOON_MERCHANT_NOTIFICATION_TEXT :: "A Moon Merchant has appeared!";
     PLAYER_DOWNED_NOTIFICATION_TEXT :: "% has been downed!";
     VOYAGE_FAILED_NOTIFICATION_TEXT :: "Voyage Failed! Try Again!";
-    BROADCAST_NOTIFICATION_DURATION_SECONDS :: 5.0;
     RAID_RETARGET_DISTANCE :: 20.0;
     SUPPLY_DROP_NIGHTLY_CHANCE_PERCENT :: 15.0;
     REAPER_MIN_NIGHT_NUMBER :: 5;
@@ -762,7 +775,6 @@ GameManager :: class : Component {
     reset_game_state :: method() {
         clear_active_night_event();
         clear_island1_boss();
-        clear_broadcast_notification();
         forced_next_night_event = .NONE;
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;
@@ -925,25 +937,16 @@ GameManager :: class : Component {
         return phase_time_seconds;
     }
 
-    clear_broadcast_notification :: method() {
-        broadcast_notification_text = "";
-        broadcast_notification_end_time = 0.0;
-    }
-
     show_broadcast_notification :: method(message: string) {
         if message.count <= 0 return;
-        broadcast_notification_text = message;
-        broadcast_notification_end_time = get_time() + BROADCAST_NOTIFICATION_DURATION_SECONDS;
-    }
+        if !Game.is_server() return;
 
-    should_draw_broadcast_notification :: method() -> bool {
-        if broadcast_notification_text.count <= 0 return false;
-        return get_time() <= broadcast_notification_end_time;
-    }
+        foreach p: component_iterator(Player) {
+            if p == null continue;
+            if p.entity == null continue;
 
-    get_broadcast_notification_text :: method() -> string {
-        if !should_draw_broadcast_notification() return "";
-        return broadcast_notification_text;
+            Notifier.notify(p, message);
+        }
     }
 
     get_game_time_seconds :: method() -> float {
@@ -2102,7 +2105,6 @@ GameManager :: class : Component {
 
         clear_active_night_event();
         clear_island1_boss();
-        clear_broadcast_notification();
         forced_next_night_event = .NONE;
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;

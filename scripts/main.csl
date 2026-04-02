@@ -53,8 +53,6 @@ PLAYER_DAMAGE_PULSE_OSCILLATIONS :: 7.0;
 
 CLOCK_ROTATION_LERP_STEP :: 0.35;
 CLOCK_ALPHA_LERP_STEP :: 0.03;
-NIGHT_TINT_MAX_ALPHA :: 0.35;
-NIGHT_TINT_COLOR := v4.{0.0, 0.0, 0.95, 1.0};
 RESOURCE_GATHER_SWING_INTERVAL :: 0.5;
 MELEE_IDLE_AIM_DISTANCE :: 3.0;
 MELEE_ATTACK_AIM_LOCK_SECONDS :: 0.45;
@@ -517,8 +515,6 @@ Player :: class : Player_Base {
         this->close_all_ui_modals();
     }
 
-    this->draw_night_tint_overlay();
-
     if this->is_local_or_server() && merchant_ui_open {
         MerchantSystem.draw_ui(this);
     } else if this->is_local_or_server() && log_page_ui_open {
@@ -602,7 +598,6 @@ Player :: class : Player_Base {
         if this->is_local_or_server() && !merchant_ui_open {
             this->draw_lobby_waiting_text();
             this->draw_round_start_intro();
-            draw_global_notification_banner(this);
         }
 
         if this->is_local_or_server() && !dead_for_night && !merchant_ui_open {
@@ -610,22 +605,6 @@ Player :: class : Player_Base {
         }
     }
    }
-
-    draw_night_tint_overlay :: method() {
-        if !this->is_local_or_server() return;
-
-        manager := get_game_manager();
-        if manager == null return;
-        if manager->get_phase() != .IN_ROUND return;
-        if !manager->is_night_time() return;
-
-        tint_alpha := clamp(manager->get_night_blend(), 0.0, 1.0) * NIGHT_TINT_MAX_ALPHA;
-        if tint_alpha <= 0.0 return;
-
-        UI.push_screen_draw_context();
-        defer UI.pop_draw_context();
-        UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {NIGHT_TINT_COLOR.x, NIGHT_TINT_COLOR.y, NIGHT_TINT_COLOR.z, tint_alpha});
-    }
 
     ao_end :: method() {
         // Called when this component is destroyed
@@ -710,64 +689,6 @@ Player :: class : Player_Base {
     ts.outline_thickness = 3;
     ts.outline_color = {0, 0, 0, 1};
     UI.text(inner, ts, "%", {balance});
-    }
-
-    draw_global_notification_banner :: proc(player: Player) {
-    if player == null return;
-    if !player->is_local_or_server() return;
-
-    manager := get_game_manager();
-    if manager == null return;
-    if !manager->should_draw_broadcast_notification() return;
-
-    message := manager->get_broadcast_notification_text();
-    if message.count <= 0 return;
-
-    UI.push_screen_draw_context();
-    defer UI.pop_draw_context();
-    UI.push_layer(10000);
-    defer UI.pop_layer();
-
-    screen_rect := UI.get_screen_rect();
-    top_third_rect := screen_rect->subrect(0.0, 0.6667, 1.0, 1.0);
-    banner_rect := top_third_rect->center_rect()->offset_unscaled(0, -screen_rect->height() * 0.15);
-
-    #static notif_ribbon := get_asset(Texture_Asset, "UI/NotifRibbon.png");
-    if notif_ribbon != null {
-        banner_width := screen_rect->width();
-        banner_height := min(banner_width / notif_ribbon->get_aspect(), top_third_rect->height() * 0.9);
-        banner_rect = banner_rect->grow_unscaled(
-            banner_height * 0.5,
-            banner_width * 0.5,
-            banner_height * 0.5,
-            banner_width * 0.5
-        );
-        UI.quad(banner_rect, notif_ribbon);
-    } else {
-        banner_height := min(screen_rect->height() * 0.14, top_third_rect->height() * 0.9);
-        banner_rect = banner_rect->grow_unscaled(
-            banner_height * 0.5,
-            screen_rect->width() * 0.5,
-            banner_height * 0.5,
-            screen_rect->width() * 0.5
-        );
-        UI.quad(banner_rect, core_globals.white_sprite, {0.95, 0.1, 0.1, 1.0});
-    }
-
-    text_rect := banner_rect->inset(28, 180, 28, 180);
-    ts := UI.default_text_settings();
-    ts.size = 44;
-    ts.color = {1, 1, 1, 1};
-    ts.halign = .CENTER;
-    ts.valign = .CENTER;
-    ts.do_outline = true;
-    ts.outline_thickness = 3;
-    ts.outline_color = {0, 0, 0, 1};
-    ts.word_wrap = true;
-    ts.do_autofit = true;
-    ts.autofit_min_size = 24;
-    ts.autofit_max_size = 52;
-    UI.text(text_rect, ts, message);
     }
 
     drive_resource_gather_feedback :: method(node: ResourceNode) {
