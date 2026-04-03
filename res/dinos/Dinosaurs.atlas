@@ -1,0 +1,315 @@
+Dinosaurs.png
+	size: 4088, 4092
+	filter: Linear, Linear
+	scale: 0.5
+Bosses/Pleseodaurus
+	bounds: 2851, 52, 435, 428
+	offsets: 5, 12, 446, 450
+Bosses/Quetzalcoatlus
+	bounds: 2745, 1237, 466, 464
+	offsets: 5, 5, 475, 473
+Bosses/Titanosaurus
+	bounds: 957, 439, 414, 459
+	offsets: 6, 6, 425, 469
+	rotate: 90
+Breeding Dinos 2/Aquidilodactyl
+	bounds: 2629, 1809, 544, 480
+Breeding Dinos 2/Carnodilotops
+	bounds: 1776, 1695, 481, 481
+	offsets: 14, 3, 512, 512
+Breeding Dinos 2/Distortodon Rex
+	bounds: 503, 1151, 489, 427
+	offsets: 12, 42, 512, 512
+Breeding Dinos 2/Quetzadistorylosaurus Rex
+	bounds: 6, 1261, 491, 429
+	offsets: 11, 40, 512, 512
+Breeding Dinos 2/Quetzankylosaurus
+	bounds: 2566, 817, 492, 414
+	offsets: 14, 38, 512, 512
+Breeding Dinos 2/Spinomorphosaurus
+	bounds: 1479, 817, 451, 458
+	offsets: 31, 29, 512, 512
+	rotate: 90
+Breeding Dinos 2/Steguanatops
+	bounds: 1423, 419, 478, 392
+	offsets: 11, 72, 512, 512
+Breeding Dinos 2/Styracotharus
+	bounds: 637, 2025, 538, 477
+	offsets: 1, 2, 552, 480
+	rotate: 90
+Breeding Dinos 2/Velesiopteryx
+	bounds: 3178, 1707, 479, 489
+	offsets: 13, 8, 512, 512
+	rotate: 90
+Breeding Dinos/Aquilodactyl
+	bounds: 998, 859, 475, 437
+	offsets: 20, 5, 513, 464
+Breeding Dinos/Aquilophosaurus
+	bounds: 1046, 1302, 503, 433
+	offsets: 8, 20, 521, 471
+Breeding Dinos/Bajaraptor
+	bounds: 1943, 517, 456, 423
+	offsets: 10, 9, 466, 442
+Breeding Dinos/Carnoraptor
+	bounds: 2405, 384, 427, 440
+	offsets: 10, 7, 449, 454
+	rotate: 90
+Breeding Dinos/Dilodactyl
+	bounds: 3576, 484, 500, 382
+	offsets: 8, 7, 512, 401
+Breeding Dinos/Dilophocephalus
+	bounds: 3621, 2943, 572, 412
+	offsets: 26, 2, 624, 416
+	rotate: 90
+Breeding Dinos/Distortus Skeletal
+	bounds: 6, 1696, 519, 441
+	offsets: 19, 15, 560, 464
+Breeding Dinos/Galliraptor
+	bounds: 2263, 1373, 476, 460
+	offsets: 15, 15, 544, 480
+Breeding Dinos/Iguanalops
+	bounds: 3217, 872, 547, 373
+	offsets: 7, 11, 564, 390
+Breeding Dinos/Indominus Skeletal
+	bounds: 1153, 2138, 617, 428
+	offsets: 14, 2, 636, 435
+Breeding Dinos/Mosarinosaurus
+	bounds: 3621, 3521, 443, 562
+	offsets: 2, 6, 448, 576
+Breeding Dinos/Pachylops
+	bounds: 1555, 1274, 505, 415
+	offsets: 30, 0, 624, 416
+Breeding Dinos/Pterocephalus
+	bounds: 6, 2143, 626, 420
+	offsets: 11, 10, 651, 438
+Breeding Dinos/Quetzasaurus
+	bounds: 3217, 1251, 450, 470
+	offsets: 10, 5, 463, 485
+	rotate: 90
+Breeding Dinos/Spinoraptor
+	bounds: 6, 831, 487, 424
+	offsets: 10, 11, 518, 445
+Breeding Dinos/Spinoteryx
+	bounds: 853, 86, 535, 347
+	offsets: 13, 5, 562, 361
+Breeding Dinos/Steggoceratops
+	bounds: 3693, 1621, 565, 355
+	offsets: 2, 8, 576, 370
+	rotate: 90
+Breeding Dinos/Styracorex
+	bounds: 2066, 946, 494, 421
+	offsets: 8, 15, 510, 442
+Breeding Dinos/Styracotharus
+	bounds: 1982, 2783, 495, 476
+	offsets: 8, 0, 523, 480
+Breeding Dinos/Tricarnotops
+	bounds: 531, 1584, 509, 435
+	offsets: 19, 22, 576, 469
+Breeding Dinos/Triceramimus
+	bounds: 3267, 2192, 582, 489
+	offsets: 12, 8, 608, 511
+	rotate: 90
+Dinos_0002_CursedSteggo.png
+	bounds: 2629, 2295, 633, 479
+Dinos_0003_FiveNightSpino.png
+	bounds: 1982, 2182, 641, 592
+	offsets: 0, 4, 641, 596
+Dinos_0004_fuzziosaur.png-copy
+	bounds: 1153, 2572, 823, 687
+	offsets: 0, 0, 823, 688
+Dinos_0005_Megaladon.png-copy
+	bounds: 2498, 2780, 1117, 513
+	offsets: 0, 6, 1117, 519
+Dinos_0008_Plated-Ankylosaur.png
+	bounds: 3770, 989, 626, 310
+	offsets: 0, 1, 626, 311
+	rotate: 90
+Dinos_0010_Saurocannon.png
+	bounds: 6, 3333, 1301, 750
+	offsets: 0, 0, 1317, 750
+Remaining Standards/Brontosaurus
+	bounds: 3784, 34, 271, 444
+	offsets: 165, 46, 512, 512
+Remaining Standards/Styracosaurus
+	bounds: 6, 6, 422, 425
+	offsets: 10, 12, 441, 453
+	rotate: 90
+Remaining Standards/Troodon
+	bounds: 499, 717, 453, 428
+	offsets: 17, 15, 488, 455
+Round 5/Baryonyx
+	bounds: 1394, 44, 487, 369
+	offsets: 9, 52, 512, 512
+Round 5/Deinocheirus
+	bounds: 6, 434, 485, 391
+	offsets: 9, 6, 500, 403
+Round 5/Gigantosaurus
+	bounds: 2351, 22, 489, 356
+	offsets: 6, 6, 500, 368
+Triceratops
+	bounds: 3292, 96, 486, 382
+V3/Carnotaurus
+	bounds: 1906, 84, 427, 438
+	offsets: 15, 42, 480, 544
+	rotate: 90
+V4/4_0000_Bajadasaurus.png
+	bounds: 3763, 2230, 707, 313
+	rotate: 90
+V4/4_0001_Blue-Raptor.png
+	bounds: 2263, 1931, 308, 245
+V4/4_0002_Indominus-Rex.png
+	bounds: 1121, 1741, 567, 391
+V4/4_0005_Layer-3
+	bounds: 3064, 486, 506, 380
+V5/Inferno_Spino
+	bounds: 496, 176, 535, 350
+	offsets: 2, 0, 540, 362
+	rotate: 90
+V5/Molten_Bronto
+	bounds: 2498, 3299, 1117, 784
+	offsets: 66, 25, 1264, 848
+V5/Obsidian_Stego
+	bounds: 6, 2569, 1141, 758
+	offsets: 60, 41, 1264, 848
+V5/Volcanic_Alpha
+	bounds: 1313, 3265, 1179, 818
+	offsets: 41, 5, 1264, 848
+shadow
+	bounds: 1153, 3268, 116, 59
+	offsets: 3, 3, 122, 64
+
+Dinosaurs_2.png
+	size: 4036, 2036
+	filter: Linear, Linear
+	scale: 0.5
+Aquilops
+	bounds: 2948, 301, 454, 376
+Bosses/Ankylosaurus
+	bounds: 2471, 1732, 392, 296
+	offsets: 4, 0, 400, 300
+Brachiosaur
+	bounds: 521, 1075, 416, 380
+	offsets: 74, 130, 512, 512
+Breeding Dinos/Ankylorex
+	bounds: 2906, 1329, 435, 350
+	offsets: 8, 6, 452, 362
+Breeding Dinos/Archaeomorphodon
+	bounds: 1128, 1526, 490, 266
+	offsets: 5, 10, 501, 280
+Breeding Dinos/Blue Rex
+	bounds: 2014, 1428, 416, 329
+	offsets: 12, 11, 435, 347
+Breeding Dinos/Brontosaurus Rex
+	bounds: 1493, 1049, 401, 398
+	offsets: 16, 9, 438, 422
+Breeding Dinos/Iguanaraptor
+	bounds: 3219, 1690, 338, 355
+	offsets: 7, 5, 354, 370
+	rotate: 90
+Breeding Dinos/Megaladactyl
+	bounds: 1381, 147, 496, 349
+	offsets: 6, 5, 508, 361
+	rotate: 90
+Breeding Dinos/Proterodon
+	bounds: 3580, 1404, 445, 309
+	offsets: 14, 7, 469, 321
+Breeding Dinos/SpinoBajadasaurus
+	bounds: 2416, 978, 416, 385
+	offsets: 14, 6, 441, 398
+Breeding Dinos/Tridilotops
+	bounds: 1395, 649, 426, 394
+	offsets: 9, 13, 448, 413
+Breeding Dinos/Tyrannodon Rex
+	bounds: 3408, 200, 479, 361
+	offsets: 7, 8, 492, 381
+Breeding Dinos/Tyrannospinus
+	bounds: 447, 707, 461, 362
+	offsets: 22, 12, 490, 392
+Breeding Dinos/Utahorphodon
+	bounds: 1046, 1169, 441, 351
+	offsets: 9, 8, 460, 360
+Breeding Dinos/Valeopteryx
+	bounds: 3701, 567, 511, 329
+	offsets: 5, 5, 522, 341
+	rotate: 90
+Dinos_0006_Performative-Machadon.png-copy-3
+	bounds: 728, 1798, 230, 394
+	rotate: 90
+Dinos_0007_Philosoraptor
+	bounds: 2869, 1685, 344, 343
+	offsets: 0, 4, 344, 347
+Gallimimus
+	bounds: 1624, 1453, 384, 347
+Pterodactyl
+	bounds: 6, 397, 556, 304
+Remaining Standards/Chickedon
+	bounds: 942, 799, 364, 446
+	offsets: 9, 10, 403, 467
+	rotate: 90
+Remaining Standards/Dilophosaurus
+	bounds: 6, 793, 372, 435
+	offsets: 70, 66, 512, 512
+	rotate: 90
+Remaining Standards/Dimorphodon
+	bounds: 1128, 1798, 439, 230
+	offsets: 47, 164, 512, 512
+Remaining Standards/Distortus Rex
+	bounds: 1827, 342, 451, 378
+	offsets: 18, 13, 484, 398
+Remaining Standards/Iguanadon
+	bounds: 2050, 1763, 415, 265
+	offsets: 15, 13, 437, 282
+Remaining Standards/Mosasaurus
+	bounds: 249, 1837, 473, 191
+	offsets: 19, 157, 512, 512
+Remaining Standards/Proterosuchus
+	bounds: 1573, 1806, 471, 222
+	offsets: 24, 16, 512, 262
+Remaining Standards/Raptor
+	bounds: 2284, 293, 463, 369
+	offsets: 49, 75, 512, 512
+Remaining Standards/Spinosaurus
+	bounds: 568, 31, 453, 387
+	offsets: 43, 12, 512, 415
+Remaining Standards/T-Rex
+	bounds: 914, 424, 461, 369
+	offsets: 38, 74, 512, 512
+Round 5/Coelophysis
+	bounds: 3275, 683, 421, 395
+	offsets: 2, 2, 425, 399
+Round 5/Yi Qi
+	bounds: 249, 1485, 374, 346
+	offsets: 4, 2, 384, 351
+Stegosaurus
+	bounds: 6, 1171, 509, 308
+V3/Archaeopteryx
+	bounds: 3347, 1084, 510, 314
+	offsets: 9, 5, 528, 325
+V3/Oviraptor
+	bounds: 6, 6, 385, 460
+	offsets: 44, 10, 528, 496
+	rotate: 90
+V3/Pachycephalosaurus
+	bounds: 2436, 1369, 464, 310
+	offsets: 1, 1, 466, 312
+V3/Skibidisaurus
+	bounds: 1899, 726, 377, 431
+	offsets: 4, 5, 384, 440
+	rotate: 90
+V3/TharosaurusFinal
+	bounds: 2838, 949, 431, 374
+	offsets: 1, 1, 433, 376
+V3/Therizinosaurus
+	bounds: 3580, 1719, 309, 397
+	offsets: 5, 4, 324, 406
+	rotate: 90
+V4/4_0003_Indoraptor.png
+	bounds: 2336, 668, 606, 275
+V4/4_0006_Utahraptor.png
+	bounds: 6, 1799, 237, 229
+V5/Magma_Raptor
+	bounds: 1900, 1109, 510, 313
+	offsets: 15, 12, 540, 362
+V5/Pyroclast_Hybrid
+	bounds: 629, 1461, 411, 331
+	offsets: 64, 5, 540, 362

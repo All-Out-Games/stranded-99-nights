@@ -1,0 +1,14 @@
+[
+  {
+    "id": "Animations/dinos/Dinosaurs_2.png",
+    "texture": {
+      "resample_multiplier": 1
+    }
+  },
+  {
+    "id": "Animations/dinos/Dinosaurs.png",
+    "texture": {
+      "resample_multiplier": 1
+    }
+  }
+]

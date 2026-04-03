@@ -1,0 +1,3099 @@
+{
+"skeleton": { "hash": "sry87lk3aEY", "spine": "4.0.64", "x": -508.97, "y": -203.44, "width": 1024, "height": 1139.22 },
+"bones": [
+	{ "name": "root" },
+	{ "name": "bone", "parent": "root", "x": 1, "y": -99 },
+	{ "name": "bone2", "parent": "bone", "y": 99, "transform": "noScale" },
+	{ "name": "Dinosaur", "parent": "bone", "length": 280, "rotation": 90, "x": -1, "y": 124 },
+	{ "name": "PLAYER_RIDE", "parent": "bone", "rotation": 90, "x": -1, "y": 404, "transform": "onlyTranslation" },
+	{ "name": "constraint_target_Aquilops", "parent": "Dinosaur", "x": 428.4, "y": 31.06, "skin": true },
+	{ "name": "constraint_target_Archaeopteryx", "parent": "Dinosaur", "x": 399.38, "y": -6.9, "skin": true },
+	{ "name": "constraint_target_Utahorphodon", "parent": "Dinosaur", "x": 340.62, "y": -59.75, "skin": true },
+	{ "name": "constraint_target_Velaeopteryx", "parent": "Dinosaur", "x": 401.16, "y": -44.61, "skin": true },
+	{ "name": "constraint_target_Tyrannospinus", "parent": "Dinosaur", "x": 682.66, "y": -159.63, "skin": true },
+	{ "name": "constraint_target_Tyrannodon Rex", "parent": "Dinosaur", "x": 776.5, "y": -68.83, "skin": true },
+	{ "name": "constraint_target_Tridilotops", "parent": "Dinosaur", "x": 410.24, "y": 97.65, "skin": true },
+	{ "name": "constraint_target_Triceramimus", "parent": "Dinosaur", "x": 495, "y": 76.46, "skin": true },
+	{ "name": "constraint_target_Tricarnotops", "parent": "Dinosaur", "x": 567.64, "y": 82.52, "skin": true },
+	{ "name": "constraint_target_Styracotharus", "parent": "Dinosaur", "x": 767.42, "y": -80.93, "skin": true },
+	{ "name": "constraint_target_Styracorex", "parent": "Dinosaur", "x": 728.07, "y": 0.79, "skin": true },
+	{ "name": "constraint_target_Stegoceratops", "parent": "Dinosaur", "x": 755.31, "y": -205.04, "skin": true },
+	{ "name": "constraint_target_Spinoteryx", "parent": "Dinosaur", "x": 498.02, "y": -123.31, "skin": true },
+	{ "name": "constraint_target_Spinoraptor", "parent": "Dinosaur", "x": 619.1, "y": -177.8, "skin": true },
+	{ "name": "constraint_target_Spinobajadasaurus", "parent": "Dinosaur", "x": 425.38, "y": -217.14, "skin": true },
+	{ "name": "constraint_target_Quetzasaurus", "parent": "Dinosaur", "x": 1148.81, "y": -220.17, "skin": true },
+	{ "name": "constraint_target_Pterocephalus", "parent": "Dinosaur", "x": 706.88, "y": -223.2, "skin": true },
+	{ "name": "constraint_target_Proterodon", "parent": "Dinosaur", "x": 186.25, "y": 115.81, "skin": true },
+	{ "name": "constraint_target_Pachylops", "parent": "Dinosaur", "x": 440.51, "y": 46.2, "skin": true },
+	{ "name": "constraint_target_Mosarinosaurus", "parent": "Dinosaur", "x": 1039.84, "y": -32.5, "skin": true },
+	{ "name": "constraint_target_Megaladactyl", "parent": "Dinosaur", "x": 718.99, "y": -74.88, "skin": true },
+	{ "name": "constraint_target_Indominus Skeletal", "parent": "Dinosaur", "x": 867.31, "y": -117.26, "skin": true },
+	{ "name": "constraint_target_Iguanaraptor", "parent": "Dinosaur", "x": 458.67, "y": 112.79, "skin": true },
+	{ "name": "constraint_target_Iguanalops", "parent": "Dinosaur", "x": 464.73, "y": -65.8, "skin": true },
+	{ "name": "constraint_target_Galliraptor", "parent": "Dinosaur", "x": 395.11, "y": 21.98, "skin": true },
+	{ "name": "constraint_target_Distortus Skeletal", "parent": "Dinosaur", "x": 1133.67, "y": -14.34, "skin": true },
+	{ "name": "constraint_target_Dilophocephalus", "parent": "Dinosaur", "x": 277.06, "y": 55.28, "skin": true },
+	{ "name": "constraint_target_Dilodactyl", "parent": "Dinosaur", "x": 558.56, "y": 31.06, "skin": true },
+	{ "name": "constraint_target_Carnoraptor", "parent": "Dinosaur", "x": 555.53, "y": -23.42, "skin": true },
+	{ "name": "constraint_target_Brontorex", "parent": "Dinosaur", "x": 1690.62, "y": -565.24, "skin": true },
+	{ "name": "constraint_target_Blue Rex", "parent": "Dinosaur", "x": 685.69, "y": -114.23, "skin": true },
+	{ "name": "constraint_target_Bajaraptor", "parent": "Dinosaur", "x": 476.84, "y": -41.58, "skin": true },
+	{ "name": "constraint_target_Archaeomorphodon", "parent": "Dinosaur", "x": 355.76, "y": 25.01, "skin": true },
+	{ "name": "constraint_target_Aquilophosaurus", "parent": "Dinosaur", "x": 485.92, "y": 70.41, "skin": true },
+	{ "name": "constraint_target_Aquilodactyl", "parent": "Dinosaur", "x": 661.48, "y": -77.91, "skin": true },
+	{ "name": "constraint_target_Ankylorex", "parent": "Dinosaur", "x": 1294.1, "y": -519.83, "skin": true },
+	{ "name": "constraint_target_Titanosaurus", "parent": "Dinosaur", "x": 785.58, "y": -77.91, "skin": true },
+	{ "name": "constraint_target_Quetzalcoatlus", "parent": "Dinosaur", "x": 610.02, "y": -41.58, "skin": true },
+	{ "name": "constraint_target_Pleseosaurus", "parent": "Dinosaur", "x": 1260.8, "y": 3.82, "skin": true },
+	{ "name": "constraint_target_Ankylosaurus", "parent": "Dinosaur", "x": 603.97, "y": 15.93, "skin": true },
+	{ "name": "constraint_target_Saurocannon", "parent": "Dinosaur", "x": 1330.3, "y": 129.9, "skin": true },
+	{ "name": "constraint_target_Plated Ankylosaur", "parent": "Dinosaur", "x": 493.27, "y": -12.18, "skin": true },
+	{ "name": "constraint_target_Philosoraptor", "parent": "Dinosaur", "x": 289.41, "y": 123.72, "skin": true },
+	{ "name": "constraint_target_Performative Machadon", "parent": "Dinosaur", "x": 722.38, "y": 84.51, "skin": true },
+	{ "name": "constraint_target_Megaladon", "parent": "Dinosaur", "x": 709.02, "y": -525.71, "skin": true },
+	{ "name": "constraint_target_Fuzziosaur", "parent": "Dinosaur", "x": 628.84, "y": -160.47, "skin": true },
+	{ "name": "constraint_target_FiveNightSaurus", "parent": "Dinosaur", "x": 735.74, "y": -75.84, "skin": true },
+	{ "name": "constraint_target_Cursed Steggo", "parent": "Dinosaur", "x": 450.68, "y": 382.94, "skin": true },
+	{ "name": "constraint_target_Chickendon", "parent": "Dinosaur", "x": 276.96, "y": 191.41, "skin": true },
+	{ "name": "constraint_target_Yi Qi", "parent": "Dinosaur", "x": 201.24, "y": -4.57, "skin": true },
+	{ "name": "constraint_target_Velociraptor", "parent": "Dinosaur", "x": 415.04, "y": -31.3, "skin": true },
+	{ "name": "constraint_target_Utahraptor", "parent": "Dinosaur", "x": 250.24, "y": -9.03, "skin": true },
+	{ "name": "constraint_target_Troodon", "parent": "Dinosaur", "x": 254.69, "y": 31.06, "skin": true },
+	{ "name": "constraint_target_Triceratops", "parent": "Dinosaur", "x": 428.4, "y": 84.51, "skin": true },
+	{ "name": "constraint_target_TRex", "parent": "Dinosaur", "x": 918.36, "y": -111.47, "skin": true },
+	{ "name": "constraint_target_Therizinosaurus", "parent": "Dinosaur", "x": 1060.9, "y": -0.12, "skin": true },
+	{ "name": "constraint_target_Tharosaurus", "parent": "Dinosaur", "x": 811.46, "y": -89.2, "skin": true },
+	{ "name": "constraint_target_Styracosaurus", "parent": "Dinosaur", "x": 428.4, "y": 31.06, "skin": true },
+	{ "name": "constraint_target_Stegasaurus", "parent": "Dinosaur", "x": 499.67, "y": -383.18, "skin": true },
+	{ "name": "constraint_target_Spinosaurus", "parent": "Dinosaur", "x": 619.93, "y": -191.65, "skin": true },
+	{ "name": "constraint_target_Skibidisaurus", "parent": "Dinosaur", "x": 446.22, "y": 93.42, "skin": true },
+	{ "name": "constraint_target_Skeletal Rex", "parent": "Dinosaur", "x": 611.03, "y": -151.56, "skin": true },
+	{ "name": "constraint_target_Pterodactyl", "parent": "Dinosaur", "x": 624.39, "y": -80.29, "skin": true },
+	{ "name": "constraint_target_Proterosuchus", "parent": "Dinosaur", "x": 324.14, "y": -18.8, "skin": true },
+	{ "name": "constraint_target_Pachycephalosaurus", "parent": "Dinosaur", "x": 396.67, "y": -50.53, "skin": true },
+	{ "name": "constraint_target_Oviraptor", "parent": "Dinosaur", "x": 668.66, "y": -195.59, "skin": true },
+	{ "name": "constraint_target_Mosasaurus", "parent": "Dinosaur", "x": 840.92, "y": -236.39, "skin": true },
+	{ "name": "constraint_target_Indoraptor", "parent": "Dinosaur", "x": 356.94, "y": -131.37, "skin": true },
+	{ "name": "constraint_target_Indominus Rex", "parent": "Dinosaur", "x": 847.48, "y": -46.91, "skin": true },
+	{ "name": "constraint_target_Iguanadon", "parent": "Dinosaur", "x": 499.87, "y": -111.88, "skin": true },
+	{ "name": "constraint_target_Gigantosaurus", "parent": "Dinosaur", "x": 983.92, "y": -167.1, "skin": true },
+	{ "name": "constraint_target_Gallimimus", "parent": "Dinosaur", "x": 337.44, "y": 37.56, "skin": true },
+	{ "name": "constraint_target_Distortus Rex", "parent": "Dinosaur", "x": 1074.88, "y": 34.31, "skin": true },
+	{ "name": "constraint_target_Dimorphodon", "parent": "Dinosaur", "x": 282.22, "y": -43.66, "skin": true },
+	{ "name": "constraint_target_Dilophosaurus", "parent": "Dinosaur", "x": 184.76, "y": 31.06, "skin": true },
+	{ "name": "constraint_target_Deinocheirus", "parent": "Dinosaur", "x": 473.89, "y": 31.06, "skin": true },
+	{ "name": "constraint_target_Coelophysis", "parent": "Dinosaur", "x": 470.64, "y": 37.56, "skin": true },
+	{ "name": "constraint_target_Carnotaurus", "parent": "Dinosaur", "x": 677.84, "y": -13.48, "skin": true },
+	{ "name": "constraint_target_Brontosaurus", "parent": "Dinosaur", "x": 668.8, "y": 112.28, "skin": true },
+	{ "name": "constraint_target_Brachiosaur", "parent": "Dinosaur", "x": 668.8, "y": 21.32, "skin": true },
+	{ "name": "constraint_target_Blue Raptor", "parent": "Dinosaur", "x": 247.02, "y": 20.98, "skin": true },
+	{ "name": "constraint_target_Baryonyx", "parent": "Dinosaur", "x": 418.33, "y": 20.98, "skin": true },
+	{ "name": "constraint_target_Bajadasaurus", "parent": "Dinosaur", "x": 488.87, "y": 96.56, "skin": true },
+	{ "name": "constraint_target_Inferno_Spino", "parent": "Dinosaur", "x": 500.97, "y": -272.42, "skin": true },
+	{ "name": "constraint_target_Magma_Raptor", "parent": "Dinosaur", "x": 431.35, "y": -84.75, "skin": true },
+	{ "name": "constraint_target_Molten_Bronto", "parent": "Dinosaur", "x": 930.78, "y": -339.01, "skin": true },
+	{ "name": "constraint_target_Obsidian_Stego", "parent": "Dinosaur", "x": 600.85, "y": -659.86, "skin": true },
+	{ "name": "constraint_target_Pyroclast_Hybrid", "parent": "Dinosaur", "x": 555.45, "y": -223.99, "skin": true },
+	{ "name": "constraint_target_Volcanic_Alpha", "parent": "Dinosaur", "x": 1321.25, "y": -593.27, "skin": true },
+	{ "name": "constraint_target_Aquidilodactyl", "parent": "Dinosaur", "x": 500.97, "y": 27.24, "skin": true },
+	{ "name": "Constraint_Target_Carnodilotops", "parent": "Dinosaur", "x": 440.43, "y": 142.27, "skin": true },
+	{ "name": "Constraint_Target_DistortodonRex", "parent": "Dinosaur", "x": 516.11, "y": -45.41, "skin": true },
+	{ "name": "Constraint_Target_QuetzadistorylosaurusRex", "parent": "Dinosaur", "x": 534.27, "y": -54.49, "skin": true },
+	{ "name": "Constraint_Target_Quetzankylosaurus", "parent": "Dinosaur", "x": 616, "y": -54.49, "skin": true },
+	{ "name": "Constraint_Target_Spinomorphosaurus", "parent": "Dinosaur", "x": 373.84, "y": -112, "skin": true },
+	{ "name": "Constraint_Target_Steguanatops", "parent": "Dinosaur", "x": 679.57, "y": -278.48, "skin": true },
+	{ "name": "Constraint_Target_Styracotharus", "parent": "Dinosaur", "x": 504, "y": -51.46, "skin": true },
+	{ "name": "Constraint_Target_Velesiopteryx", "parent": "Dinosaur", "x": 882.37, "y": -163.46, "skin": true }
+],
+"slots": [
+	{ "name": "DinoTemp", "bone": "root" },
+	{ "name": "shadow", "bone": "bone2", "color": "ffffff64", "attachment": "shadow" },
+	{ "name": "Dinosaur", "bone": "Dinosaur", "attachment": "DinosaurSkin" }
+],
+"transform": [
+	{
+		"name": "constraint_target_Ankylorex",
+		"order": 34,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Ankylorex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Ankylosaurus",
+		"order": 53,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Ankylosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Aquidilodactyl",
+		"order": 43,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Aquidilodactyl",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Aquilodactyl",
+		"order": 33,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Aquilodactyl",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Aquilophosaurus",
+		"order": 32,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Aquilophosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Aquilops",
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Aquilops",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Archaeomorphodon",
+		"order": 31,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Archaeomorphodon",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Archaeopteryx",
+		"order": 97,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Archaeopteryx",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Bajadasaurus",
+		"order": 96,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Bajadasaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Bajaraptor",
+		"order": 30,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Bajaraptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Baryonyx",
+		"order": 95,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Baryonyx",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Blue Raptor",
+		"order": 94,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Blue Raptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Blue Rex",
+		"order": 29,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Blue Rex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Brachiosaur",
+		"order": 93,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Brachiosaur",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Brontorex",
+		"order": 28,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Brontorex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Brontosaurus",
+		"order": 92,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Brontosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "Constraint_Target_Carnodilotops",
+		"order": 42,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "Constraint_Target_Carnodilotops",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Carnoraptor",
+		"order": 27,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Carnoraptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Carnotaurus",
+		"order": 91,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Carnotaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Chickendon",
+		"order": 62,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Chickendon",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Coelophysis",
+		"order": 90,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Coelophysis",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Cursed Steggo",
+		"order": 61,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Cursed Steggo",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Deinocheirus",
+		"order": 89,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Deinocheirus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Dilodactyl",
+		"order": 26,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Dilodactyl",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Dilophocephalus",
+		"order": 25,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Dilophocephalus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Dilophosaurus",
+		"order": 88,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Dilophosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Dimorphodon",
+		"order": 87,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Dimorphodon",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "Constraint_Target_DistortodonRex",
+		"order": 41,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "Constraint_Target_DistortodonRex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Distortus Rex",
+		"order": 86,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Distortus Rex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Distortus Skeletal",
+		"order": 24,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Distortus Skeletal",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_FiveNightSaurus",
+		"order": 60,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_FiveNightSaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Fuzziosaur",
+		"order": 59,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Fuzziosaur",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Gallimimus",
+		"order": 85,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Gallimimus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Galliraptor",
+		"order": 23,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Galliraptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Gigantosaurus",
+		"order": 84,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Gigantosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Iguanadon",
+		"order": 83,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Iguanadon",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Iguanalops",
+		"order": 22,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Iguanalops",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Iguanaraptor",
+		"order": 21,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Iguanaraptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Indominus Rex",
+		"order": 82,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Indominus Rex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Indominus Skeletal",
+		"order": 20,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Indominus Skeletal",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Indoraptor",
+		"order": 81,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Indoraptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Inferno_Spino",
+		"order": 49,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Inferno_Spino",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Magma_Raptor",
+		"order": 48,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Magma_Raptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Megaladactyl",
+		"order": 19,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Megaladactyl",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Megaladon",
+		"order": 58,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Megaladon",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Molten_Bronto",
+		"order": 47,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Molten_Bronto",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Mosarinosaurus",
+		"order": 18,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Mosarinosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Mosasaurus",
+		"order": 80,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Mosasaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Obsidian_Stego",
+		"order": 46,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Obsidian_Stego",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Oviraptor",
+		"order": 79,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Oviraptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Pachycephalosaurus",
+		"order": 78,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Pachycephalosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Pachylops",
+		"order": 17,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Pachylops",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Performative Machadon",
+		"order": 57,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Performative Machadon",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Philosoraptor",
+		"order": 56,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Philosoraptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Plated Ankylosaur",
+		"order": 55,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Plated Ankylosaur",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Pleseosaurus",
+		"order": 52,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Pleseosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Proterodon",
+		"order": 16,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Proterodon",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Proterosuchus",
+		"order": 77,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Proterosuchus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Pterocephalus",
+		"order": 15,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Pterocephalus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Pterodactyl",
+		"order": 76,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Pterodactyl",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Pyroclast_Hybrid",
+		"order": 45,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Pyroclast_Hybrid",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "Constraint_Target_QuetzadistorylosaurusRex",
+		"order": 40,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "Constraint_Target_QuetzadistorylosaurusRex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Quetzalcoatlus",
+		"order": 51,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Quetzalcoatlus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "Constraint_Target_Quetzankylosaurus",
+		"order": 39,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "Constraint_Target_Quetzankylosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Quetzasaurus",
+		"order": 14,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Quetzasaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Saurocannon",
+		"order": 54,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Saurocannon",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Skeletal Rex",
+		"order": 75,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Skeletal Rex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Skibidisaurus",
+		"order": 74,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Skibidisaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Spinobajadasaurus",
+		"order": 13,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Spinobajadasaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "Constraint_Target_Spinomorphosaurus",
+		"order": 38,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "Constraint_Target_Spinomorphosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Spinoraptor",
+		"order": 12,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Spinoraptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Spinosaurus",
+		"order": 73,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Spinosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Spinoteryx",
+		"order": 11,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Spinoteryx",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Stegasaurus",
+		"order": 72,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Stegasaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Stegoceratops",
+		"order": 10,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Stegoceratops",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "Constraint_Target_Steguanatops",
+		"order": 37,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "Constraint_Target_Steguanatops",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Styracorex",
+		"order": 9,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Styracorex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Styracosaurus",
+		"order": 71,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Styracosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "Constraint_Target_Styracotharus",
+		"order": 36,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "Constraint_Target_Styracotharus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Styracotharus",
+		"order": 8,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Styracotharus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Tharosaurus",
+		"order": 70,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Tharosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Therizinosaurus",
+		"order": 69,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Therizinosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Titanosaurus",
+		"order": 50,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Titanosaurus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_TRex",
+		"order": 68,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_TRex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Tricarnotops",
+		"order": 7,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Tricarnotops",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Triceramimus",
+		"order": 6,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Triceramimus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Triceratops",
+		"order": 67,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Triceratops",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Tridilotops",
+		"order": 5,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Tridilotops",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Troodon",
+		"order": 66,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Troodon",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Tyrannodon Rex",
+		"order": 4,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Tyrannodon Rex",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Tyrannospinus",
+		"order": 3,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Tyrannospinus",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Utahorphodon",
+		"order": 2,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Utahorphodon",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Utahraptor",
+		"order": 65,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Utahraptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Velaeopteryx",
+		"order": 1,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Velaeopteryx",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "Constraint_Target_Velesiopteryx",
+		"order": 35,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "Constraint_Target_Velesiopteryx",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Velociraptor",
+		"order": 64,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Velociraptor",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Volcanic_Alpha",
+		"order": 44,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Volcanic_Alpha",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	},
+	{
+		"name": "constraint_target_Yi Qi",
+		"order": 63,
+		"skin": true,
+		"bones": [ "PLAYER_RIDE" ],
+		"target": "constraint_target_Yi Qi",
+		"mixRotate": 0,
+		"mixScaleX": 0,
+		"mixShearY": 0
+	}
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"shadow": {
+				"shadow": { "y": 0.5, "scaleX": 3.6589, "scaleY": 3.1865, "width": 244, "height": 128 }
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Ankylorex",
+		"bones": [ "constraint_target_Ankylorex" ],
+		"transform": [ "constraint_target_Ankylorex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Ankylorex",
+					"x": 621.83,
+					"y": -37.22,
+					"scaleX": -2.0557,
+					"scaleY": 2.0557,
+					"rotation": -90,
+					"width": 904,
+					"height": 724
+				}
+			}
+		}
+	},
+	{
+		"name": "bosses/Ankylosaurus",
+		"bones": [ "constraint_target_Ankylosaurus" ],
+		"transform": [ "constraint_target_Ankylosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Bosses/Ankylosaurus",
+					"x": 308.79,
+					"y": 70.77,
+					"scaleX": -1.277,
+					"scaleY": 1.277,
+					"rotation": -90,
+					"width": 800,
+					"height": 600
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding2/Aquidilodactyl",
+		"bones": [ "constraint_target_Aquidilodactyl" ],
+		"transform": [ "constraint_target_Aquidilodactyl" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos 2/Aquidilodactyl",
+					"type": "mesh",
+					"uvs": [ 1, 1, 0, 1, 0.03339, 0.07567, 1, 0 ],
+					"triangles": [ 2, 3, 0, 1, 2, 0 ],
+					"vertices": [ -105.44, -553.08, -105.44, 534.92, 781.92, 498.59, 854.56, -553.08 ],
+					"hull": 4
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Aquilodactyl",
+		"bones": [ "constraint_target_Aquilodactyl" ],
+		"transform": [ "constraint_target_Aquilodactyl" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Breeding Dinos/Aquilodactyl", "x": 392.8, "y": 3.19, "rotation": -90, "width": 1026, "height": 928 }
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Aquilophosaurus",
+		"bones": [ "constraint_target_Aquilophosaurus" ],
+		"transform": [ "constraint_target_Aquilophosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Breeding Dinos/Aquilophosaurus", "x": 356.5, "y": -25.3, "rotation": -90, "width": 1042, "height": 942 }
+			}
+		}
+	},
+	{
+		"name": "Aquilops",
+		"bones": [ "constraint_target_Aquilops" ],
+		"transform": [ "constraint_target_Aquilops" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Aquilops", "x": 305.39, "y": -22.55, "rotation": -90, "width": 908, "height": 752 }
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Archaeomorphodon",
+		"bones": [ "constraint_target_Archaeomorphodon" ],
+		"transform": [ "constraint_target_Archaeomorphodon" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Breeding Dinos/Archaeomorphodon", "x": 303.08, "y": -0.49, "rotation": -90, "width": 1002, "height": 560 }
+			}
+		}
+	},
+	{
+		"name": "Archaeopteryx",
+		"bones": [ "constraint_target_Archaeopteryx" ],
+		"transform": [ "constraint_target_Archaeopteryx" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V3/Archaeopteryx",
+					"x": 197.45,
+					"y": 47.11,
+					"scaleX": 0.6876,
+					"scaleY": 0.6876,
+					"rotation": -90,
+					"width": 1056,
+					"height": 650
+				}
+			}
+		}
+	},
+	{
+		"name": "Bajadasaurus",
+		"bones": [ "constraint_target_Bajadasaurus" ],
+		"transform": [ "constraint_target_Bajadasaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "V4/4_0000_Bajadasaurus.png", "x": 244.3, "y": 31.9, "rotation": -90, "width": 1414, "height": 625 }
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Bajaraptor",
+		"bones": [ "constraint_target_Bajaraptor" ],
+		"transform": [ "constraint_target_Bajaraptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Bajaraptor",
+					"x": 375.99,
+					"y": 33.25,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 931,
+					"height": 883
+				}
+			}
+		}
+	},
+	{
+		"name": "Baryonyx",
+		"bones": [ "constraint_target_Baryonyx" ],
+		"transform": [ "constraint_target_Baryonyx" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Round 5/Baryonyx",
+					"x": 347.08,
+					"y": -36.29,
+					"scaleX": 1.01,
+					"scaleY": 1.01,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Blue Raptor",
+		"bones": [ "constraint_target_Blue Raptor" ],
+		"transform": [ "constraint_target_Blue Raptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V4/4_0001_Blue-Raptor.png",
+					"x": 191.62,
+					"y": 21.06,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 615,
+					"height": 490
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Blue Rex",
+		"bones": [ "constraint_target_Blue Rex" ],
+		"transform": [ "constraint_target_Blue Rex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Blue Rex",
+					"x": 460.6,
+					"y": -7.06,
+					"scaleX": -1.6233,
+					"scaleY": 1.6233,
+					"rotation": -90,
+					"width": 870,
+					"height": 694
+				}
+			}
+		}
+	},
+	{
+		"name": "Brachiosaur",
+		"bones": [ "constraint_target_Brachiosaur" ],
+		"transform": [ "constraint_target_Brachiosaur" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Brachiosaur",
+					"x": 408.48,
+					"y": 212.13,
+					"scaleX": 1.9041,
+					"scaleY": 1.9041,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Brontorex",
+		"bones": [ "constraint_target_Brontorex" ],
+		"transform": [ "constraint_target_Brontorex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Brontosaurus Rex",
+					"x": 829.46,
+					"y": -28.37,
+					"scaleX": -2.2769,
+					"scaleY": 2.2769,
+					"rotation": -90,
+					"width": 876,
+					"height": 843
+				}
+			}
+		}
+	},
+	{
+		"name": "Brontosaurus",
+		"bones": [ "constraint_target_Brontosaurus" ],
+		"transform": [ "constraint_target_Brontosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Brontosaurus",
+					"x": 875.75,
+					"y": -48.96,
+					"scaleX": -2.3302,
+					"scaleY": 2.3302,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding2/Carnodilotops",
+		"bones": [ "Constraint_Target_Carnodilotops" ],
+		"transform": [ "Constraint_Target_Carnodilotops" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Breeding Dinos 2/Carnodilotops", "x": 423, "y": -42.38, "rotation": -90, "width": 1024, "height": 1024 }
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Carnoraptor",
+		"bones": [ "constraint_target_Carnoraptor" ],
+		"transform": [ "constraint_target_Carnoraptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Carnoraptor",
+					"x": 442.81,
+					"y": -60.06,
+					"scaleX": 1.1617,
+					"scaleY": 1.1617,
+					"rotation": -90,
+					"width": 897,
+					"height": 908
+				}
+			}
+		}
+	},
+	{
+		"name": "Carnotaurus",
+		"bones": [ "constraint_target_Carnotaurus" ],
+		"transform": [ "constraint_target_Carnotaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V3/Carnotaurus",
+					"x": 572.83,
+					"y": -86.82,
+					"scaleX": 1.4644,
+					"scaleY": 1.4644,
+					"rotation": -90,
+					"width": 960,
+					"height": 1088
+				}
+			}
+		}
+	},
+	{
+		"name": "specialVariants/Chickendon",
+		"bones": [ "constraint_target_Chickendon" ],
+		"transform": [ "constraint_target_Chickendon" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Remaining Standards/Chickedon", "x": 358.1, "y": 92.25, "rotation": -90, "width": 805, "height": 934 }
+			}
+		}
+	},
+	{
+		"name": "Coelophysis",
+		"bones": [ "constraint_target_Coelophysis" ],
+		"transform": [ "constraint_target_Coelophysis" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Round 5/Coelophysis",
+					"x": 406.31,
+					"y": 26.56,
+					"scaleX": 1.2017,
+					"scaleY": 1.2017,
+					"rotation": -90,
+					"width": 849,
+					"height": 798
+				}
+			}
+		}
+	},
+	{
+		"name": "specialVariants/Cursed Steggo",
+		"bones": [ "constraint_target_Cursed Steggo" ],
+		"transform": [ "constraint_target_Cursed Steggo" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Dinos_0002_CursedSteggo.png", "x": 420.28, "y": 85.2, "rotation": -90, "width": 1266, "height": 958 }
+			}
+		}
+	},
+	{
+		"name": "Deinocheirus",
+		"bones": [ "constraint_target_Deinocheirus" ],
+		"transform": [ "constraint_target_Deinocheirus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Round 5/Deinocheirus",
+					"x": 379.46,
+					"y": -13.38,
+					"scaleX": 1.1772,
+					"scaleY": 1.1772,
+					"rotation": -90,
+					"width": 1000,
+					"height": 805
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Dilodactyl",
+		"bones": [ "constraint_target_Dilodactyl" ],
+		"transform": [ "constraint_target_Dilodactyl" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Dilodactyl",
+					"x": 268.02,
+					"y": 10.67,
+					"scaleX": -0.824,
+					"scaleY": 0.824,
+					"rotation": -90,
+					"width": 1024,
+					"height": 802
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Dilophocephalus",
+		"bones": [ "constraint_target_Dilophocephalus" ],
+		"transform": [ "constraint_target_Dilophocephalus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Dilophocephalus",
+					"x": 254.74,
+					"y": 21.06,
+					"scaleX": 0.7285,
+					"scaleY": 0.7285,
+					"rotation": -90,
+					"width": 1248,
+					"height": 832
+				}
+			}
+		}
+	},
+	{
+		"name": "Dilophosaurus",
+		"bones": [ "constraint_target_Dilophosaurus" ],
+		"transform": [ "constraint_target_Dilophosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Dilophosaurus",
+					"x": 191.96,
+					"y": 10.96,
+					"scaleX": 0.6593,
+					"scaleY": 0.6593,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Dimorphodon",
+		"bones": [ "constraint_target_Dimorphodon" ],
+		"transform": [ "constraint_target_Dimorphodon" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Dimorphodon",
+					"x": 223.53,
+					"y": -65.98,
+					"scaleX": -1.1033,
+					"scaleY": 1.1033,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding2/Distortodon_Rex",
+		"bones": [ "Constraint_Target_DistortodonRex" ],
+		"transform": [ "Constraint_Target_DistortodonRex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos 2/Distortodon Rex",
+					"x": 356.4,
+					"y": 12.11,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Distortus Rex",
+		"bones": [ "constraint_target_Distortus Rex" ],
+		"transform": [ "constraint_target_Distortus Rex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Distortus Rex",
+					"x": 588.82,
+					"y": 157.58,
+					"scaleX": -1.8793,
+					"scaleY": 1.8793,
+					"rotation": -90,
+					"width": 967,
+					"height": 796
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Distortus Skeletal",
+		"bones": [ "constraint_target_Distortus Skeletal" ],
+		"transform": [ "constraint_target_Distortus Skeletal" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Distortus Skeletal",
+					"x": 666.62,
+					"y": 210.51,
+					"scaleX": -1.837,
+					"scaleY": 1.837,
+					"rotation": -90,
+					"width": 1120,
+					"height": 928
+				}
+			}
+		}
+	},
+	{
+		"name": "specialVariants/FiveNightSaurus",
+		"bones": [ "constraint_target_FiveNightSaurus" ],
+		"transform": [ "constraint_target_FiveNightSaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Dinos_0003_FiveNightSpino.png",
+					"x": 477.75,
+					"y": 11.73,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 1281,
+					"height": 1192
+				}
+			}
+		}
+	},
+	{
+		"name": "specialVariants/Fuzziosaur",
+		"bones": [ "constraint_target_Fuzziosaur" ],
+		"transform": [ "constraint_target_Fuzziosaur" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Dinos_0004_fuzziosaur.png-copy", "x": 597.54, "y": 44.43, "rotation": -90, "width": 1646, "height": 1375 }
+			}
+		}
+	},
+	{
+		"name": "Gallimimus",
+		"bones": [ "constraint_target_Gallimimus" ],
+		"transform": [ "constraint_target_Gallimimus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Gallimimus", "x": 300.84, "y": 91.14, "rotation": -90, "width": 767, "height": 693 }
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Galliraptor",
+		"bones": [ "constraint_target_Galliraptor" ],
+		"transform": [ "constraint_target_Galliraptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Galliraptor",
+					"x": 343.96,
+					"y": 50.55,
+					"scaleX": 0.8873,
+					"scaleY": 0.8873,
+					"rotation": -90,
+					"width": 1088,
+					"height": 960
+				}
+			}
+		}
+	},
+	{
+		"name": "Gigantosaurus",
+		"bones": [ "constraint_target_Gigantosaurus" ],
+		"transform": [ "constraint_target_Gigantosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Round 5/Gigantosaurus",
+					"x": 586.24,
+					"y": -127.89,
+					"scaleX": 1.9852,
+					"scaleY": 1.9852,
+					"rotation": -90,
+					"width": 1000,
+					"height": 736
+				}
+			}
+		}
+	},
+	{
+		"name": "Iguanadon",
+		"bones": [ "constraint_target_Iguanadon" ],
+		"transform": [ "constraint_target_Iguanadon" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Iguanadon",
+					"x": 330.34,
+					"y": -75.84,
+					"scaleX": 1.482,
+					"scaleY": 1.482,
+					"rotation": -90,
+					"width": 874,
+					"height": 564
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Iguanalops",
+		"bones": [ "constraint_target_Iguanalops" ],
+		"transform": [ "constraint_target_Iguanalops" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Iguanalops",
+					"x": 371.24,
+					"y": -106.48,
+					"scaleX": 1.1653,
+					"scaleY": 1.1653,
+					"rotation": -90,
+					"width": 1128,
+					"height": 780
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Iguanaraptor",
+		"bones": [ "constraint_target_Iguanaraptor" ],
+		"transform": [ "constraint_target_Iguanaraptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Iguanaraptor",
+					"x": 416.37,
+					"y": 152.75,
+					"scaleX": 1.3489,
+					"scaleY": 1.3489,
+					"rotation": -90,
+					"width": 708,
+					"height": 740
+				}
+			}
+		}
+	},
+	{
+		"name": "Indominus Rex",
+		"bones": [ "constraint_target_Indominus Rex" ],
+		"transform": [ "constraint_target_Indominus Rex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V4/4_0002_Indominus-Rex.png",
+					"x": 534.84,
+					"y": 70.26,
+					"scaleX": -1.6293,
+					"scaleY": 1.6293,
+					"rotation": -90,
+					"width": 1134,
+					"height": 781
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Indominus Skeletal",
+		"bones": [ "constraint_target_Indominus Skeletal" ],
+		"transform": [ "constraint_target_Indominus Skeletal" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Indominus Skeletal",
+					"x": 556.75,
+					"y": 71.47,
+					"scaleX": -1.5111,
+					"scaleY": 1.5111,
+					"rotation": -90,
+					"width": 1272,
+					"height": 870
+				}
+			}
+		}
+	},
+	{
+		"name": "Indoraptor",
+		"bones": [ "constraint_target_Indoraptor" ],
+		"transform": [ "constraint_target_Indoraptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V4/4_0003_Indoraptor.png",
+					"x": 213.1,
+					"y": 77.98,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 1211,
+					"height": 550
+				}
+			}
+		}
+	},
+	{
+		"name": "Inferno_Spino",
+		"bones": [ "constraint_target_Inferno_Spino" ],
+		"transform": [ "constraint_target_Inferno_Spino" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V5/Inferno_Spino",
+					"x": 280.72,
+					"y": 63.56,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 1080,
+					"height": 724
+				}
+			}
+		}
+	},
+	{
+		"name": "Magma_Raptor",
+		"bones": [ "constraint_target_Magma_Raptor" ],
+		"transform": [ "constraint_target_Magma_Raptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "V5/Magma_Raptor", "x": 271.64, "y": -33.3, "rotation": -90, "width": 1080, "height": 724 }
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Megaladactyl",
+		"bones": [ "constraint_target_Megaladactyl" ],
+		"transform": [ "constraint_target_Megaladactyl" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Megaladactyl",
+					"x": 672.93,
+					"y": -25.01,
+					"scaleX": 1.8439,
+					"scaleY": 1.8439,
+					"rotation": -90,
+					"width": 1015,
+					"height": 722
+				}
+			}
+		}
+	},
+	{
+		"name": "specialVariants/Megaladon",
+		"bones": [ "constraint_target_Megaladon" ],
+		"transform": [ "constraint_target_Megaladon" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Dinos_0005_Megaladon.png-copy",
+					"x": 474.2,
+					"y": 22.4,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 2234,
+					"height": 1037
+				}
+			}
+		}
+	},
+	{
+		"name": "Molten_Bronto",
+		"bones": [ "constraint_target_Molten_Bronto" ],
+		"transform": [ "constraint_target_Molten_Bronto" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "V5/Molten_Bronto", "x": 683.29, "rotation": -90, "width": 2528, "height": 1696 }
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Mosarinosaurus",
+		"bones": [ "constraint_target_Mosarinosaurus" ],
+		"transform": [ "constraint_target_Mosarinosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Mosarinosaurus",
+					"x": 493.49,
+					"y": 48.58,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 896,
+					"height": 1152
+				}
+			}
+		}
+	},
+	{
+		"name": "Mosasaurus",
+		"bones": [ "constraint_target_Mosasaurus" ],
+		"transform": [ "constraint_target_Mosasaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Mosasaurus",
+					"x": 483.24,
+					"y": 26.67,
+					"scaleX": 2.9219,
+					"scaleY": 2.9219,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Obsidian_Stego",
+		"bones": [ "constraint_target_Obsidian_Stego" ],
+		"transform": [ "constraint_target_Obsidian_Stego" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "V5/Obsidian_Stego", "x": 637.89, "y": 223.99, "rotation": -90, "width": 2528, "height": 1696 }
+			}
+		}
+	},
+	{
+		"name": "Oviraptor",
+		"bones": [ "constraint_target_Oviraptor" ],
+		"transform": [ "constraint_target_Oviraptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V3/Oviraptor",
+					"x": 343.43,
+					"y": -59.79,
+					"scaleX": 0.864,
+					"scaleY": 0.864,
+					"rotation": -90,
+					"width": 1056,
+					"height": 992
+				}
+			}
+		}
+	},
+	{
+		"name": "Pachycephalosaurus",
+		"bones": [ "constraint_target_Pachycephalosaurus" ],
+		"transform": [ "constraint_target_Pachycephalosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V3/Pachycephalosaurus",
+					"x": 327.48,
+					"y": 7.26,
+					"scaleX": 1.2379,
+					"scaleY": 1.2379,
+					"rotation": -90,
+					"width": 931,
+					"height": 623
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Pachylops",
+		"bones": [ "constraint_target_Pachylops" ],
+		"transform": [ "constraint_target_Pachylops" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Pachylops",
+					"x": 317.06,
+					"y": -73.62,
+					"scaleX": 0.9133,
+					"scaleY": 0.9133,
+					"rotation": -90,
+					"width": 1248,
+					"height": 832
+				}
+			}
+		}
+	},
+	{
+		"name": "specialVariants/Performative Machadon",
+		"bones": [ "constraint_target_Performative Machadon" ],
+		"transform": [ "constraint_target_Performative Machadon" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Dinos_0006_Performative-Machadon.png-copy-3", "x": 348.88, "y": -44.17, "rotation": -90, "width": 460, "height": 787 }
+			}
+		}
+	},
+	{
+		"name": "specialVariants/Philosoraptor",
+		"bones": [ "constraint_target_Philosoraptor" ],
+		"transform": [ "constraint_target_Philosoraptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Dinos_0007_Philosoraptor", "x": 290.12, "y": 17.04, "rotation": -90, "width": 687, "height": 693 }
+			}
+		}
+	},
+	{
+		"name": "specialVariants/Plated Ankylosaur",
+		"bones": [ "constraint_target_Plated Ankylosaur" ],
+		"transform": [ "constraint_target_Plated Ankylosaur" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Dinos_0008_Plated-Ankylosaur.png", "x": 272.49, "y": 63.22, "rotation": -90, "width": 1252, "height": 622 }
+			}
+		}
+	},
+	{
+		"name": "bosses/Pleseosaurus",
+		"bones": [ "constraint_target_Pleseosaurus" ],
+		"transform": [ "constraint_target_Pleseosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Bosses/Pleseodaurus",
+					"x": 641.67,
+					"y": -3.56,
+					"scaleX": 1.5541,
+					"scaleY": 1.5541,
+					"rotation": -90,
+					"width": 891,
+					"height": 899
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Proterodon",
+		"bones": [ "constraint_target_Proterodon" ],
+		"transform": [ "constraint_target_Proterodon" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Proterodon",
+					"x": 263.44,
+					"y": -65.71,
+					"scaleX": -1.0473,
+					"scaleY": 1.0473,
+					"rotation": -90,
+					"width": 938,
+					"height": 642
+				}
+			}
+		}
+	},
+	{
+		"name": "Proterosuchus",
+		"bones": [ "constraint_target_Proterosuchus" ],
+		"transform": [ "constraint_target_Proterosuchus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Proterosuchus",
+					"x": 239.77,
+					"y": -87.34,
+					"scaleX": 1.3406,
+					"scaleY": 1.3406,
+					"rotation": -90,
+					"width": 1024,
+					"height": 523
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Pterocephalus",
+		"bones": [ "constraint_target_Pterocephalus" ],
+		"transform": [ "constraint_target_Pterocephalus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Pterocephalus",
+					"x": 342.58,
+					"y": 50.7,
+					"scaleX": 0.9543,
+					"scaleY": 0.9543,
+					"rotation": -90,
+					"width": 1302,
+					"height": 876
+				}
+			}
+		}
+	},
+	{
+		"name": "Pterodactyl",
+		"bones": [ "constraint_target_Pterodactyl" ],
+		"transform": [ "constraint_target_Pterodactyl" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Pterodactyl", "x": 388.24, "y": -32.69, "rotation": -90, "width": 1111, "height": 608 }
+			}
+		}
+	},
+	{
+		"name": "Pyroclast_Hybrid",
+		"bones": [ "constraint_target_Pyroclast_Hybrid" ],
+		"transform": [ "constraint_target_Pyroclast_Hybrid" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V5/Pyroclast_Hybrid",
+					"x": 265.58,
+					"y": -12.11,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 1080,
+					"height": 724
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding2/Quetzadistorylosaurus_Rex",
+		"bones": [ "Constraint_Target_QuetzadistorylosaurusRex" ],
+		"transform": [ "Constraint_Target_QuetzadistorylosaurusRex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos 2/Quetzadistorylosaurus Rex",
+					"x": 347.32,
+					"y": -9.08,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "bosses/Quetzalcoatlus",
+		"bones": [ "constraint_target_Quetzalcoatlus" ],
+		"transform": [ "constraint_target_Quetzalcoatlus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Bosses/Quetzalcoatlus",
+					"x": 602.94,
+					"y": -115.98,
+					"scaleX": -1.4766,
+					"scaleY": 1.4766,
+					"rotation": -90,
+					"width": 950,
+					"height": 946
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding2/Quetzankylosaurus",
+		"bones": [ "Constraint_Target_Quetzankylosaurus" ],
+		"transform": [ "Constraint_Target_Quetzankylosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos 2/Quetzankylosaurus",
+					"x": 380.62,
+					"y": 3.03,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Quetzasaurus",
+		"bones": [ "constraint_target_Quetzasaurus" ],
+		"transform": [ "constraint_target_Quetzasaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Quetzasaurus",
+					"x": 545.99,
+					"y": -19.15,
+					"scaleX": -1.3468,
+					"scaleY": 1.3468,
+					"rotation": -90,
+					"width": 925,
+					"height": 970
+				}
+			}
+		}
+	},
+	{
+		"name": "specialVariants/Saurocannon",
+		"bones": [ "constraint_target_Saurocannon" ],
+		"transform": [ "constraint_target_Saurocannon" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Dinos_0010_Saurocannon.png",
+					"x": 637.5,
+					"y": -155.23,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 2634,
+					"height": 1500
+				}
+			}
+		}
+	},
+	{
+		"name": "Skeletal Rex",
+		"bones": [ "constraint_target_Skeletal Rex" ],
+		"transform": [ "constraint_target_Skeletal Rex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V4/4_0005_Layer-3",
+					"x": 405.96,
+					"y": -56.78,
+					"scaleX": -1.2265,
+					"scaleY": 1.2265,
+					"rotation": -90,
+					"width": 1012,
+					"height": 759
+				}
+			}
+		}
+	},
+	{
+		"name": "Skibidisaurus",
+		"bones": [ "constraint_target_Skibidisaurus" ],
+		"transform": [ "constraint_target_Skibidisaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V3/Skibidisaurus",
+					"x": 262.11,
+					"y": -19.43,
+					"scaleX": -0.7074,
+					"scaleY": 0.7074,
+					"rotation": -90,
+					"width": 767,
+					"height": 880
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Spinobajadasaurus",
+		"bones": [ "constraint_target_Spinobajadasaurus" ],
+		"transform": [ "constraint_target_Spinobajadasaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/SpinoBajadasaurus",
+					"x": 456.32,
+					"y": -11.99,
+					"scaleX": -1.3193,
+					"scaleY": 1.3193,
+					"rotation": -90,
+					"width": 882,
+					"height": 796
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding2/Spinomorphosaurus",
+		"bones": [ "Constraint_Target_Spinomorphosaurus" ],
+		"transform": [ "Constraint_Target_Spinomorphosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos 2/Spinomorphosaurus",
+					"x": 398.78,
+					"y": 51.46,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Spinoraptor",
+		"bones": [ "constraint_target_Spinoraptor" ],
+		"transform": [ "constraint_target_Spinoraptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Spinoraptor",
+					"x": 317.49,
+					"y": 19.74,
+					"scaleX": -0.9217,
+					"scaleY": 0.9217,
+					"rotation": -90,
+					"width": 1036,
+					"height": 889
+				}
+			}
+		}
+	},
+	{
+		"name": "Spinosaurus",
+		"bones": [ "constraint_target_Spinosaurus" ],
+		"transform": [ "constraint_target_Spinosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Spinosaurus",
+					"x": 337.48,
+					"y": -36.54,
+					"scaleX": -1.0298,
+					"scaleY": 1.0298,
+					"rotation": -90,
+					"width": 1024,
+					"height": 829
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Spinoteryx",
+		"bones": [ "constraint_target_Spinoteryx" ],
+		"transform": [ "constraint_target_Spinoteryx" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Spinoteryx",
+					"x": 392.01,
+					"y": -8.66,
+					"scaleX": -1.3126,
+					"scaleY": 1.3126,
+					"rotation": -90,
+					"width": 1123,
+					"height": 721
+				}
+			}
+		}
+	},
+	{
+		"name": "Stegasaurus",
+		"bones": [ "constraint_target_Stegasaurus" ],
+		"transform": [ "constraint_target_Stegasaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Stegosaurus",
+					"x": 439.04,
+					"y": 54.88,
+					"scaleX": 1.6288,
+					"scaleY": 1.6288,
+					"rotation": -90,
+					"width": 1017,
+					"height": 615
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Stegoceratops",
+		"bones": [ "constraint_target_Stegoceratops" ],
+		"transform": [ "constraint_target_Stegoceratops" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Steggoceratops",
+					"x": 419.06,
+					"y": 39.9,
+					"scaleX": 1.3853,
+					"scaleY": 1.3853,
+					"rotation": -90,
+					"width": 1152,
+					"height": 740
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding2/Steguanatops",
+		"bones": [ "Constraint_Target_Steguanatops" ],
+		"transform": [ "Constraint_Target_Steguanatops" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Breeding Dinos 2/Steguanatops", "x": 298.89, "y": 36.32, "rotation": -90, "width": 1024, "height": 1024 }
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Styracorex",
+		"bones": [ "constraint_target_Styracorex" ],
+		"transform": [ "constraint_target_Styracorex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Styracorex",
+					"x": 668.09,
+					"y": -121.14,
+					"scaleX": 1.7752,
+					"scaleY": 1.7752,
+					"rotation": -90,
+					"width": 1020,
+					"height": 883
+				}
+			}
+		}
+	},
+	{
+		"name": "Styracosaurus",
+		"bones": [ "constraint_target_Styracosaurus" ],
+		"transform": [ "constraint_target_Styracosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Styracosaurus",
+					"x": 492.36,
+					"y": -57.29,
+					"scaleX": 1.271,
+					"scaleY": 1.271,
+					"rotation": -90,
+					"width": 882,
+					"height": 905
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Styracotharus",
+		"bones": [ "constraint_target_Styracotharus" ],
+		"transform": [ "constraint_target_Styracotharus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Styracotharus",
+					"x": 656.95,
+					"y": -50.67,
+					"scaleX": 1.5256,
+					"scaleY": 1.5256,
+					"rotation": -90,
+					"width": 1046,
+					"height": 960
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding2/Styracotharus",
+		"bones": [ "Constraint_Target_Styracotharus" ],
+		"transform": [ "Constraint_Target_Styracotharus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Breeding Dinos 2/Styracotharus", "x": 416.94, "y": -36.32, "rotation": -90, "width": 1104, "height": 960 }
+			}
+		}
+	},
+	{
+		"name": "Tharosaurus",
+		"bones": [ "constraint_target_Tharosaurus" ],
+		"transform": [ "constraint_target_Tharosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V3/TharosaurusFinal",
+					"x": 686.67,
+					"y": -11.53,
+					"scaleX": 2.0264,
+					"scaleY": 2.0264,
+					"rotation": -90,
+					"width": 865,
+					"height": 751
+				}
+			}
+		}
+	},
+	{
+		"name": "Therizinosaurus",
+		"bones": [ "constraint_target_Therizinosaurus" ],
+		"transform": [ "constraint_target_Therizinosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V3/Therizinosaurus",
+					"x": 502.93,
+					"y": 21.22,
+					"scaleX": -1.4354,
+					"scaleY": 1.4354,
+					"rotation": -90,
+					"width": 648,
+					"height": 812
+				}
+			}
+		}
+	},
+	{
+		"name": "bosses/Titanosaurus",
+		"bones": [ "constraint_target_Titanosaurus" ],
+		"transform": [ "constraint_target_Titanosaurus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Bosses/Titanosaurus",
+					"x": 865.12,
+					"y": 110.8,
+					"scaleX": -2.0776,
+					"scaleY": 2.0776,
+					"rotation": -90,
+					"width": 850,
+					"height": 937
+				}
+			}
+		}
+	},
+	{
+		"name": "TRex",
+		"bones": [ "constraint_target_TRex" ],
+		"transform": [ "constraint_target_TRex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/T-Rex",
+					"x": 625.92,
+					"y": -114.25,
+					"scaleX": -1.9382,
+					"scaleY": 1.9382,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Tricarnotops",
+		"bones": [ "constraint_target_Tricarnotops" ],
+		"transform": [ "constraint_target_Tricarnotops" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Tricarnotops",
+					"x": 442.2,
+					"y": -25.38,
+					"scaleX": 1.2023,
+					"scaleY": 1.2023,
+					"rotation": -90,
+					"width": 1152,
+					"height": 938
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Triceramimus",
+		"bones": [ "constraint_target_Triceramimus" ],
+		"transform": [ "constraint_target_Triceramimus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Triceramimus",
+					"x": 464.85,
+					"y": 46.61,
+					"scaleX": 1.0583,
+					"scaleY": 1.0583,
+					"rotation": -90,
+					"width": 1215,
+					"height": 1022
+				}
+			}
+		}
+	},
+	{
+		"name": "Triceratops",
+		"bones": [ "constraint_target_Triceratops" ],
+		"transform": [ "constraint_target_Triceratops" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Triceratops", "x": 319.11, "y": 30.93, "rotation": -90, "width": 972, "height": 764 }
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Tridilotops",
+		"bones": [ "constraint_target_Tridilotops" ],
+		"transform": [ "constraint_target_Tridilotops" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Tridilotops",
+					"x": 341.25,
+					"y": 16.88,
+					"scaleX": 1.0368,
+					"scaleY": 1.0368,
+					"rotation": -90,
+					"width": 895,
+					"height": 826
+				}
+			}
+		}
+	},
+	{
+		"name": "Troodon",
+		"bones": [ "constraint_target_Troodon" ],
+		"transform": [ "constraint_target_Troodon" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Troodon",
+					"x": 247.98,
+					"y": 26.49,
+					"scaleX": -0.6635,
+					"scaleY": 0.6635,
+					"rotation": -90,
+					"width": 976,
+					"height": 910
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Tyrannodon Rex",
+		"bones": [ "constraint_target_Tyrannodon Rex" ],
+		"transform": [ "constraint_target_Tyrannodon Rex" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Tyrannodon Rex",
+					"x": 561.65,
+					"y": -41.74,
+					"scaleX": -1.7466,
+					"scaleY": 1.7466,
+					"rotation": -90,
+					"width": 984,
+					"height": 762
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Tyrannospinus",
+		"bones": [ "constraint_target_Tyrannospinus" ],
+		"transform": [ "constraint_target_Tyrannospinus" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Tyrannospinus",
+					"x": 493.57,
+					"y": 5.92,
+					"scaleX": -1.5989,
+					"scaleY": 1.5989,
+					"rotation": -90,
+					"width": 980,
+					"height": 784
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Utahorphodon",
+		"bones": [ "constraint_target_Utahorphodon" ],
+		"transform": [ "constraint_target_Utahorphodon" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Utahorphodon",
+					"x": 260.65,
+					"y": -2.04,
+					"scaleX": -0.8808,
+					"scaleY": 0.8808,
+					"rotation": -90,
+					"width": 920,
+					"height": 719
+				}
+			}
+		}
+	},
+	{
+		"name": "Utahraptor",
+		"bones": [ "constraint_target_Utahraptor" ],
+		"transform": [ "constraint_target_Utahraptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "V4/4_0006_Utahraptor.png",
+					"x": 179.5,
+					"y": -15.83,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 474,
+					"height": 458
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding1/Velaeopteryx",
+		"bones": [ "constraint_target_Velaeopteryx" ],
+		"transform": [ "constraint_target_Velaeopteryx" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Breeding Dinos/Valeopteryx",
+					"x": 282.47,
+					"y": -54.19,
+					"scaleX": -1,
+					"rotation": -90,
+					"width": 1044,
+					"height": 682
+				}
+			}
+		}
+	},
+	{
+		"name": "Breeding2/Velesiopteryx",
+		"bones": [ "Constraint_Target_Velesiopteryx" ],
+		"transform": [ "Constraint_Target_Velesiopteryx" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "Breeding Dinos 2/Velesiopteryx", "x": 398.78, "y": -3.03, "rotation": -90, "width": 1024, "height": 1024 }
+			}
+		}
+	},
+	{
+		"name": "Velociraptor",
+		"bones": [ "constraint_target_Velociraptor" ],
+		"transform": [ "constraint_target_Velociraptor" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Remaining Standards/Raptor",
+					"x": 298.47,
+					"y": -53.43,
+					"scaleX": -0.9678,
+					"scaleY": 0.9678,
+					"rotation": -90,
+					"width": 1024,
+					"height": 1024
+				}
+			}
+		}
+	},
+	{
+		"name": "Volcanic_Alpha",
+		"bones": [ "constraint_target_Volcanic_Alpha" ],
+		"transform": [ "constraint_target_Volcanic_Alpha" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": { "name": "V5/Volcanic_Alpha", "x": 713.56, "y": -121.08, "rotation": -90, "width": 2528, "height": 1696 }
+			}
+		}
+	},
+	{
+		"name": "Yi Qi",
+		"bones": [ "constraint_target_Yi Qi" ],
+		"transform": [ "constraint_target_Yi Qi" ],
+		"attachments": {
+			"Dinosaur": {
+				"DinosaurSkin": {
+					"name": "Round 5/Yi Qi",
+					"x": 178.37,
+					"y": 12.48,
+					"scaleX": 0.6698,
+					"scaleY": 0.6698,
+					"rotation": -90,
+					"width": 768,
+					"height": 702
+				}
+			}
+		}
+	}
+],
+"events": {
+	"attack": {}
+},
+"animations": {
+	"attack": {
+		"bones": {
+			"Dinosaur": {
+				"rotate": [
+					{
+						"curve": [ 0.028, 0, 0.022, 15.32 ]
+					},
+					{
+						"time": 0.05,
+						"value": 15.32,
+						"curve": [ 0.122, 15.32, 0.194, -4.15 ]
+					},
+					{ "time": 0.2667, "value": -25.22 },
+					{
+						"time": 0.4333,
+						"value": 5.71,
+						"curve": [ 0.467, 5.71, 0.5, -5.13 ]
+					},
+					{
+						"time": 0.5333,
+						"value": -5.13,
+						"curve": [ 0.567, -5.13, 0.6, 2.66 ]
+					},
+					{
+						"time": 0.6333,
+						"value": 2.66,
+						"curve": [ 0.667, 2.66, 0.7, 0 ]
+					},
+					{ "time": 0.7333 }
+				],
+				"translate": [
+					{
+						"curve": [ 0.028, 0, 0.022, -41.24, 0.028, 0, 0.022, -3.44 ]
+					},
+					{
+						"time": 0.05,
+						"x": -41.24,
+						"y": -3.44,
+						"curve": [ 0.122, -41.24, 0.194, 14.89, 0.122, -3.44, 0.194, -2.29 ]
+					},
+					{ "time": 0.2667, "x": 127.16 },
+					{ "time": 0.4333, "curve": "stepped" },
+					{ "time": 0.5333, "curve": "stepped" },
+					{ "time": 0.6333, "curve": "stepped" },
+					{ "time": 0.7333 }
+				],
+				"scale": [
+					{
+						"curve": [ 0.028, 1, 0.022, 1.155, 0.028, 1, 0.022, 0.862 ]
+					},
+					{
+						"time": 0.05,
+						"x": 1.155,
+						"y": 0.862,
+						"curve": [ 0.122, 1.155, 0.194, 1.048, 0.122, 0.862, 0.194, 0.988 ]
+					},
+					{ "time": 0.2667, "x": 0.836, "y": 1.241 },
+					{ "time": 0.4333, "curve": "stepped" },
+					{ "time": 0.5333, "curve": "stepped" },
+					{ "time": 0.6333, "curve": "stepped" },
+					{ "time": 0.7333 }
+				],
+				"shear": [
+					{
+						"curve": [ 0.028, 0, 0.022, 11.95, 0.028, 0, 0.022, 0 ]
+					},
+					{
+						"time": 0.05,
+						"x": 11.95,
+						"curve": [ 0.122, 11.95, 0.194, 4.8, 0.122, 0, 0.194, 0 ]
+					},
+					{ "time": 0.2667, "x": -9.51 },
+					{ "time": 0.4333, "curve": "stepped" },
+					{ "time": 0.5333, "curve": "stepped" },
+					{ "time": 0.6333, "curve": "stepped" },
+					{ "time": 0.7333 }
+				]
+			},
+			"bone2": {
+				"translate": [
+					{},
+					{
+						"time": 0.05,
+						"x": -85.21,
+						"curve": [ 0.122, -85.21, 0.194, 8.33, 0.122, 0, 0.194, 0 ]
+					},
+					{ "time": 0.2667, "x": 195.4 },
+					{ "time": 0.4667 }
+				]
+			}
+		},
+		"events": [
+			{ "time": 0.3833, "name": "attack" }
+		]
+	},
+	"Death": {
+		"bones": {
+			"Dinosaur": {
+				"rotate": [
+					{
+						"time": 0.4,
+						"curve": [ 0.489, 0, 0.578, 160.21 ]
+					},
+					{
+						"time": 0.6667,
+						"value": 160.21,
+						"curve": [ 0.706, 160.21, 0.744, 167.57 ]
+					},
+					{ "time": 0.7833, "value": 167.57 }
+				],
+				"translate": [
+					{
+						"curve": [ 0.044, 0, 0.089, 0, 0.044, 0, 0.089, -28.74 ]
+					},
+					{ "time": 0.1333, "y": -28.74 },
+					{ "time": 0.3333, "curve": "stepped" },
+					{
+						"time": 0.4,
+						"curve": [ 0.439, 0, 0.478, 194.67, 0.439, 0, 0.478, 113.85 ]
+					},
+					{
+						"time": 0.5167,
+						"x": 211.81,
+						"y": 222.89,
+						"curve": [ 0.567, 233.62, 0.617, 86.21, 0.567, 361.68, 0.617, 542.41 ]
+					},
+					{
+						"time": 0.6667,
+						"x": 86.21,
+						"y": 542.41,
+						"curve": [ 0.706, 86.21, 0.744, 68.25, 0.706, 542.41, 0.744, 366.4 ]
+					},
+					{
+						"time": 0.7833,
+						"x": 68.25,
+						"y": 366.4,
+						"curve": [ 0.811, 68.25, 0.839, 71.84, 0.811, 366.4, 0.839, 405.91 ]
+					},
+					{ "time": 0.8667, "x": 71.84, "y": 405.91 }
+				],
+				"scale": [
+					{
+						"curve": [ 0.044, 1, 0.089, 0.661, 0.044, 1, 0.089, 1.647 ]
+					},
+					{ "time": 0.1333, "x": 0.661, "y": 1.647 },
+					{
+						"time": 0.3333,
+						"x": 1.062,
+						"y": 0.928,
+						"curve": [ 0.356, 1.062, 0.378, 1, 0.356, 0.928, 0.378, 1 ]
+					},
+					{ "time": 0.4, "curve": "stepped" },
+					{
+						"time": 0.6667,
+						"curve": [ 0.706, 1, 0.744, 0.805, 0.706, 1, 0.744, 1.237 ]
+					},
+					{ "time": 0.7833, "x": 0.805, "y": 1.237 },
+					{ "time": 0.8667 }
+				]
+			}
+		}
+	},
+	"DeathIdle": {
+		"bones": {
+			"Dinosaur": {
+				"rotate": [
+					{ "value": 167.57 }
+				],
+				"translate": [
+					{ "x": 71.84, "y": 405.91 }
+				],
+				"scale": [
+					{}
+				]
+			}
+		}
+	},
+	"hitReact": {
+		"bones": {
+			"Dinosaur": {
+				"rotate": [
+					{},
+					{
+						"time": 0.0667,
+						"value": 2.72,
+						"curve": [ 0.139, 2.72, 0.194, 24.37 ]
+					},
+					{
+						"time": 0.2667,
+						"value": 24.37,
+						"curve": [ 0.389, 24.37, 0.411, -3.4 ]
+					},
+					{ "time": 0.5333, "value": -3.4 },
+					{ "time": 0.6333, "value": 7.11 },
+					{ "time": 0.7167, "value": -1.7 },
+					{ "time": 0.7667 }
+				],
+				"translate": [
+					{},
+					{
+						"time": 0.0667,
+						"x": 16.22,
+						"y": -2.32,
+						"curve": [ 0.139, 16.22, 0.194, -37.08, 0.139, -2.32, 0.194, 0 ]
+					},
+					{
+						"time": 0.2667,
+						"x": -37.08,
+						"curve": [ 0.389, -37.08, 0.411, 0, 0.389, 0, 0.411, 0 ]
+					},
+					{ "time": 0.5333, "curve": "stepped" },
+					{ "time": 0.6333, "curve": "stepped" },
+					{ "time": 0.7167, "curve": "stepped" },
+					{ "time": 0.7667 }
+				],
+				"scale": [
+					{},
+					{
+						"time": 0.0667,
+						"x": 0.652,
+						"y": 1.279,
+						"curve": [ 0.139, 0.652, 0.194, 1.199, 0.139, 1.279, 0.194, 0.886 ]
+					},
+					{
+						"time": 0.2667,
+						"x": 1.199,
+						"y": 0.886,
+						"curve": [ 0.389, 1.199, 0.411, 0.884, 0.389, 0.886, 0.411, 1.093 ]
+					},
+					{ "time": 0.5333, "x": 0.884, "y": 1.093 },
+					{ "time": 0.6333 },
+					{ "time": 0.7167, "x": 0.949, "y": 1.077 },
+					{ "time": 0.7667 }
+				],
+				"shear": [
+					{},
+					{
+						"time": 0.0667,
+						"x": 1.45,
+						"curve": [ 0.139, 1.45, 0.194, 18.07, 0.139, 0, 0.194, 0 ]
+					},
+					{
+						"time": 0.2667,
+						"x": 18.07,
+						"curve": [ 0.389, 18.07, 0.411, 0, 0.389, 0, 0.411, 0 ]
+					},
+					{ "time": 0.5333, "curve": "stepped" },
+					{ "time": 0.6333, "curve": "stepped" },
+					{ "time": 0.7167, "curve": "stepped" },
+					{ "time": 0.7667 }
+				]
+			}
+		}
+	},
+	"idle": {
+		"bones": {
+			"bone": {
+				"scale": [
+					{
+						"x": 1.02,
+						"y": 0.989,
+						"curve": [ 0.222, 1.02, 0.444, 0.943, 0.222, 0.989, 0.444, 1.042 ]
+					},
+					{
+						"time": 0.6667,
+						"x": 0.943,
+						"y": 1.042,
+						"curve": [ 0.889, 0.943, 1.111, 1.02, 0.889, 1.042, 1.111, 0.989 ]
+					},
+					{ "time": 1.3333, "x": 1.02, "y": 0.989 }
+				]
+			}
+		}
+	},
+	"run": {
+		"bones": {
+			"Dinosaur": {
+				"rotate": [
+					{
+						"value": 8.34,
+						"curve": [ 0.167, 8.34, 0.333, -6.87 ]
+					},
+					{ "time": 0.5, "value": -6.87 },
+					{ "time": 1, "value": 8.34 }
+				],
+				"translate": [
+					{
+						"curve": [ 0.083, 0, 0.167, 0, 0.083, 0, 0.167, 74.94 ]
+					},
+					{
+						"time": 0.25,
+						"y": 74.94,
+						"curve": [ 0.333, 0, 0.417, 0, 0.333, 74.94, 0.417, 0 ]
+					},
+					{
+						"time": 0.5,
+						"curve": [ 0.583, 0, 0.667, 0, 0.583, 0, 0.667, 74.94 ]
+					},
+					{
+						"time": 0.75,
+						"y": 74.94,
+						"curve": [ 0.833, 0, 0.917, 0, 0.833, 74.94, 0.917, 0 ]
+					},
+					{ "time": 1 }
+				],
+				"scale": [
+					{
+						"x": 0.944,
+						"y": 1.065,
+						"curve": [ 0.028, 0.944, 0.056, 1.001, 0.028, 1.065, 0.056, 1.005 ]
+					},
+					{ "time": 0.0833, "x": 1.003, "y": 1.003 },
+					{ "time": 0.25, "x": 1.042, "y": 0.981 },
+					{
+						"time": 0.4,
+						"x": 1.003,
+						"y": 1.003,
+						"curve": [ 0.433, 0.992, 0.467, 0.944, 0.433, 1.01, 0.467, 1.065 ]
+					},
+					{
+						"time": 0.5,
+						"x": 0.944,
+						"y": 1.065,
+						"curve": [ 0.528, 0.944, 0.556, 1.001, 0.528, 1.065, 0.556, 1.005 ]
+					},
+					{ "time": 0.5833, "x": 1.003, "y": 1.003 },
+					{ "time": 0.75, "x": 1.042, "y": 0.981 },
+					{
+						"time": 0.9,
+						"x": 1.003,
+						"y": 1.003,
+						"curve": [ 0.933, 0.992, 0.967, 0.944, 0.933, 1.01, 0.967, 1.065 ]
+					},
+					{ "time": 1, "x": 0.944, "y": 1.065 }
+				],
+				"shear": [
+					{ "x": 5.13 },
+					{ "time": 0.5, "x": -4.95 },
+					{ "time": 1, "x": 5.13 }
+				]
+			}
+		}
+	}
+}
+}
