@@ -22,7 +22,7 @@
   "component_type": "Internal_Component",
   "internal_component_type": "MobSpawner",
   "data": {
-    "mob_prefab_path": "MobViking.prefab",
+    "mob_prefab_path": "MobBajaraptor.prefab",
     "IslandIndex": 2,
     "spawn_radius": 15,
     "max_mobs": 3,

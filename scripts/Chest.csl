@@ -3,6 +3,18 @@ Chest_Loot_Entry :: struct {
     amount: s64;
 }
 
+ChestTracking :: struct {
+    CHESTS_OPENED_SAVE_KEY :: "chests_opened";
+
+    increment_chests_opened :: proc(player: Player) {
+        if player == null return;
+        if !Game.is_server() return;
+
+        current_value := Save.get_int(player, CHESTS_OPENED_SAVE_KEY, 0);
+        Save.set_int(player, CHESTS_OPENED_SAVE_KEY, current_value + 1);
+    }
+}
+
 Chest :: class : Interactable {
     spine_animator: Spine_Animator @ao_serialize;
     open_animation_name: string @ao_serialize;
@@ -60,6 +72,7 @@ Chest :: class : Interactable {
 
         if Game.is_server() {
             spawn_loot();
+            ChestTracking.increment_chests_opened(player);
         }
     }
 

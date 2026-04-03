@@ -22,7 +22,8 @@
   "data": {
     "skeleton_data_asset": "$AO/streamed_character",
     "ordered_skins": [
-      "base/crewchsia"
+      "base/crewchsia",
+      "full_character/mad_scientist_full"
     ],
     "mask_in_shadow": true,
     "initial_animation": "Emote/crying_loop",

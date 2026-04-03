@@ -102,7 +102,7 @@ entity := instantiate(prefab_asset);
 ```
 
 #### Spine_Animator
-Reference the spine skill when working with Spine_Animators 
+Reference the spine skill. For NPCs, use the $AO/streamed_character rig as it has a ton of skins and animations! 
 
 ### Creating Custom Components
 > Make new components in dedicated files. You do not need to import them unless they're in a separate folder. 

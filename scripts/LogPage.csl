@@ -2,6 +2,18 @@ log_page_texture_path :: proc(log_index: int) -> string {
     return format_string("Logs/Log%.png", {log_index});
 }
 
+LogPageTracking :: struct {
+    NOTES_COLLECTED_SAVE_KEY :: "notes_collected";
+
+    increment_notes_collected :: proc(player: Player) {
+        if player == null return;
+        if !Game.is_server() return;
+
+        current_value := Save.get_int(player, NOTES_COLLECTED_SAVE_KEY, 0);
+        Save.set_int(player, NOTES_COLLECTED_SAVE_KEY, current_value + 1);
+    }
+}
+
 LogPageSystem :: struct {
     open_page_modal :: proc(player: Player, log_index: int, keep_codex_open: bool = false) {
         if player == null return;
@@ -288,6 +300,7 @@ LogPage :: class : Interactable {
         if did_acquire {
             LogPageSystem.open_page_modal(player, log_index);
             game_sfx_play(.ITEM_PICKUP, entity);
+            LogPageTracking.increment_notes_collected(player);
         }
     }
 

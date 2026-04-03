@@ -12,6 +12,34 @@ Resource_Type :: enum {
     OBSIDIAN;
 }
 
+ResourceNodeTracking :: struct {
+    increment_harvest_stat :: proc(player: Player, resource_type: Resource_Type) {
+        if player == null return;
+        if !Game.is_server() return;
+
+        save_key := get_harvest_save_key(resource_type);
+        if save_key.count <= 0 return;
+
+        current_value := Save.get_int(player, save_key, 0);
+        Save.set_int(player, save_key, current_value + 1);
+    }
+
+    get_harvest_save_key :: proc(resource_type: Resource_Type) -> string {
+        switch resource_type {
+            case .WOOD: return "wood_harvested";
+            case .SCRAP: return "scrap_harvested";
+            case .FIBER: return "fiber_harvested";
+            case .FISH: return "fish_harvested";
+            case .DRIFTRESIN: return "driftresin_harvested";
+            case .SULFUR: return "sulfur_harvested";
+            case .ICESHARD: return "iceshard_harvested";
+            case .OBSIDIAN: return "obsidian_harvested";
+            case .NONE: return "";
+        }
+        return "";
+    }
+}
+
 ResourceNode :: class : Interactable {
     resource_type: Resource_Type @ao_serialize;
     respawn_time_seconds: float @ao_serialize;
@@ -67,6 +95,7 @@ ResourceNode :: class : Interactable {
         if Game.is_server() {
             spawn_drop();
             set_depleted_state(true);
+            ResourceNodeTracking.increment_harvest_stat(player, resource_type);
         }
     }
 

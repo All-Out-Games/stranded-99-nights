@@ -69,7 +69,6 @@ GHOST_HIDE_FROM_LIVING_REASON :: "ghost_hide_from_living";
 GHOST_FACING_DELTA_THRESHOLD :: 0.01;
 ISLAND1_RESPAWN_ENTITY_NAME :: "Island1Spawn";
 DEFAULT_RESPAWN_POSITION := v2.{0.0, 0.0};
-PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE :: 10.0;
 SUPPLY_DROP_ARROW_HIDE_DISTANCE :: 8.0;
 
 Death_Drop_Pickup_Block :: struct {
@@ -587,7 +586,6 @@ Player :: class : Player_Base {
         }
 
         if this->is_local_or_server() && !merchant_ui_open {
-            this->draw_pre_night_beacon_arrow();
             this->draw_supply_drop_arrow();
         }
 
@@ -1397,22 +1395,6 @@ Player :: class : Player_Base {
             UI.quad(rect, arrow_tex, {1, 1, 1, 1});
         }
         }
-    }
-
-    draw_pre_night_beacon_arrow :: method() {
-        manager := get_game_manager();
-        if manager == null return;
-        if !manager->is_night_warning_window_active() return;
-        if entity == null return;
-
-        target_pos, has_target := manager->get_beacon_arrow_target();
-        if !has_target return;
-
-        to_spawn := target_pos - entity.world_position;
-        hide_dist_sq := PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE * PRE_NIGHT_BEACON_ARROW_HIDE_DISTANCE;
-        if length_squared(to_spawn) <= hide_dist_sq return;
-
-        DrawArrowToPosition(this, target_pos);
     }
 
     draw_supply_drop_arrow :: method() {

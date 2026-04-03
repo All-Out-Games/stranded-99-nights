@@ -243,6 +243,67 @@ get_game_manager :: proc() -> GameManager {
     return g_game_manager;
 }
 
+GameProgressTracking :: struct {
+    ISLAND_REACHED_SAVE_KEY_FORMAT :: "island%";
+    GAME_WINS_SAVE_KEY :: "game_wins";
+    GAME_OVERS_SAVE_KEY :: "game_overs";
+    NIGHTS_SURVIVED_SAVE_KEY :: "nights_survived";
+
+    increment_player_stat :: proc(player: Player, save_key: string) {
+        if player == null return;
+        if save_key.count <= 0 return;
+        if !Game.is_server() return;
+
+        current_value := Save.get_int(player, save_key, 0);
+        Save.set_int(player, save_key, current_value + 1);
+    }
+
+    increment_player_island_reached :: proc(player: Player, island_number: int) {
+        if player == null return;
+        if island_number <= 0 return;
+
+        save_key := get_island_reached_save_key(island_number);
+        increment_player_stat(player, save_key);
+    }
+
+    increment_all_players_island_reached :: proc(island_number: int) {
+        if island_number <= 0 return;
+        if !Game.is_server() return;
+
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            increment_player_island_reached(player, island_number);
+        }
+    }
+
+    get_island_reached_save_key :: proc(island_number: int) -> string {
+        if island_number <= 0 return "";
+        return format_string(ISLAND_REACHED_SAVE_KEY_FORMAT, {island_number});
+    }
+
+    increment_all_players_game_wins :: proc() {
+        if !Game.is_server() return;
+
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            increment_player_stat(player, GAME_WINS_SAVE_KEY);
+        }
+    }
+
+    increment_all_players_game_overs :: proc() {
+        if !Game.is_server() return;
+
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            increment_player_stat(player, GAME_OVERS_SAVE_KEY);
+        }
+    }
+
+    increment_player_nights_survived :: proc(player: Player) {
+        increment_player_stat(player, NIGHTS_SURVIVED_SAVE_KEY);
+    }
+}
+
 ensure_game_manager_exists :: proc() -> GameManager {
     if g_game_manager != null return g_game_manager;
 
@@ -555,13 +616,15 @@ GameManager :: class : Component {
     island1_boss_spawns_enabled_for_run: bool;
     next_raid_allowed_night_number: s64;
     last_notified_night_event: Night_Event_Type;
+    current_run_seed: u64;
+    run_seed_generation_count: s64;
 
     DAY_DURATION_SECONDS :: 60.0;
     NIGHT_DURATION_SECONDS :: 45.0;
     DAY_NIGHT_BLEND_TRANSITION_SECONDS :: 5.0;
     NIGHT_WARNING_LEAD_TIME_SECONDS :: 10.0;
     PLAYERS_REQUIRED_TO_START :: 6;
-    NIGHT_WARNING_NOTIFICATION_TEXT :: "Night is almost here! Get back to the Beacon!";
+    NIGHT_WARNING_NOTIFICATION_TEXT :: "The Sun is Setting soon!";
     SURVIVED_NIGHT_NOTIFICATION_TEXT :: "You Survived the Night! % more to go!";
     SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT :: "+% % for surviving the night!";
     SURVIVED_NIGHT_REWARD_CURRENCY :: "Moons";
@@ -617,8 +680,16 @@ GameManager :: class : Component {
     MOON_MERCHANT_DEFAULT_SPAWN_SAMPLE_ATTEMPTS :: 10;
     MATCHMAKING_PRIORITY_INACTIVE :: 0;
     MATCHMAKING_PRIORITY_ACTIVE :: 1;
+    RUN_RNG_STREAM_POI :: 101;
+    RUN_RNG_STREAM_SURVIVOR :: 202;
+    RUN_RNG_STREAM_NIGHT_EVENT :: 303;
+    RUN_RNG_STREAM_RAID_TARGET :: 404;
+    RUN_RNG_STREAM_REAPER_SPAWN :: 505;
+    RUN_RNG_STREAM_MOON_MERCHANT_SPAWN :: 606;
+    RUN_RNG_STREAM_ISLAND1_BOSS_SPAWN :: 707;
     warned_player_user_ids_for_current_day: [..]string;
     warned_player_entities_for_current_day: [..]Entity;
+    night_warning_sfx_played_for_current_day: bool;
     round_start_teleport_done: bool;
     island_transition_active: bool;
     island_transition_disable_done: bool;
@@ -671,6 +742,9 @@ GameManager :: class : Component {
         if moon_merchant_spawn_sample_attempts <= 0 { moon_merchant_spawn_sample_attempts = MOON_MERCHANT_DEFAULT_SPAWN_SAMPLE_ATTEMPTS; }
         last_notified_night_event = .NONE;
         reset_game_state();
+        if Game.is_server() {
+            assign_new_run_seed();
+        }
         loaded_island = Island;
         island_transition_target_island = Island;
         island_transition_active = false;
@@ -795,6 +869,7 @@ GameManager :: class : Component {
         last_enabled_island_number = -1;
         nights = 0;
         next_raid_allowed_night_number = 0;
+        current_run_seed = 0;
         island1_boss_defeated_for_run = false;
         island1_boss_spawns_enabled_for_run = true;
         highest_island_reached_this_run = max(Island, 1);
@@ -838,6 +913,7 @@ GameManager :: class : Component {
                 if !Game.is_server() {
                     game_sfx_play(.ROUND_START);
                 }
+                assign_new_run_seed();
                 run_round_start_poi_setup();
                 nights = 0;
                 next_raid_allowed_night_number = 0;
@@ -935,6 +1011,37 @@ GameManager :: class : Component {
 
     get_phase_time_seconds :: method() -> float {
         return phase_time_seconds;
+    }
+
+    assign_new_run_seed :: method() {
+        next_generation := run_seed_generation_count + 1;
+        seed_source := rng_root_seed() + (next_generation * 104729).(u64);
+        seed_rng := rng_seed(seed_source);
+        current_run_seed = rng_range_int(ref seed_rng, 1, 2147483647).(u64);
+        if current_run_seed == 0 {
+            current_run_seed = 1;
+        }
+
+        run_seed_generation_count = next_generation;
+        log_info("Assigned new run seed % (generation %).", {
+            current_run_seed,
+            run_seed_generation_count
+        });
+    }
+
+    get_run_rng :: method(stream_id: s64, stream_index: s64 = 0) -> u64 {
+        seed_base := current_run_seed;
+        if seed_base == 0 {
+            seed_base = 1;
+        }
+
+        seed_value := seed_base +
+            (stream_id * 7919).(u64) +
+            (max(stream_index, 0) * 104729).(u64);
+        if seed_value == 0 {
+            seed_value = seed_base + 1;
+        }
+        return rng_seed(seed_value);
     }
 
     show_broadcast_notification :: method(message: string) {
@@ -1239,7 +1346,7 @@ GameManager :: class : Component {
     }
 
     run_round_start_poi_setup :: method() {
-        poi_rng := rng_root_seed();
+        poi_rng := get_run_rng(RUN_RNG_STREAM_POI);
         spawned_count: s64 = 0;
         total_count: s64 = 0;
         foreach poi: component_iterator(POI) {
@@ -1348,7 +1455,7 @@ GameManager :: class : Component {
             return;
         }
 
-        survivor_rng := rng_root_seed();
+        survivor_rng := get_run_rng(RUN_RNG_STREAM_SURVIVOR);
         total_spawned: s64 = 0;
         total_spawned += spawn_survivors_for_island(ref survivor_rng, 1, Island1SurvivorSpawnPositions, prefab);
         total_spawned += spawn_survivors_for_island(ref survivor_rng, 2, Island2SurvivorSpawnPositions, prefab);
@@ -1562,10 +1669,14 @@ GameManager :: class : Component {
                     teleport_all_players_to_voyage_scene();
                 }
                 case .TO_ISLAND: {
+                    reached_next_island := !voyage_returning_after_destruction && island_transition_target_island > loaded_island;
                     loaded_island = island_transition_target_island;
                     island_transition_applied = true;
                     rebuild_player_navmesh_for_scene_transition();
                     teleport_all_players_near_beacon_for_island_transition();
+                    if reached_next_island {
+                        GameProgressTracking.increment_all_players_island_reached(loaded_island);
+                    }
                 }
                 case .VOYAGING: {
                     island_transition_applied = true;
@@ -1616,20 +1727,6 @@ GameManager :: class : Component {
                 player->remove_freeze_reason(ISLAND_TRANSITION_FREEZE_REASON);
             }
         }
-    }
-
-    get_beacon_arrow_target :: method() -> v2, bool {
-        foreach beacon: component_iterator(Beacon) {
-            if beacon == null continue;
-            if beacon.entity == null continue;
-            return beacon.entity.world_position, true;
-        }
-
-        if island1_spawn != null {
-            return island1_spawn.world_position, true;
-        }
-
-        return {0.0, 0.0}, false;
     }
 
     get_current_beacon_position :: method() -> v2 {
@@ -1848,6 +1945,7 @@ GameManager :: class : Component {
         day_night_blend_transition_time_seconds = 0.0;
         warned_player_user_ids_for_current_day->clear();
         warned_player_entities_for_current_day->clear();
+        night_warning_sfx_played_for_current_day = false;
         play_music_track(.DAY);
         log_info("Day/Night -> DAY", {});
     }
@@ -1861,8 +1959,15 @@ GameManager :: class : Component {
         day_night_phase_time_seconds += dt;
 
         if day_night_phase == .DAY {
-            if day_night_phase_time_seconds >= DAY_DURATION_SECONDS {
+            if is_night_warning_window_active() {
+                if !Game.is_server() && !night_warning_sfx_played_for_current_day {
+                    night_warning_sfx_played_for_current_day = true;
+                    game_sfx_play(.NIGHT_WARNING);
+                }
                 send_night_warning();
+            }
+
+            if day_night_phase_time_seconds >= DAY_DURATION_SECONDS {
                 day_night_phase = .NIGHT;
                 day_night_phase_time_seconds = 0.0;
                 begin_day_night_blend_transition();
@@ -1883,6 +1988,7 @@ GameManager :: class : Component {
             day_night_phase_time_seconds = 0.0;
             warned_player_user_ids_for_current_day->clear();
             warned_player_entities_for_current_day->clear();
+            night_warning_sfx_played_for_current_day = false;
             apply_night_survival_progress();
             begin_day_night_blend_transition();
             grant_night_survival_currency_rewards();
@@ -1919,6 +2025,7 @@ GameManager :: class : Component {
             if p->is_dead_for_night_state() continue;
 
             Economy.deposit_currency(p, SURVIVED_NIGHT_REWARD_CURRENCY, reward_amount);
+            GameProgressTracking.increment_player_nights_survived(p);
             //Notifier.notify(p, SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT, {
               //  reward_amount,
               //  SURVIVED_NIGHT_REWARD_CURRENCY
@@ -1958,6 +2065,7 @@ GameManager :: class : Component {
     start_game_over_sequence :: method() {
         if game_over_sequence_active return;
         if run_complete_sequence_active return;
+        GameProgressTracking.increment_all_players_game_overs();
         game_over_sequence_active = true;
         game_over_sequence_restart_done = false;
         game_over_sequence_start_time = get_time();
@@ -1976,6 +2084,7 @@ GameManager :: class : Component {
     start_run_complete_sequence :: method() {
         if run_complete_sequence_active return;
         if game_over_sequence_active return;
+        GameProgressTracking.increment_all_players_game_wins();
 
         if Game.is_server() {
             prepare_lobby_for_run_complete_sequence();
@@ -2276,21 +2385,23 @@ GameManager :: class : Component {
     }
 
     send_night_warning :: method() {
+        if !Game.is_server() return;
         notify_all_players_night_warning();
     }
 
     notify_all_players_night_warning :: method() {
-        show_broadcast_notification(NIGHT_WARNING_NOTIFICATION_TEXT);
         sent_to_any_player := false;
         foreach p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
+            if was_player_warned_this_day(p->get_user_id()) continue;
+            if was_player_entity_warned_this_day(p.entity) continue;
 
+            Notifier.notify(p, NIGHT_WARNING_NOTIFICATION_TEXT);
+            warned_player_user_ids_for_current_day->append(p->get_user_id());
+            warned_player_entities_for_current_day->append(p.entity);
             sent_to_any_player = true;
             log_info("Sent night warning to %", {p->get_username()});
-        }
-        if sent_to_any_player {
-            game_sfx_play(.NIGHT_WARNING);
         }
     }
 
@@ -2400,7 +2511,7 @@ GameManager :: class : Component {
         total_chance_percent := none_chance_percent + raid_chance_percent + supply_chance_percent + reaper_chance_percent + moon_merchant_chance_percent;
         if total_chance_percent <= 0.0 return;
 
-        roll_rng := rng_root_seed();
+        roll_rng := get_run_rng(RUN_RNG_STREAM_NIGHT_EVENT, upcoming_night_number);
         roll := rng_range_float(ref roll_rng, 0.0, total_chance_percent);
         if roll < none_chance_percent {
             current_night_event = .NONE;
@@ -2477,7 +2588,7 @@ GameManager :: class : Component {
             return;
         }
 
-        raid_rng := rng_root_seed();
+        raid_rng := get_run_rng(RUN_RNG_STREAM_RAID_TARGET, raid_night_number);
         retargeted_mob_count: s64 = 0;
         foreach mob: component_iterator(Mob) {
             if mob == null continue;
@@ -2584,7 +2695,7 @@ GameManager :: class : Component {
             return;
         }
 
-        reaper_rng := rng_root_seed();
+        reaper_rng := get_run_rng(RUN_RNG_STREAM_REAPER_SPAWN, get_upcoming_night_number());
         slot_index := rng_range_int(ref reaper_rng, 0, available_slots.count - 1).(s64);
         spawn_slot := available_slots[slot_index];
         spawn_pos := spawn_slot.world_position;
@@ -2635,7 +2746,7 @@ GameManager :: class : Component {
         }
 
         navmesh := player_navmesh;
-        rng := rng_root_seed();
+        rng := get_run_rng(RUN_RNG_STREAM_MOON_MERCHANT_SPAWN, get_upcoming_night_number());
 
         if navmesh != null {
             radius_sq := radius * radius;
@@ -2736,7 +2847,7 @@ GameManager :: class : Component {
 
         center := get_island1_boss_spawn_center();
         radius_sq := ISLAND1_BOSS_SPAWN_RADIUS * ISLAND1_BOSS_SPAWN_RADIUS;
-        rng := rng_root_seed();
+        rng := get_run_rng(RUN_RNG_STREAM_ISLAND1_BOSS_SPAWN, 1);
         hint_as_int: int = 0;
 
         for attempt: 0..ISLAND1_BOSS_SPAWN_SAMPLE_ATTEMPTS-1 {

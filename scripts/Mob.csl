@@ -10,6 +10,24 @@ MOB_BOSS_RETREAT_TRIGGER_RATIO :: 0.75;
 MOB_BOSS_REPATH_DELAY_SECONDS :: 1.0;
 MOB_BOSS_REPATH_TARGET_EPSILON_SQ :: 0.25;
 MOB_BOSS_PATH_ARRIVAL_EPSILON_SQ :: 0.01;
+MOB_KILLS_SAVE_KEY :: "mobs_killed";
+
+MobTracking :: struct {
+    increment_mob_kill_stat_by_player_id :: proc(player_entity_id: u64) {
+        if player_entity_id == 0 return;
+        if !Game.is_server() return;
+
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            if player.entity == null continue;
+            if player.entity.id != player_entity_id continue;
+
+            current_value := Save.get_int(player, MOB_KILLS_SAVE_KEY, 0);
+            Save.set_int(player, MOB_KILLS_SAVE_KEY, current_value + 1);
+            return;
+        }
+    }
+}
 
 Mob :: class : Component {
     max_health: float @ao_serialize;
@@ -281,6 +299,7 @@ Mob :: class : Component {
             death_time_seconds = get_time();
             target_player_id = 0;
             damage_aggro_target_player_id = 0;
+            MobTracking.increment_mob_kill_stat_by_player_id(killer_player_id);
             TutorialSystem.notify_mob_defeated_by_player_id(killer_player_id);
             try_spawn_death_drop();
             trigger_death_animation();

@@ -22,7 +22,7 @@
   "component_type": "Internal_Component",
   "internal_component_type": "MobSpawner",
   "data": {
-    "mob_prefab_path": "SandSoldier.prefab",
+    "mob_prefab_path": "MobAquilops.prefab",
     "IslandIndex": 1,
     "spawn_radius": 15,
     "max_mobs": 1,

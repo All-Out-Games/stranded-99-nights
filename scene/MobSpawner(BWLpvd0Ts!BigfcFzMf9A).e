@@ -21,7 +21,7 @@
   "component_type": "Internal_Component",
   "internal_component_type": "MobSpawner",
   "data": {
-    "mob_prefab_path": "MobSpider.prefab",
+    "mob_prefab_path": "MobTharosaurus.prefab",
     "IslandIndex": 4,
     "spawn_radius": 70,
     "max_mobs": 30,

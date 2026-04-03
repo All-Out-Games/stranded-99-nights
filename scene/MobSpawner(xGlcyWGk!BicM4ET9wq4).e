@@ -23,7 +23,7 @@
   "component_type": "Internal_Component",
   "internal_component_type": "MobSpawner",
   "data": {
-    "mob_prefab_path": "Wolf.prefab",
+    "mob_prefab_path": "MobBaryonyx.prefab",
     "IslandIndex": 1,
     "spawn_radius": 50,
     "max_mobs": 10,
