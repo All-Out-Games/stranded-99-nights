@@ -35,7 +35,7 @@ night_event_type_to_text :: proc(event_type: Night_Event_Type) -> string {
         case .RAID:          return "Raid";
         case .SUPPLY_DROP:   return "Supply Drop";
         case .REAPER:        return "Monster";
-        case .MOON_MERCHANT: return "Moon Merchant";
+        case .MOON_MERCHANT: return MOON_MERCHANT_DISPLAY_NAME;
         case .NONE:          return "None";
     }
     return "None";
@@ -539,7 +539,7 @@ merchant :: proc(player: Player) {
     }
 
     manager->set_forced_next_night_event(.MOON_MERCHANT);
-    Notifier.notify(player, "Next night event forced to Moon Merchant.");
+    Notifier.notify(player, "Next night event forced to Fossil Merchant.");
     log_info("% queued a forced Moon Merchant event via /merchant", {player->get_username()});
 } @chat_command @youtuber
 
@@ -627,7 +627,7 @@ GameManager :: class : Component {
     NIGHT_WARNING_NOTIFICATION_TEXT :: "The Sun is Setting soon!";
     SURVIVED_NIGHT_NOTIFICATION_TEXT :: "You Survived the Night! % more to go!";
     SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT :: "+% % for surviving the night!";
-    SURVIVED_NIGHT_REWARD_CURRENCY :: "Moons";
+    SURVIVED_NIGHT_REWARD_CURRENCY :: MOON_CURRENCY;
     SURVIVED_NIGHT_REWARD_AMOUNT :: 1;
     MAX_TRACKED_SURVIVAL_NIGHT :: 99;
     NON_NIGHT_ONLY_SPAWNER_DOUBLING_NIGHTS :: 5.0;
@@ -635,7 +635,7 @@ GameManager :: class : Component {
     NIGHT_EVENT_NOTIFICATION_TEXT :: "Night Event: %!";
     RAID_INCOMING_NOTIFICATION_TEXT :: "Raid Incoming!";
     REAPER_NOTIFICATION_TEXT :: "A Monster has Spawned on the Island!";
-    MOON_MERCHANT_NOTIFICATION_TEXT :: "A Moon Merchant has appeared!";
+    MOON_MERCHANT_NOTIFICATION_TEXT :: "A Fossil Merchant has appeared!";
     PLAYER_DOWNED_NOTIFICATION_TEXT :: "% has been downed!";
     VOYAGE_FAILED_NOTIFICATION_TEXT :: "Voyage Failed! Try Again!";
     RAID_RETARGET_DISTANCE :: 20.0;
@@ -1096,6 +1096,10 @@ GameManager :: class : Component {
             this->increment_global_night_survival_count(survived_night);
             survived_night += 1;
         }
+    }
+
+    has_reached_night_win_goal :: method() -> bool {
+        return nights >= MAX_TRACKED_SURVIVAL_NIGHT;
     }
 
     is_voyage_damage_redirect_active :: method() -> bool {
@@ -1993,6 +1997,11 @@ GameManager :: class : Component {
             begin_day_night_blend_transition();
             grant_night_survival_currency_rewards();
             revive_dead_players_for_day_start();
+            if has_reached_night_win_goal() {
+                start_run_complete_sequence();
+                log_info("Night goal reached (%/%). Triggering run complete.", {nights, MAX_TRACKED_SURVIVAL_NIGHT});
+                return;
+            }
             notify_all_players_survived_night();
             play_music_track(.DAY);
             if !Game.is_server() {
@@ -2148,7 +2157,7 @@ GameManager :: class : Component {
         foreach p: component_iterator(Player) {
             if p == null continue;
             if !should_reward_player_for_run_complete(p) continue;
-            Economy.deposit_currency(p, "Moons", run_complete_sequence_moon_reward);
+            Economy.deposit_currency(p, MOON_CURRENCY, run_complete_sequence_moon_reward);
             rewarded_count += 1;
         }
 
@@ -2424,7 +2433,7 @@ GameManager :: class : Component {
     }
 
     notify_all_players_survived_night :: method() {
-        remaining_nights := max(99 - nights, 0);
+        remaining_nights := max(MAX_TRACKED_SURVIVAL_NIGHT - nights, 0);
         message := format_string(SURVIVED_NIGHT_NOTIFICATION_TEXT, {remaining_nights});
         show_broadcast_notification(message);
         log_info("Broadcasted survived-night notification (remaining: %).", {remaining_nights});

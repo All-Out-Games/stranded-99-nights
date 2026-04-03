@@ -191,7 +191,7 @@ Survivor :: class : Interactable {
         moon_reward := manager->get_survivor_moon_reward_amount();
         if moon_reward <= 0 return;
 
-        Economy.deposit_currency(player, "Moons", moon_reward);
+        Economy.deposit_currency(player, MOON_CURRENCY, moon_reward);
     }
 
     resolve_item_def :: method(item_id: string) -> Item_Definition {

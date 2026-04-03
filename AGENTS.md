@@ -102,7 +102,7 @@ entity := instantiate(prefab_asset);
 ```
 
 #### Spine_Animator
-Reference the spine skill. For NPCs, use the $AO/streamed_character rig as it has a ton of skins and animations! 
+Reference the spine skill. For NPCs, use the $AO/streamed_character rig as it has a ton of skins and animations! If adding through code, note that all streamed_characters will need at least the base/crewchsia skin added. 
 
 ### Creating Custom Components
 > Make new components in dedicated files. You do not need to import them unless they're in a separate folder. 
@@ -253,3 +253,5 @@ When the prompt requires building a game world, do so using the allout MCP scene
 To add weapons to your game clone the https://github.com/All-Out-Games/reusable-weapons-csl.git repo with curl and follow the README. 
 
 Keep your changes scoped to exactly what the user asked for and nothing more. 
+
+When you're ready to start scripting and want high quality reference implementations of the thing you want to build, start with the search_example_scripts tool!

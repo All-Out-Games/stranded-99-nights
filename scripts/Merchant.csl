@@ -15,7 +15,7 @@ Merchant :: class : Interactable {
         }
 
         if prompt_text.count <= 0 {
-            prompt_text = "Moon Merchant";
+            prompt_text = MOON_MERCHANT_DISPLAY_NAME;
         }
 
         this->set_text(prompt_text);
@@ -113,7 +113,7 @@ MerchantSystem :: struct {
         }
 
         if !Economy.can_withdraw_currency(player, MOON_CURRENCY, offer.moon_cost) {
-            Notifier.notify(player, "You need more Moons.");
+            Notifier.notify(player, "You need more Fossils.");
             return false;
         }
 
@@ -171,7 +171,7 @@ MerchantSystem :: struct {
         title_ts.size = 52;
         title_ts.halign = .LEFT;
         title_ts.valign = .CENTER;
-        UI.text(header, title_ts, "Moon Merchant");
+        UI.text(header, title_ts, MOON_MERCHANT_DISPLAY_NAME);
 
         UI.quad(balance_bar, core_globals.white_sprite, {0.1, 0.11, 0.15, 0.9});
         balance_ts := ts;
@@ -180,14 +180,14 @@ MerchantSystem :: struct {
         balance_ts.valign = .CENTER;
         balance_ts.offset.x = 12;
         balance_ts.color = {1.0, 0.92, 0.62, 1.0};
-        UI.text(balance_bar, balance_ts, "Moons: %", {Economy.get_balance(player, MOON_CURRENCY)});
+        UI.text(balance_bar, balance_ts, "%: %", {MOON_CURRENCY_DISPLAY, Economy.get_balance(player, MOON_CURRENCY)});
 
         info_ts := ts;
         info_ts.size = 26;
         info_ts.halign = .LEFT;
         info_ts.valign = .TOP;
         info_ts.word_wrap = true;
-        UI.text(info_rect, info_ts, "Spend Moons on supply bundles!");
+        UI.text(info_rect, info_ts, "Spend Fossils on supply bundles!");
 
         UI.quad(body_bg, core_globals.white_sprite, {0.08, 0.09, 0.12, 0.8});
         section_title_rect := body_bg->cut_top(42)->inset(2, 8, 2, 8);
@@ -269,12 +269,12 @@ MerchantSystem :: struct {
                         UI.text(detail_rect, detail_ts, "Missing item definition: %", {offer.item_id});
                     } else if !room_ok {
                         detail_ts.color = {1.0, 0.55, 0.55, 1.0};
-                        UI.text(detail_rect, detail_ts, "Need inventory room. Cost: % Moons", {offer.moon_cost});
+                        UI.text(detail_rect, detail_ts, "Need inventory room. Cost: % Fossils", {offer.moon_cost});
                     } else if !balance_ok {
                         detail_ts.color = {1.0, 0.78, 0.52, 1.0};
-                        UI.text(detail_rect, detail_ts, "Not enough Moons. Cost: %", {offer.moon_cost});
+                        UI.text(detail_rect, detail_ts, "Not enough Fossils. Cost: %", {offer.moon_cost});
                     } else {
-                        UI.text(detail_rect, detail_ts, "Cost: % Moons", {offer.moon_cost});
+                        UI.text(detail_rect, detail_ts, "Cost: % Fossils", {offer.moon_cost});
                     }
 
                     button_bs := bs;

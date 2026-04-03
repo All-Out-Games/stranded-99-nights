@@ -2,6 +2,11 @@ import "core:ao"
 import "core:dropped_items"
 import "reusable_weapons"
 
+MOON_CURRENCY :: "Moons";
+MOON_CURRENCY_DISPLAY :: "Fossils";
+MOON_CURRENCY_ICON_PATH :: "UI_Fossil_c91a72.png";
+MOON_MERCHANT_DISPLAY_NAME :: "Fossil Merchant";
+
 ao_before_scene_load :: proc() {
     // Called before the scene is loaded
     ItemManager.AllItemDefinitions();
@@ -10,8 +15,11 @@ ao_before_scene_load :: proc() {
     #static moon_currency_registered: bool;
     if !moon_currency_registered {
         moon_currency_registered = true;
-        moon_icon := get_asset(Texture_Asset, "Items/Moon.png");
-        Economy.register_currency("Moons", moon_icon);
+        moon_icon := get_asset(Texture_Asset, MOON_CURRENCY_ICON_PATH);
+        if moon_icon == null {
+            moon_icon = get_asset(Texture_Asset, "Items/Moon.png");
+        }
+        Economy.register_currency(MOON_CURRENCY, moon_icon);
     }
 }
 
@@ -33,8 +41,6 @@ ao_update :: proc(dt: float) {
 ao_late_update :: proc(dt: float) {
     // Called once per frame after physics has been resolved
 }
-
-MOON_CURRENCY :: "Moons";
 
 
 PLAYER_LIGHT_BASE_INNER_RADIUS :: 12;
@@ -672,7 +678,10 @@ Player :: class : Player_Base {
     icon_rect := inner->cut_left_unscaled(54);
     _ := inner->cut_left_unscaled(12);
 
-    #static coin_icon := get_asset(Texture_Asset, "Items/Moon.png");
+    coin_icon := get_asset(Texture_Asset, MOON_CURRENCY_ICON_PATH);
+    if coin_icon == null {
+        coin_icon = get_asset(Texture_Asset, "Items/Moon.png");
+    }
     if coin_icon != null {
         UI.quad(icon_rect->fit_aspect(coin_icon->get_aspect()), coin_icon);
     }
@@ -1219,8 +1228,11 @@ Player :: class : Player_Base {
                 }
                 event_label = "Monster";
             } else if manager->is_moon_merchant_event_active() {
-                event_icon = get_asset(Texture_Asset, "Items/Moon.png");
-                event_label = "Moon Merchant";
+                event_icon = get_asset(Texture_Asset, MOON_CURRENCY_ICON_PATH);
+                if event_icon == null {
+                    event_icon = get_asset(Texture_Asset, "Items/Moon.png");
+                }
+                event_label = MOON_MERCHANT_DISPLAY_NAME;
             }
 
             if event_label != "" {
@@ -1553,7 +1565,7 @@ Player :: class : Player_Base {
             );
             draw_end_sequence_line("Defeated the Rex? YES/NO", rex_rect, detail_ts, elapsed, 4.0);
             draw_end_sequence_line(
-                format_string("+% Moons", {manager->get_run_complete_moon_reward_amount()}),
+                format_string("+% %", {manager->get_run_complete_moon_reward_amount(), MOON_CURRENCY_DISPLAY}),
                 moons_rect,
                 reward_ts,
                 elapsed,

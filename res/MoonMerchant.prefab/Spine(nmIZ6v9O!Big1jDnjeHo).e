@@ -22,8 +22,8 @@
   "data": {
     "skeleton_data_asset": "$AO/streamed_character",
     "ordered_skins": [
-      "full_character/astronaut_full",
-      "base/crewchsia"
+      "base/crewchsia",
+      "full_character/researcher_full"
     ],
     "initial_animation": "Idle",
     "loop_initial_animation": true,
