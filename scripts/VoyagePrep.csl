@@ -71,15 +71,15 @@ VoyagePrep :: class : Interactable {
             initted = true;
             island1_requirements->append({"scrap", 10});
             island1_requirements->append({"root.resin", 3});
-            island1_requirements->append({"fish", 15});
+            island1_requirements->append({"fish", 10});
 
-            island2_requirements->append({"scrap", 30});
+            island2_requirements->append({"scrap", 15});
             island2_requirements->append({"ice.shard", 5});
             island2_requirements->append({"bandage", 5});
 
             island3_requirements->append({"sulfur", 20});
             island3_requirements->append({"medkit", 5});
-            island3_requirements->append({"obsidian.shard", 10});
+            island3_requirements->append({"obsidian.shard", 5});
         }
 
         manager := get_game_manager();

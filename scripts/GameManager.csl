@@ -1342,6 +1342,36 @@ GameManager :: class : Component {
         }
     }
 
+    get_auto_beacon_level_for_island :: method(island_number: int) -> s64, bool {
+        switch island_number {
+            case 2: return 3, true;
+            case 3: return 4, true;
+            case 4: return 5, true;
+        }
+
+        return 0, false;
+    }
+
+    apply_auto_beacon_level_for_island :: method(island_number: int) {
+        if !Game.is_server() return;
+
+        target_level, should_apply := this->get_auto_beacon_level_for_island(island_number);
+        if !should_apply return;
+
+        updated_count: s64 = 0;
+        foreach beacon: component_iterator(Beacon) {
+            if beacon == null continue;
+            if beacon.level >= target_level continue;
+
+            beacon->set_beacon_level(target_level);
+            updated_count += 1;
+        }
+
+        if updated_count > 0 {
+            log_info("Auto-upgraded beacon to level % for island %.", {target_level, island_number});
+        }
+    }
+
     reset_voyage_preps_for_round :: method() {
         foreach prep: component_iterator(VoyagePrep) {
             if prep == null continue;
@@ -1679,6 +1709,7 @@ GameManager :: class : Component {
                     rebuild_player_navmesh_for_scene_transition();
                     teleport_all_players_near_beacon_for_island_transition();
                     if reached_next_island {
+                        apply_auto_beacon_level_for_island(loaded_island);
                         GameProgressTracking.increment_all_players_island_reached(loaded_island);
                     }
                 }
@@ -1964,9 +1995,11 @@ GameManager :: class : Component {
 
         if day_night_phase == .DAY {
             if is_night_warning_window_active() {
-                if !Game.is_server() && !night_warning_sfx_played_for_current_day {
+                if !night_warning_sfx_played_for_current_day {
                     night_warning_sfx_played_for_current_day = true;
-                    game_sfx_play(.NIGHT_WARNING);
+                    if !Game.is_server() {
+                        game_sfx_play(.NIGHT_WARNING);
+                    }
                 }
                 send_night_warning();
             }

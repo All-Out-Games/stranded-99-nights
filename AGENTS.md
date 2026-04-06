@@ -8,6 +8,9 @@ You will be developing a multiplayer game in a custom scripting language (.csl)
 - Do not forget that **multiple players will be connecting**. Avoid global state that will break with multiple players. Store these as fields on the player.
 
 ### is_local_or_server() vs is_local()
+
+Both are **methods on Player_Base** — call as `is_local_or_server()` (implicit `this`) or `this->is_local_or_server()` inside a Player method. They are not standalone global functions.
+
 ```csl
 Player :: class : Player_Base {
     ao_late_update :: method(dt: float) {

@@ -27,6 +27,7 @@ Beacon :: class : Interactable {
     current_fuel_animation_name: string;
     upgrade_feedback_sequence: s64;
     seen_upgrade_feedback_sequence: s64;
+    pending_navmesh_rebuild_frames: s64;
 
     MAX_LEVEL :: 6;
     FOG4_DISABLE_LEVEL :: 4;
@@ -93,6 +94,7 @@ Beacon :: class : Interactable {
             tick_fuel_consumption();
             apply_dynamic_safety_radius_state();
         }
+        process_pending_navmesh_rebuilds();
         apply_fuel_animation_state();
         flush_upgrade_feedback();
     }
@@ -346,15 +348,25 @@ Beacon :: class : Interactable {
         }
     }
 
-    rebuild_game_navmesh :: method() {
-        manager := ensure_game_manager_exists();
+    process_pending_navmesh_rebuilds :: method() {
+        if pending_navmesh_rebuild_frames <= 0 return;
+
+        manager := get_game_manager();
         if manager == null return;
         if manager.player_navmesh == null return;
 
-        ok := manager.player_navmesh->rebuild_immediately();
-        if !ok {
-            manager.player_navmesh->mark_for_rebuild();
-        }
+        // Fog visibility changes can settle across frames, so rebuild on
+        // consecutive frames without blocking the upgrade interaction.
+        manager.player_navmesh->mark_for_rebuild();
+        pending_navmesh_rebuild_frames -= 1;
+    }
+
+    rebuild_game_navmesh :: method() {
+        pending_navmesh_rebuild_frames = max(pending_navmesh_rebuild_frames, 2);
+
+        // Queue the first deferred rebuild immediately so the navmesh updates
+        // on the next frame even when this method is called after ao_update.
+        process_pending_navmesh_rebuilds();
     }
 
     flush_upgrade_feedback :: method() {
@@ -392,24 +404,24 @@ Beacon :: class : Interactable {
 
         if !initted {
             initted = true;
-            level2_costs->append(Beacon_Upgrade_Cost{"wood", 30});
-            level2_costs->append(Beacon_Upgrade_Cost{"scrap", 15});
+            level2_costs->append(Beacon_Upgrade_Cost{"wood", 15});
+            level2_costs->append(Beacon_Upgrade_Cost{"scrap", 5});
 
-            level3_costs->append(Beacon_Upgrade_Cost{"wood", 50});
-            level3_costs->append(Beacon_Upgrade_Cost{"scrap", 30});
-            level3_costs->append(Beacon_Upgrade_Cost{"fiber", 20});
+            level3_costs->append(Beacon_Upgrade_Cost{"wood", 20});
+            level3_costs->append(Beacon_Upgrade_Cost{"scrap", 15});
+            level3_costs->append(Beacon_Upgrade_Cost{"fiber", 10});
 
-            level4_costs->append(Beacon_Upgrade_Cost{"scrap", 50});
-            level4_costs->append(Beacon_Upgrade_Cost{"fiber", 50});
-            level4_costs->append(Beacon_Upgrade_Cost{"sulfur", 15});
+            level4_costs->append(Beacon_Upgrade_Cost{"scrap", 30});
+            level4_costs->append(Beacon_Upgrade_Cost{"fiber", 20});
+            level4_costs->append(Beacon_Upgrade_Cost{"sulfur", 10});
 
-            level5_costs->append(Beacon_Upgrade_Cost{"scrap", 75});
+            level5_costs->append(Beacon_Upgrade_Cost{"scrap", 50});
             level5_costs->append(Beacon_Upgrade_Cost{"sulfur", 20});
-            level5_costs->append(Beacon_Upgrade_Cost{"fish", 25});
+            level5_costs->append(Beacon_Upgrade_Cost{"fish", 20});
 
-            level6_costs->append(Beacon_Upgrade_Cost{"scrap", 100});
+            level6_costs->append(Beacon_Upgrade_Cost{"scrap", 75});
             level6_costs->append(Beacon_Upgrade_Cost{"sulfur", 30});
-            level6_costs->append(Beacon_Upgrade_Cost{"fish", 40});
+            level6_costs->append(Beacon_Upgrade_Cost{"fish", 30});
         }
 
         if level == 1 return level2_costs;
@@ -549,24 +561,21 @@ BeaconSystem :: struct {
             return false;
         }
 
-        beacon.level += 1;
+        next_level := clamp(beacon.level + 1, 1, Beacon.MAX_LEVEL).(s64);
+        if beacon.level == next_level return false;
+
         beacon->clear_stockpile();
+        beacon.level = next_level;
         beacon->apply_level_world_state();
+        beacon->apply_dynamic_safety_radius_state();
         beacon->refresh_prompt_text();
+        beacon->rebuild_game_navmesh();
         beacon.upgrade_feedback_sequence += 1;
         foreach p: component_iterator(Player) {
             if p == null continue;
             TutorialSystem.mark_upgrade_beacon_complete_if_active(p);
         }
 
-        if beacon.level == 2 {
-            beacon->rebuild_game_navmesh();
-            return true;
-        }
-        if beacon.level == 3 {
-            beacon->rebuild_game_navmesh();
-            return true;
-        }
         return true;
     }
 
