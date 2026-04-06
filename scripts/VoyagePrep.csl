@@ -10,6 +10,12 @@ VoyagePrep_Stockpile_Entry :: struct {
     count: s64;
 }
 
+VoyagePrep_Deposit_Button :: struct {
+    item_id: string;
+    handle: UIK.Interact_Handle;
+    can_deposit: bool;
+}
+
 VoyagePrep :: class : Interactable {
     stockpile: [..]VoyagePrep_Stockpile_Entry;
     ready_player_user_ids: [..]string;
@@ -332,80 +338,95 @@ VoyagePrepSystem :: struct {
             return;
         }
 
-        ts := UI.default_text_settings();
-        ts.do_outline = true;
-        ts.outline_color = {0, 0, 0, 1};
-        ts.outline_thickness = 2;
-
-        bs := UI.default_button_settings();
-        bs.press_scaling = 0.35;
-
-        UI.push_layer(1000);
-        defer UI.pop_layer();
-
-        UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {0, 0, 0, 0.6});
-
-        panel_rect := UI.get_safe_screen_rect()->center_rect()->grow(330, 560, 330, 560);
-        UI.quad(panel_rect, core_globals.white_sprite, {0.05, 0.06, 0.08, 0.95});
-        UI.quad(panel_rect->inset(5), core_globals.white_sprite, {0.12, 0.13, 0.18, 0.95});
-
-        content := panel_rect->inset(20);
-        header := content->cut_top(70);
-        body := content;
-
-        title_ts := ts;
-        title_ts.size = 52;
-        title_ts.halign = .LEFT;
-        title_ts.valign = .CENTER;
-        UI.text(header, title_ts, "Voyage Prep");
-
-        body_bg := body->inset(4);
-        UI.quad(body_bg, core_globals.white_sprite, {0.08, 0.09, 0.12, 0.8});
-
-        section_ts := ts;
-        section_ts.size = 34;
-        section_ts.halign = .LEFT;
-        section_ts.offset.x = 8;
-
-        info_rect := body_bg->cut_top(82)->inset(4, 8, 8, 8);
-        info_ts := ts;
-        info_ts.size = 28;
-        info_ts.halign = .LEFT;
-        info_ts.valign = .TOP;
-        info_ts.word_wrap = true;
-        UI.text(
-            info_rect,
-            info_ts,
-            "Bring together the resources needed to launch the next voyage."
-        );
-
         requirements := prep->get_requirements();
         ready_count := prep->get_ready_player_count();
         player_count := prep->get_current_player_count();
 
-        ready_line := body_bg->cut_top(36)->inset(2, 8, 2, 8);
-        ready_ts := ts;
-        ready_ts.size = 26;
-        ready_ts.halign = .LEFT;
-        ready_ts.valign = .CENTER;
-        ready_ts.color = {0.82, 0.9, 1.0, 1.0};
-        UI.text(ready_line, ready_ts, "Crew Ready: %/%", {ready_count, player_count});
+        ready_text := format_string("Crew Ready: %/%", {ready_count, player_count});
+        status_text := "Fill every supply category before the crew can ready up.";
+        status_tint := v4{1.0, 0.88, 0.7, 1.0};
+        if prep->is_complete() {
+            status_text = "Voyage prep complete. Queue up with the crew to launch.";
+            status_tint = v4{0.65, 1.0, 0.65, 1.0};
+        }
 
-        req_title := body_bg->cut_top(44);
-        UI.text(req_title, section_ts, "Required Supplies");
+        modal_rect := UI.get_safe_screen_rect()->center_rect()->grow(414, 690, 414, 690);
+        close_header_handle: UIK.Interact_Handle;
+        close_button_handle: UIK.Interact_Handle;
+        ready_button_handle: UIK.Interact_Handle;
+        deposit_buttons: [..]VoyagePrep_Deposit_Button;
+        deposit_buttons->reserve(requirements.count);
+
+        UIK.begin(UIK.modal(modal_rect, 1000, v4{0, 0, 0, 0.65}));
+
+        shell := UIK.panel_modal(.BLACK);
+        shell.padding = v4{0, 0, 0, 0};
+        shell.gap = 0;
+        UIK.panel_begin(shell);
+
+        close_header_handle = UIK.title_area(UIK.title_area_desc("Voyage Prep"));
+
+        content := UIK.layout_column();
+        content.width = UIK.flex(1);
+        content.height = UIK.flex(1);
+        content.padding = v4{12, 16, 12, 16};
+        content.gap = 16;
+        UIK.list_begin(format_string("voyage_prep_scroll_%", {player->get_user_id()}), content);
+
+        info_panel := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+        info_panel.width = UIK.flex(1);
+        info_panel.height = UIK.fit();
+        info_panel.padding = v4{10, 14, 10, 14};
+        UIK.panel_begin(info_panel);
+        info_text := UIK.text_body();
+        UIK.text_set_halign(&info_text, .LEFT);
+        UIK.text("Bring together the resources needed to launch the next voyage.", info_text);
+        UIK.panel_end();
+
+        UIK.spacer(UIK.pixels(1), UIK.pixels(20));
+
+        crew_panel := UIK.panel_interior(.INSET);
+        crew_panel.width = UIK.flex(1);
+        crew_panel.height = UIK.fit();
+        crew_panel.padding = v4{12, 12, 12, 12};
+        crew_panel.gap = 8;
+        UIK.panel_begin(crew_panel);
+
+        crew_title := UIK.text_title();
+        UIK.text_set_halign(&crew_title, .LEFT);
+        UIK.text("Crew Status", crew_title);
+
+        crew_body := UIK.text_body();
+        UIK.text_set_halign(&crew_body, .LEFT);
+        UIK.text_set_color(&crew_body, v4{0.82, 0.9, 1.0, 1.0});
+        UIK.text(ready_text, crew_body);
+        UIK.panel_end();
+
+        UIK.spacer(UIK.pixels(1), UIK.pixels(20));
+
+        supplies_panel := UIK.panel_interior(.INSET);
+        supplies_panel.width = UIK.flex(1);
+        supplies_panel.height = UIK.fit();
+        supplies_panel.padding = v4{12, 12, 12, 12};
+        supplies_panel.gap = 8;
+        UIK.panel_begin(supplies_panel);
+
+        supplies_title := UIK.text_title();
+        UIK.text_set_halign(&supplies_title, .LEFT);
+        UIK.text("Required Supplies", supplies_title);
+
+        supplies_body := UIK.text_body();
+        UIK.text_set_halign(&supplies_body, .LEFT);
+        UIK.text("Deposit the listed resources to finish voyage prep.", supplies_body);
 
         if requirements.count <= 0 {
-            unavailable_rect := body_bg->cut_top(70)->inset(2, 8, 2, 8);
-            unavailable_ts := ts;
-            unavailable_ts.size = 28;
-            unavailable_ts.halign = .LEFT;
-            unavailable_ts.valign = .CENTER;
-            unavailable_ts.color = {1.0, 0.55, 0.55, 1.0};
-            UI.text(unavailable_rect, unavailable_ts, "No voyage prep requirements are configured here yet.");
+            unavailable_text := UIK.text_body();
+            UIK.text_set_halign(&unavailable_text, .LEFT);
+            UIK.text_set_color(&unavailable_text, v4{1.0, 0.55, 0.55, 1.0});
+            UIK.text("No voyage prep requirements are configured here yet.", unavailable_text);
         }
 
         for requirement: requirements {
-            line := body_bg->cut_top(70)->inset(2, 2, 2, 8);
             defn := ItemManager.TryFindItem(requirement.item_id);
             stockpiled := prep->get_stockpile_count(requirement.item_id);
             have: s64 = 0;
@@ -418,109 +439,153 @@ VoyagePrepSystem :: struct {
                 icon = defn->get_icon();
             }
 
-            line_ts := ts;
-            line_ts.size = 28;
-            line_ts.halign = .LEFT;
-            line_ts.valign = .CENTER;
-            line_ts.color = {1, 0.5, 0.5, 1};
-            if stockpiled >= requirement.count {
-                line_ts.color = {0.65, 1, 0.65, 1};
-            }
-
-            deposit_button_rect := line->cut_right(270)->inset(4, 4, 4, 12);
-            text_rect := line->inset(0, 8, 0, 0);
-            if icon != null {
-                icon_rect := text_rect->cut_left(40)->fit_aspect(icon->get_aspect());
-                UI.quad(icon_rect, icon);
-                text_rect->cut_left(8);
-            }
-            UI.text(text_rect, line_ts, "% Stockpile: %/% (You: %)", {display_name, stockpiled, requirement.count, have});
-
-            button_bs := bs;
-            button_ts := ts;
-            button_ts.size = 25;
-            button_ts.halign = .CENTER;
-            button_ts.valign = .CENTER;
-
             requirement_met := stockpiled >= requirement.count;
             can_deposit := have > 0 && !requirement_met;
+
+            entry := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
+            entry.padding = v4{10, 10, 10, 20};
+            entry.cross_align = .CENTER;
+            entry.background_style = .MODAL_TRANSP_BLACK;
+            entry.show_background = true;
+            UIK.panel_begin(entry);
+
+            if icon != null {
+                icon_box := UIK.layout_column();
+                icon_box.width = UIK.pixels(48);
+                icon_box.height = UIK.pixels(48);
+                icon_box.cross_align = .CENTER;
+                icon_box.main_align = .CENTER;
+                icon_box.show_background = false;
+                UIK.panel_begin(icon_box);
+                UIK.image_fitted(icon, UIK.image_desc(.CONTAIN));
+                UIK.panel_end();
+            }
+
+            text_panel := UIK.layout_column();
+            text_panel.width = UIK.flex(1);
+            text_panel.height = UIK.fit();
+            text_panel.gap = 2;
+            text_panel.show_background = false;
+            UIK.panel_begin(text_panel);
+
+            item_name := UIK.text_button();
+            UIK.text_set_halign(&item_name, .LEFT);
+            UIK.text(display_name, item_name);
+
+            item_status := UIK.text_body();
+            UIK.text_set_halign(&item_status, .LEFT);
+            if requirement_met {
+                UIK.text_set_color(&item_status, v4{0.65, 1.0, 0.65, 1.0});
+            } else {
+                UIK.text_set_color(&item_status, v4{1.0, 0.7, 0.55, 1.0});
+            }
+            UIK.text(
+                format_string("Stockpile %/%  |  You: %", {stockpiled, requirement.count, have}),
+                item_status
+            );
+            UIK.panel_end();
+
+            deposit_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_BLUE);
+            deposit_desc.panel.width = UIK.pixels(220);
+            deposit_desc.panel.height = UIK.pixels(68);
             button_label := format_string("Deposit 1 %", {display_name});
             if requirement_met {
-                button_label = "MAX";
-                button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_8.png");
+                deposit_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN);
+                deposit_desc.panel.width = UIK.pixels(220);
+                deposit_desc.panel.height = UIK.pixels(68);
+                deposit_desc.disabled = true;
+                button_label = "Filled";
+            } else if !can_deposit {
+                deposit_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY);
+                deposit_desc.panel.width = UIK.pixels(220);
+                deposit_desc.panel.height = UIK.pixels(68);
+                deposit_desc.disabled = true;
             }
-            else if have <= 0 {
-                button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
-            }
-            else {
-                button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_2.png");
-            }
-            UI.push_id("voyage_prep_deposit_%", {requirement.item_id});
-            UI.push_disabled(!can_deposit);
-            if UI.button(deposit_button_rect, button_bs, button_ts, button_label).clicked {
-                if VoyagePrepSystem.try_deposit_item(player, prep, requirement.item_id) {
-                    game_sfx_play(.CRAFT_SUCCESS, player.entity);
-                } else {
-                    game_sfx_play(.UI_ERROR, player.entity);
-                }
-            }
-            UI.pop_disabled();
-            UI.pop_id();
+
+            deposit_handle := UIK.button(format_string("voyage_prep_deposit_%", {requirement.item_id}), button_label, deposit_desc);
+            deposit_buttons->append(VoyagePrep_Deposit_Button{requirement.item_id, deposit_handle, can_deposit});
+            UIK.panel_end();
         }
+        UIK.panel_end();
 
-        status_title := body_bg->cut_top(44);
-        UI.text(status_title, section_ts, "Voyage Status");
+        UIK.spacer(UIK.pixels(1), UIK.pixels(20));
 
-        status_rect := body_bg->cut_top(84)->inset(4, 8, 4, 8);
-        status_ts := ts;
-        status_ts.size = 28;
-        status_ts.halign = .LEFT;
-        status_ts.valign = .TOP;
-        status_ts.word_wrap = true;
-        status_ts.color = {1.0, 0.88, 0.7, 1.0};
-        if prep->is_complete() {
-            status_ts.color = {0.65, 1.0, 0.65, 1.0};
-            UI.text(status_rect, status_ts, "Voyage prep complete. Queue up with the crew to launch.");
-        } else {
-            UI.text(status_rect, status_ts, "Fill every supply category before the crew can ready up.");
+        status_panel := UIK.panel_interior(.INSET);
+        status_panel.width = UIK.flex(1);
+        status_panel.height = UIK.fit();
+        status_panel.padding = v4{12, 12, 12, 12};
+        status_panel.gap = 8;
+        UIK.panel_begin(status_panel);
+
+        status_title := UIK.text_title();
+        UIK.text_set_halign(&status_title, .LEFT);
+        UIK.text("Voyage Status", status_title);
+
+        status_body := UIK.text_body();
+        UIK.text_set_halign(&status_body, .LEFT);
+        UIK.text_set_color(&status_body, status_tint);
+        UIK.text(status_text, status_body);
+        UIK.panel_end();
+
+        UIK.list_end();
+
+        action_row := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
+        action_row.padding = v4{12, 0, 12, 12};
+        action_row.show_background = false;
+        UIK.panel_begin(action_row);
+
+        close_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_RED);
+        close_desc.panel.width = UIK.flex(1);
+        close_desc.panel.height = UIK.pixels(82);
+        close_button_handle = UIK.button("voyage_prep_close", "Close", close_desc);
+
+        ready_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN);
+        ready_desc.panel.width = UIK.flex(1);
+        ready_desc.panel.height = UIK.pixels(82);
+        button_label := "Ready?";
+        already_ready := prep->is_player_ready(player);
+        can_ready := prep->is_complete() && !already_ready;
+        if already_ready {
+            ready_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_BLUE);
+            ready_desc.panel.width = UIK.flex(1);
+            ready_desc.panel.height = UIK.pixels(82);
+            ready_desc.disabled = true;
+            button_label = "Ready!";
+        } else if !prep->is_complete() {
+            ready_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY);
+            ready_desc.panel.width = UIK.flex(1);
+            ready_desc.panel.height = UIK.pixels(82);
+            ready_desc.disabled = true;
         }
+        ready_button_handle = UIK.button("voyage_prep_ready", button_label, ready_desc);
 
-        action_row := body_bg->bottom_center_rect()->grow(36, 180, 36, 180)->offset(0, 46);
-        close_rect := action_row->offset(-200, 0);
-        ready_rect := action_row->offset(200, 0);
+        UIK.panel_end();
+        UIK.panel_end();
+        UIK.end();
 
-        close_ts := ts;
-        close_ts.size = 30;
-        close_ts.halign = .CENTER;
-
-        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
-        if UI.button(close_rect, bs, close_ts, "Close").clicked {
+        if UIK.clicked(close_header_handle) || UIK.clicked(close_button_handle) {
             game_sfx_play(.UI_CLICK, player.entity);
             VoyagePrepSystem.close_modal(player);
             return;
         }
 
-        if prep->is_complete() {
-            ready_button_bs := bs;
-            ready_button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_5.png");
-            ready_button_ts := close_ts;
+        for deposit_button: deposit_buttons {
+            if !deposit_button.can_deposit continue;
+            if !UIK.clicked(deposit_button.handle) continue;
 
-            already_ready := prep->is_player_ready(player);
-            button_label := "Ready?";
-            if already_ready {
-                button_label = "Ready!";
-                ready_button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_2.png");
+            if VoyagePrepSystem.try_deposit_item(player, prep, deposit_button.item_id) {
+                game_sfx_play(.CRAFT_SUCCESS, player.entity);
+            } else {
+                game_sfx_play(.UI_ERROR, player.entity);
             }
+        }
 
-            UI.push_disabled(already_ready);
-            if UI.button(ready_rect, ready_button_bs, ready_button_ts, button_label).clicked {
-                if VoyagePrepSystem.try_ready_player(player, prep) {
-                    game_sfx_play(.CRAFT_SUCCESS, player.entity);
-                } else {
-                    game_sfx_play(.UI_ERROR, player.entity);
-                }
+        if can_ready && UIK.clicked(ready_button_handle) {
+            if VoyagePrepSystem.try_ready_player(player, prep) {
+                game_sfx_play(.CRAFT_SUCCESS, player.entity);
+            } else {
+                game_sfx_play(.UI_ERROR, player.entity);
             }
-            UI.pop_disabled();
         }
     }
 }

@@ -10,6 +10,11 @@ Beacon_Stockpile_Entry :: struct {
     count: s64;
 }
 
+Beacon_Deposit_Button :: struct {
+    item_id: string;
+    handle: UIK.Interact_Handle;
+}
+
 Beacon :: class : Interactable {
     fog2: Entity @ao_serialize;
     fog3: Entity @ao_serialize;
@@ -651,7 +656,6 @@ BeaconSystem :: struct {
     }
 
     try_add_fuel :: proc(player: Player, beacon: Beacon) -> bool {
-        if !Game.is_server() return false;
         if player == null return false;
         if beacon == null return false;
         if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
@@ -688,141 +692,164 @@ BeaconSystem :: struct {
         if !player.beacon_ui_open return;
 
         beacon := player.active_beacon;
-        if beacon == null {
+        if beacon == null || beacon.entity == null || !#alive(beacon.entity) {
             BeaconSystem.close_modal(player);
             return;
         }
-
-        ts := UI.default_text_settings();
-        ts.do_outline = true;
-        ts.outline_color = {0, 0, 0, 1};
-        ts.outline_thickness = 2;
-
-        bs := UI.default_button_settings();
-        bs.press_scaling = 0.35;
-
-        UI.push_layer(1000);
-        defer UI.pop_layer();
-
-        UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {0, 0, 0, 0.6});
-
-        panel_rect := UI.get_safe_screen_rect()->center_rect()->grow(330, 560, 330, 560);
-        UI.quad(panel_rect, core_globals.white_sprite, {0.05, 0.06, 0.08, 0.95});
-        UI.quad(panel_rect->inset(5), core_globals.white_sprite, {0.12, 0.13, 0.18, 0.95});
-
-        content := panel_rect->inset(20);
-        header := content->cut_top(70);
-        body := content;
-
-        title_ts := ts;
-        title_ts.size = 52;
-        title_ts.halign = .LEFT;
-        title_ts.valign = .CENTER;
-        UI.text(header, title_ts, "Beacon Level %", {beacon.level});
-
-        body_bg := body->inset(4);
-        UI.quad(body_bg, core_globals.white_sprite, {0.08, 0.09, 0.12, 0.8});
-
-        section_ts := ts;
-        section_ts.size = 34;
-        section_ts.halign = .LEFT;
-        section_ts.offset.x = 8;
-
-        info_rect := body_bg->cut_top(82)->inset(4, 8, 8, 8);
-        info_ts := ts;
-        info_ts.size = 28;
-        info_ts.halign = .LEFT;
-        info_ts.valign = .TOP;
-        info_ts.word_wrap = true;
-        UI.text(
-            info_rect,
-            info_ts,
-            "Upgrading your beacon clears the island's Dark Fog and increases your safety zone!"
-        );
 
         wood_defn := ItemManager.TryFindItem("wood");
         wood_have: s64 = 0;
         if wood_defn != null {
             wood_have = BeaconSystem.get_item_count_in_inventory(player.default_inventory, wood_defn);
         }
-
-        fuel_button_rect := body_bg->cut_top(44)->inset(2, 8, 2, 8);
-        fuel_button_bs := bs;
-        fuel_button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_2.png");
-        if wood_have <= 0 {
-            fuel_button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
-        }
-        fuel_button_ts := ts;
-        fuel_button_ts.size = 26;
-        fuel_button_ts.halign = .CENTER;
-        fuel_button_ts.valign = .CENTER;
-        UI.push_disabled(wood_have <= 0 || wood_defn == null);
-        if UI.button(
-            fuel_button_rect,
-            fuel_button_bs,
-            fuel_button_ts,
-            format_string("Add Fuel (1 Wood) - You: %", {wood_have})
-        ).clicked {
-            if BeaconSystem.try_add_fuel(player, beacon) {
-                game_sfx_play(.CRAFT_SUCCESS, player.entity);
-            } else {
-                game_sfx_play(.UI_ERROR, player.entity);
-            }
-        }
-        UI.pop_disabled();
-
-        fuel_line := body_bg->cut_top(44)->inset(2, 8, 2, 8);
-        fuel_ts := ts;
-        fuel_ts.size = 30;
-        fuel_ts.halign = .LEFT;
-        fuel_ts.valign = .CENTER;
-        fuel_ts.color = {1.0, 0.87, 0.65, 1.0};
+        fuel_status := format_string("Fuel: %", {beacon.fuel});
+        fuel_tint := v4{1.0, 0.87, 0.65, 1.0};
         if beacon.fuel <= 0 {
-            fuel_ts.color = {1.0, 0.45, 0.45, 1.0};
+            fuel_tint = v4{1.0, 0.45, 0.45, 1.0};
         }
-        UI.text(fuel_line, fuel_ts, "Fuel: %", {beacon.fuel});
 
-        timer_bg := body_bg->cut_top(34)->inset(4, 10, 4, 10);
-        UI.quad(timer_bg, core_globals.white_sprite, {0.12, 0.12, 0.12, 0.95});
-
-        timer_fill := timer_bg->inset(3);
         fill_t := beacon->get_fuel_progress_t();
         fill_color := v4{1.0, 0.6, 0.15, 0.95};
-        if beacon.fuel <= 0 {
-            fill_t = 0.0;
-            fill_color = {0.3, 0.3, 0.3, 0.85};
-        }
-        UI.quad(timer_fill->subrect(0, 0, fill_t, 1), core_globals.white_sprite, fill_color);
-
-        timer_text_ts := ts;
-        timer_text_ts.size = 22;
-        timer_text_ts.halign = .CENTER;
-        timer_text_ts.valign = .CENTER;
+        fuel_timer_text := "Out of fuel - safety radius inactive";
         if beacon.fuel > 0 {
             remaining_seconds := beacon->get_seconds_until_next_fuel_burn();
-            UI.text(timer_bg, timer_text_ts, "Next fuel burn: %", {format_float(remaining_seconds, decimals=1)});
+            fuel_timer_text = format_string("Next fuel burn in %", {format_float(remaining_seconds, decimals=1)});
         } else {
-            UI.text(timer_bg, timer_text_ts, "Out of fuel - safety radius inactive");
+            fill_t = 0.0;
+            fill_color = v4{0.3, 0.3, 0.3, 0.85};
         }
 
-        req_title := body_bg->cut_top(44);
+        radius_text := format_string(
+            "Safety Radius: % / %",
+            {
+                format_float(beacon->get_current_safety_radius(), decimals=1),
+                format_float(beacon->get_safety_radius(), decimals=1)
+            }
+        );
+        add_fuel_label := format_string("Add Fuel (1 Wood)  |  You: %", {wood_have});
+        costs := beacon->get_upgrade_costs();
+
+        modal_rect := UI.get_safe_screen_rect()->center_rect()->grow(414, 690, 414, 690);
+        scroll_id := format_string("beacon_modal_scroll_%", {player->get_user_id()});
+
+        close_header_handle: UIK.Interact_Handle;
+        add_fuel_handle: UIK.Interact_Handle;
+        deposit_buttons: [..]Beacon_Deposit_Button;
+        deposit_buttons->reserve(costs.count);
+
+        UIK.begin(UIK.modal(modal_rect, 1000, v4{0, 0, 0, 0.65}));
+
+        shell := UIK.panel_modal(.BLACK);
+        shell.padding = v4{0, 0, 0, 0};
+        shell.gap = 0;
+        UIK.panel_begin(shell);
+
+        title_desc := UIK.title_area_desc(format_string("Beacon Level %", {beacon.level}));
+        close_header_handle = UIK.title_area(title_desc);
+
+        content := UIK.layout_column();
+        content.width = UIK.flex(1);
+        content.height = UIK.flex(1);
+        content.padding = v4{12, 16, 12, 16};
+        content.gap = 16;
+        UIK.list_begin(scroll_id, content);
+
+        info_panel := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+        info_panel.width = UIK.flex(1);
+        info_panel.height = UIK.fit();
+        info_panel.padding = v4{10, 14, 10, 14};
+        UIK.panel_begin(info_panel);
+        info_text := UIK.text_body();
+        UIK.text_set_halign(&info_text, .LEFT);
+        UIK.text(
+            "Feed the beacon to keep the safety zone alive. Fill the stockpile to automatically clear more Dark Fog and expand the island.",
+            info_text
+        );
+        UIK.panel_end();
+
+        UIK.spacer(UIK.pixels(1), UIK.pixels(20));
+
+        fuel_panel := UIK.panel_interior(.INSET);
+        fuel_panel.width = UIK.flex(1);
+        fuel_panel.height = UIK.fit();
+        fuel_panel.padding = v4{12, 12, 12, 12};
+        fuel_panel.gap = 8;
+        UIK.panel_begin(fuel_panel);
+
+        fuel_header := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
+        fuel_header.cross_align = .CENTER;
+        fuel_header.show_background = false;
+        UIK.panel_begin(fuel_header);
+
+        fuel_header_text := UIK.layout_column();
+        fuel_header_text.width = UIK.flex(1);
+        fuel_header_text.height = UIK.fit();
+        fuel_header_text.gap = 2;
+        fuel_header_text.show_background = false;
+        UIK.panel_begin(fuel_header_text);
+
+        fuel_title := UIK.text_title();
+        UIK.text_set_halign(&fuel_title, .LEFT);
+        UIK.text("Fuel & Safety Zone", fuel_title);
+
+        fuel_body := UIK.text_body();
+        UIK.text_set_halign(&fuel_body, .LEFT);
+        UIK.text_set_color(&fuel_body, fuel_tint);
+        UIK.text(fuel_status, fuel_body);
+        UIK.panel_end();
+
+        add_fuel_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN);
+        add_fuel_desc.panel.width = UIK.pixels(280);
+        add_fuel_desc.panel.height = UIK.pixels(72);
+        add_fuel_desc.disabled = wood_defn == null || wood_have <= 0;
+        if add_fuel_desc.disabled {
+            add_fuel_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY);
+            add_fuel_desc.panel.width = UIK.pixels(280);
+            add_fuel_desc.panel.height = UIK.pixels(72);
+            add_fuel_desc.disabled = true;
+        }
+        add_fuel_handle = UIK.button("beacon_add_fuel", add_fuel_label, add_fuel_desc);
+        UIK.panel_end();
+
+        fuel_progress := UIK.panel_progress_bar(.PROGRESS_BAR_STYLE_2, fill_t, fill_color, UIK.flex(1), UIK.pixels(36));
+        UIK.progress_bar(fuel_progress);
+
+        fuel_timer_desc := UIK.text_body();
+        UIK.text_set_halign(&fuel_timer_desc, .LEFT);
+        UIK.text(fuel_timer_text, fuel_timer_desc);
+
+        radius_desc := UIK.text_body();
+        UIK.text_set_halign(&radius_desc, .LEFT);
+        UIK.text_set_color(&radius_desc, v4{0.82, 0.9, 1.0, 1.0});
+        UIK.text(radius_text, radius_desc);
+        UIK.panel_end();
+
+        UIK.spacer(UIK.pixels(1), UIK.pixels(20));
+
+        upgrade_panel := UIK.panel_interior(.INSET);
+        upgrade_panel.width = UIK.flex(1);
+        upgrade_panel.height = UIK.fit();
+        upgrade_panel.padding = v4{12, 12, 12, 12};
+        upgrade_panel.gap = 8;
+        UIK.panel_begin(upgrade_panel);
+
+        upgrade_title := UIK.text_title();
+        UIK.text_set_halign(&upgrade_title, .LEFT);
         if beacon.level >= Beacon.MAX_LEVEL {
-            UI.text(req_title, section_ts, "Status");
-
-            status_rect := body_bg->cut_top(64)->inset(2, 2, 2, 8);
-            status_ts := ts;
-            status_ts.size = 30;
-            status_ts.halign = .LEFT;
-            status_ts.valign = .CENTER;
-            status_ts.color = {0.65, 1, 0.65, 1};
-            UI.text(status_rect, status_ts, "Beacon is at max level.");
+            UIK.text("Beacon Status", upgrade_title);
+        } else {
+            UIK.text("Upgrade Stockpile", upgrade_title);
         }
-        else {
-            UI.text(req_title, section_ts, "Upgrade Cost");
 
-            costs := beacon->get_upgrade_costs();
+        upgrade_body := UIK.text_body();
+        UIK.text_set_halign(&upgrade_body, .LEFT);
+        if beacon.level >= Beacon.MAX_LEVEL {
+            UIK.text_set_color(&upgrade_body, v4{0.65, 1.0, 0.65, 1.0});
+            UIK.text("The beacon is fully upgraded. Keep it fueled to hold the full safety radius.", upgrade_body);
+        } else {
+            UIK.text("Deposit the listed materials. The beacon upgrades automatically once every stockpile requirement is filled.", upgrade_body);
+
             for cost: costs {
-                line := body_bg->cut_top(70)->inset(2, 2, 2, 8);
                 defn := ItemManager.TryFindItem(cost.item_id);
                 stockpiled := beacon->get_stockpile_count(cost.item_id);
                 have: s64 = 0;
@@ -835,69 +862,102 @@ BeaconSystem :: struct {
                     icon = defn->get_icon();
                 }
 
-                line_ts := ts;
-                line_ts.size = 28;
-                line_ts.halign = .LEFT;
-                line_ts.valign = .CENTER;
-                line_ts.color = {1, 0.5, 0.5, 1};
-                if stockpiled >= cost.count {
-                    line_ts.color = {0.65, 1, 0.65, 1};
-                }
-
-                deposit_button_rect := line->cut_right(270)->inset(4, 4, 4, 12);
-                text_rect := line->inset(0, 8, 0, 0);
-                if icon != null {
-                    icon_rect := text_rect->cut_left(40)->fit_aspect(icon->get_aspect());
-                    UI.quad(icon_rect, icon);
-                    text_rect->cut_left(8);
-                }
-                UI.text(text_rect, line_ts, "% Stockpile: %/% (You: %)", {display_name, stockpiled, cost.count, have});
-
-                button_bs := bs;
-                button_ts := ts;
-                button_ts.size = 25;
-                button_ts.halign = .CENTER;
-                button_ts.valign = .CENTER;
-
                 requirement_met := stockpiled >= cost.count;
                 can_deposit := have > 0 && !requirement_met;
+
+                entry := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
+                entry.padding = v4{10, 10, 10, 20};
+                entry.cross_align = .CENTER;
+                entry.background_style = .MODAL_TRANSP_BLACK;
+                entry.show_background = true;
+                UIK.panel_begin(entry);
+
+                if icon != null {
+                    icon_panel := UIK.layout_column();
+                    icon_panel.width = UIK.pixels(48);
+                    icon_panel.height = UIK.pixels(48);
+                    icon_panel.cross_align = .CENTER;
+                    icon_panel.main_align = .CENTER;
+                    icon_panel.show_background = false;
+                    UIK.panel_begin(icon_panel);
+                    UIK.image_fitted(icon, UIK.image_desc(.CONTAIN));
+                    UIK.panel_end();
+                }
+
+                text_panel := UIK.layout_column();
+                text_panel.width = UIK.flex(1);
+                text_panel.height = UIK.fit();
+                text_panel.gap = 2;
+                text_panel.show_background = false;
+                UIK.panel_begin(text_panel);
+
+                item_name_desc := UIK.text_button();
+                UIK.text_set_halign(&item_name_desc, .LEFT);
+                UIK.text(display_name, item_name_desc);
+
+                item_status_desc := UIK.text_body();
+                UIK.text_set_halign(&item_status_desc, .LEFT);
+                if requirement_met {
+                    UIK.text_set_color(&item_status_desc, v4{0.65, 1.0, 0.65, 1.0});
+                } else {
+                    UIK.text_set_color(&item_status_desc, v4{1.0, 0.7, 0.55, 1.0});
+                }
+                UIK.text(
+                    format_string("Stockpile %/%  |  You: %", {stockpiled, cost.count, have}),
+                    item_status_desc
+                );
+                UIK.panel_end();
+
+                deposit_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_BLUE);
+                deposit_desc.panel.width = UIK.pixels(220);
+                deposit_desc.panel.height = UIK.pixels(68);
                 button_label := format_string("Deposit 1 %", {display_name});
                 if requirement_met {
-                    button_label = "MAX";
-                    button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_8.png");
+                    deposit_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN);
+                    deposit_desc.panel.width = UIK.pixels(220);
+                    deposit_desc.panel.height = UIK.pixels(68);
+                    deposit_desc.disabled = true;
+                    button_label = "Filled";
+                } else if !can_deposit {
+                    deposit_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY);
+                    deposit_desc.panel.width = UIK.pixels(220);
+                    deposit_desc.panel.height = UIK.pixels(68);
+                    deposit_desc.disabled = true;
                 }
-                else if have <= 0 {
-                    button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
-                }
-                else {
-                    button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_2.png");
-                }
-                UI.push_id("beacon_deposit_%", {cost.item_id});
-                UI.push_disabled(!can_deposit);
-                if UI.button(deposit_button_rect, button_bs, button_ts, button_label).clicked {
-                    if BeaconSystem.try_deposit_item(player, beacon, cost.item_id) {
-                        game_sfx_play(.CRAFT_SUCCESS, player.entity);
-                    } else {
-                        game_sfx_play(.UI_ERROR, player.entity);
-                    }
-                }
-                UI.pop_disabled();
-                UI.pop_id();
+
+                deposit_handle := UIK.button(format_string("beacon_deposit_%", {cost.item_id}), button_label, deposit_desc);
+                deposit_buttons->append(Beacon_Deposit_Button{cost.item_id, deposit_handle});
+                UIK.panel_end();
             }
         }
+        UIK.panel_end();
 
-        action_row := body_bg->bottom_center_rect()->grow(36, 180, 36, 180)->offset(0, 46);
-        close_rect := action_row;
+        UIK.list_end();
+        UIK.panel_end();
+        UIK.end();
 
-        close_ts := ts;
-        close_ts.size = 30;
-        close_ts.halign = .CENTER;
-
-        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
-        if UI.button(close_rect, bs, close_ts, "Close").clicked {
+        if UIK.clicked(close_header_handle) {
             game_sfx_play(.UI_CLICK, player.entity);
             BeaconSystem.close_modal(player);
             return;
+        }
+
+        if UIK.clicked(add_fuel_handle) {
+            if BeaconSystem.try_add_fuel(player, beacon) {
+                game_sfx_play(.CRAFT_SUCCESS, player.entity);
+            } else {
+                game_sfx_play(.UI_ERROR, player.entity);
+            }
+        }
+
+        for deposit_button: deposit_buttons {
+            if !UIK.clicked(deposit_button.handle) continue;
+
+            if BeaconSystem.try_deposit_item(player, beacon, deposit_button.item_id) {
+                game_sfx_play(.CRAFT_SUCCESS, player.entity);
+            } else {
+                game_sfx_play(.UI_ERROR, player.entity);
+            }
         }
     }
 }

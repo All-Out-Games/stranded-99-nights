@@ -11,6 +11,11 @@ Crafting_Recipe :: class {
     outputs: [..]Crafting_Stack;
 }
 
+Crafting_Recipe_Button :: struct {
+    recipe_index: s64;
+    handle: UIK.Interact_Handle;
+}
+
 CraftingSystem :: struct {
     resolve_item_def :: proc(item_id: string) -> Item_Definition {
         defn := ItemManager.TryFindItem(item_id);
@@ -284,7 +289,6 @@ CraftingSystem :: struct {
     try_craft_recipe :: proc(player: Player, recipe: Crafting_Recipe) -> bool {
         if player == null return false;
         if recipe == null return false;
-        if !Game.is_server() return false;
         if player.default_inventory == null return false;
         if player.default_inventory.self == null return false;
         if player.default_inventory.capacity <= 0 return false;
@@ -349,54 +353,58 @@ CraftingSystem :: struct {
     draw_ui :: proc(player: Player) {
         if player == null return;
 
-        ts := UI.default_text_settings();
-        ts.do_outline = true;
-        ts.outline_color = {0, 0, 0, 1};
-        ts.outline_thickness = 2;
-
-        bs := UI.default_button_settings();
-        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_5.png");
-        bs.press_scaling = 0.35;
-
         if !player.crafting_ui_open return;
 
-        // Keep the crafting modal above other HUD elements.
-        UI.push_layer(1000);
-        defer UI.pop_layer();
-
-        overlay_rect := UI.get_screen_rect();
-        UI.quad(overlay_rect, core_globals.white_sprite, {0, 0, 0, 0.6});
-
-        panel_rect := UI.get_safe_screen_rect()->center_rect()->grow(383, 630, 383, 630);
-        UI.quad(panel_rect, core_globals.white_sprite, {0.05, 0.06, 0.08, 0.95});
-        UI.quad(panel_rect->inset(5), core_globals.white_sprite, {0.12, 0.13, 0.18, 0.95});
-
-        content_rect := panel_rect->inset(20);
-        header_rect := content_rect->cut_top(70);
-        body_rect := content_rect;
-        list_rect := body_rect->cut_left(320)->inset(0, 10, 0, 0);
-        details_rect := body_rect->inset(0, 0, 0, 10);
-
-        title_ts := ts;
-        title_ts.size = 52;
-        title_ts.halign = .LEFT;
-        title_ts.valign = .CENTER;
-        UI.text(header_rect, title_ts, "Crafting");
-
         recipes := CraftingSystem.get_recipes();
-        if recipes.count <= 0 {
-            empty_ts := ts;
-            empty_ts.size = 36;
-            empty_ts.halign = .CENTER;
-            empty_ts.valign = .CENTER;
-            UI.text(details_rect, empty_ts, "No recipes found.");
+        modal_rect := UI.get_safe_screen_rect()->center_rect()->grow(420, 720, 420, 720);
+        close_header_handle: UIK.Interact_Handle;
+        close_button_handle: UIK.Interact_Handle;
+        craft_button_handle: UIK.Interact_Handle;
+        recipe_buttons: [..]Crafting_Recipe_Button;
+        recipe_buttons->reserve(recipes.count);
 
-            close_button_rect := details_rect->bottom_center_rect()->grow(36, 160, 36, 160)->offset(0, 16);
-            bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
-            close_ts := ts;
-            close_ts.size = 32;
-            close_ts.halign = .CENTER;
-            if UI.button(close_button_rect, bs, close_ts, "Close").clicked {
+        UIK.begin(UIK.modal(modal_rect, 1000, v4{0, 0, 0, 0.65}));
+
+        shell := UIK.panel_modal(.BLACK);
+        shell.padding = v4{0, 0, 0, 0};
+        shell.gap = 0;
+        UIK.panel_begin(shell);
+
+        close_header_handle = UIK.title_area(UIK.title_area_desc("Crafting"));
+
+        if recipes.count <= 0 {
+            empty_content := UIK.layout_column();
+            empty_content.width = UIK.flex(1);
+            empty_content.height = UIK.flex(1);
+            empty_content.padding = v4{18, 18, 18, 18};
+            empty_content.gap = 16;
+            UIK.panel_begin(empty_content);
+
+            empty_panel := UIK.panel_interior(.INSET);
+            empty_panel.width = UIK.flex(1);
+            empty_panel.height = UIK.flex(1);
+            empty_panel.padding = v4{20, 20, 20, 20};
+            empty_panel.main_align = .CENTER;
+            empty_panel.cross_align = .CENTER;
+            UIK.panel_begin(empty_panel);
+            empty_text := UIK.text_title();
+            UIK.text("No recipes found.", empty_text);
+            UIK.panel_end();
+
+            close_row := UIK.layout_row(UIK.flex(1), UIK.fit(), 0);
+            close_row.show_background = false;
+            UIK.panel_begin(close_row);
+            close_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_RED);
+            close_desc.panel.width = UIK.flex(1);
+            close_desc.panel.height = UIK.pixels(84);
+            close_button_handle = UIK.button("crafting_close_empty", "Close", close_desc);
+            UIK.panel_end();
+
+            UIK.panel_end();
+            UIK.panel_end();
+            UIK.end();
+
+            if UIK.clicked(close_header_handle) || UIK.clicked(close_button_handle) {
                 player.crafting_ui_open = false;
                 game_sfx_play(.UI_CLICK, player.entity);
             }
@@ -405,106 +413,136 @@ CraftingSystem :: struct {
 
         player.selected_crafting_recipe_index = CraftingSystem.clamp_recipe_index(player.selected_crafting_recipe_index);
         selected_recipe := CraftingSystem.get_recipe(player.selected_crafting_recipe_index);
-        if selected_recipe == null return;
-
-        row_rect := list_rect->cut_top(58);
-        list_title := ts;
-        list_title.size = 30;
-        list_title.halign = .LEFT;
-        list_title.offset.x = 8;
-        UI.text(row_rect, list_title, "Recipes");
-
-        scroll_bar_area := list_rect->cut_left(20)->inset(1);
-
-        scroll_settings: Scroll_View_Settings;
-        scroll_settings.vertical = true;
-        scroll_settings.horizontal = false;
-        scroll_settings.clip_padding = {2, 2, 2, 2};
-
-        scroll_id := format_string("craft_recipe_scroll_%", {player->get_user_id()});
-        sv := UI.push_scroll_view(list_rect, scroll_id, scroll_settings); {
-            defer UI.pop_scroll_view();
-
-            row_base := sv.content_rect;
-            i := 0;
-            while i < recipes.count {
-                recipe := recipes[i];
-                row := row_base->cut_top(74)->inset(4);
-                if recipe != null {
-                    {
-                        UI.push_id("craft_recipe_%", {i});
-                        defer UI.pop_id();
-
-                        bs.color = {1, 1, 1, 1};
-                        if i == player.selected_crafting_recipe_index {
-                            bs.color = {0.85, 1, 0.85, 1};
-                        }
-                        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_8.png");
-
-                        recipe_ts := ts;
-                        recipe_ts.halign = .LEFT;
-                        recipe_ts.size = 30;
-                        recipe_ts.offset.x = 0;
-
-                        button_result := UI.button(row, bs, recipe_ts, "");
-                        if button_result.clicked {
-                            player.selected_crafting_recipe_index = i;
-                            selected_recipe = recipe;
-                            game_sfx_play(.UI_CLICK, player.entity);
-                        }
-
-                        icon := CraftingSystem.get_primary_recipe_icon(recipe);
-                        text_rect := row->inset(8, 8, 8, 8);
-                        if icon != null {
-                            icon_rect := text_rect->cut_left(48)->fit_aspect(icon->get_aspect());
-                            UI.quad(icon_rect, icon);
-                            text_rect->cut_left(8);
-                        }
-
-                        recipe_name_ts := ts;
-                        recipe_name_ts.size = 30;
-                        recipe_name_ts.halign = .LEFT;
-                        recipe_name_ts.valign = .CENTER;
-                        recipe_name_ts.offset.x = 0;
-                        UI.text(text_rect, recipe_name_ts, recipe.name);
-                    }
-                }
-                i += 1;
+        if selected_recipe == null {
+            for i: 0..recipes.count - 1 {
+                if recipes[i] == null continue;
+                player.selected_crafting_recipe_index = i;
+                selected_recipe = recipes[i];
+                break;
             }
         }
+        if selected_recipe == null {
+            player.crafting_ui_open = false;
+            UIK.panel_end();
+            UIK.end();
+            return;
+        }
 
-        scroll_bar_rect := sv->compute_scroll_bar_rect(scroll_bar_area);
-        UI.quad(scroll_bar_area, core_globals.white_sprite, {0.02, 0.02, 0.03, 1});
-        UI.quad(scroll_bar_rect, core_globals.white_sprite, {0.15, 0.15, 0.2, 1});
+        body := UIK.layout_row();
+        body.width = UIK.flex(1);
+        body.height = UIK.flex(1);
+        body.gap = 12;
+        body.padding = v4{16, 16, 16, 16};
+        body.show_background = false;
+        UIK.panel_begin(body);
 
-        details_bg := details_rect->inset(4);
-        UI.quad(details_bg, core_globals.white_sprite, {0.08, 0.09, 0.12, 0.8});
+        left := UIK.panel_interior(.INSET);
+        left.width = UIK.pixels(360);
+        left.height = UIK.flex(1);
+        left.padding = v4{10, 10, 10, 10};
+        left.gap = 8;
+        UIK.panel_begin(left);
 
-        details_title := details_bg->cut_top(56);
-        details_ts := ts;
-        details_ts.halign = .LEFT;
-        details_ts.offset.x = 8;
-        details_ts.size = 36;
-        UI.text(details_title, details_ts, selected_recipe.name);
+        list_title := UIK.text_title();
+        UIK.text_set_halign(&list_title, .LEFT);
+        UIK.text("Recipes", list_title);
 
-        description_rect := details_bg->cut_top(62)->inset(0, 0, 6, 0);
-        desc_ts := ts;
-        desc_ts.size = 28;
-        desc_ts.halign = .LEFT;
-        desc_ts.valign = .TOP;
-        desc_ts.word_wrap = true;
-        desc_ts.offset.x = 8;
-        UI.text(description_rect, desc_ts, selected_recipe.description);
+        recipe_list := UIK.layout_column();
+        recipe_list.width = UIK.flex(1);
+        recipe_list.height = UIK.flex(1);
+        recipe_list.gap = 8;
+        recipe_list.padding = v4{2, 2, 2, 2};
+        UIK.list_begin(format_string("craft_recipe_scroll_%", {player->get_user_id()}), recipe_list);
+        for i: 0..recipes.count - 1 {
+            recipe := recipes[i];
+            if recipe == null continue;
 
-        req_title_rect := details_bg->cut_top(40);
-        section_ts := ts;
-        section_ts.size = 30;
-        section_ts.halign = .LEFT;
-        section_ts.offset.x = 8;
-        UI.text(req_title_rect, section_ts, "Required");
+            is_selected := i == player.selected_crafting_recipe_index;
+
+            row := UIK.layout_row(UIK.flex(1), UIK.pixels(88), 0);
+            row.cross_align = .STRETCH;
+            row.show_background = false;
+            UIK.panel_begin(row);
+
+            recipe_desc := UIK.layout_row();
+            recipe_desc.width = UIK.flex(1);
+            recipe_desc.height = UIK.flex(1);
+            recipe_desc.padding = v4{10, 16, 10, 16};
+            recipe_desc.gap = 12;
+            recipe_desc.cross_align = .CENTER;
+            recipe_desc.background_style = .BUTTON_BASIC_GREY;
+            recipe_desc.show_background = true;
+            if is_selected {
+                recipe_desc.background_style = .BUTTON_BASIC_GREEN;
+            }
+
+            recipe_handle := UIK.panel_begin_interactive(format_string("craft_recipe_%", {i}), recipe_desc);
+            recipe_buttons->append(Crafting_Recipe_Button{i, recipe_handle});
+
+            icon := CraftingSystem.get_primary_recipe_icon(recipe);
+            if icon != null {
+                icon_box := UIK.layout_column();
+                icon_box.width = UIK.pixels(52);
+                icon_box.height = UIK.pixels(52);
+                icon_box.cross_align = .CENTER;
+                icon_box.main_align = .CENTER;
+                icon_box.show_background = false;
+                UIK.panel_begin(icon_box);
+                UIK.image_fitted(icon, UIK.image_desc(.CONTAIN));
+                UIK.panel_end();
+            }
+
+            label_panel := UIK.layout_column();
+            label_panel.width = UIK.flex(1);
+            label_panel.height = UIK.fit();
+            label_panel.main_align = .CENTER;
+            label_panel.show_background = false;
+            UIK.panel_begin(label_panel);
+            recipe_name := UIK.text_button();
+            UIK.text_set_halign(&recipe_name, .LEFT);
+            UIK.text(recipe.name, recipe_name);
+            UIK.panel_end();
+
+            UIK.panel_end();
+
+            UIK.panel_end();
+        }
+        UIK.list_end();
+        UIK.panel_end();
+
+        right := UIK.panel_interior(.INSET);
+        right.width = UIK.flex(1);
+        right.height = UIK.flex(1);
+        right.padding = v4{12, 12, 12, 12};
+        right.gap = 10;
+        UIK.panel_begin(right);
+
+        details_content := UIK.layout_column();
+        details_content.width = UIK.flex(1);
+        details_content.height = UIK.flex(1);
+        details_content.padding = v4{2, 4, 2, 4};
+        details_content.gap = 8;
+        UIK.list_begin(format_string("craft_detail_scroll_%", {player->get_user_id()}), details_content);
+
+        details_title := UIK.text_title();
+        UIK.text_set_halign(&details_title, .LEFT);
+        UIK.text(selected_recipe.name, details_title);
+
+        desc_panel := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+        desc_panel.width = UIK.flex(1);
+        desc_panel.height = UIK.fit();
+        desc_panel.padding = v4{10, 14, 10, 14};
+        UIK.panel_begin(desc_panel);
+        desc_text := UIK.text_body();
+        UIK.text_set_halign(&desc_text, .LEFT);
+        UIK.text(selected_recipe.description, desc_text);
+        UIK.panel_end();
+
+        section_title := UIK.text_button();
+        UIK.text_set_halign(&section_title, .LEFT);
+        UIK.text("Required", section_title);
 
         for input: selected_recipe.inputs {
-            line_rect := details_bg->cut_top(46)->inset(2);
             input_def := CraftingSystem.resolve_item_def(input.item_id);
             have: s64 = 0;
             display_name := input.item_id;
@@ -515,31 +553,40 @@ CraftingSystem :: struct {
                 input_icon = input_def->get_icon();
             }
 
-            line_ts := ts;
-            line_ts.size = 28;
-            line_ts.halign = .LEFT;
-            line_ts.offset.x = 0;
-            line_ts.color = {1, 0.5, 0.5, 1};
-            if have >= input.count {
-                line_ts.color = {0.65, 1, 0.65, 1};
-            }
+            line := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
+            line.padding = v4{8, 10, 8, 10};
+            line.cross_align = .CENTER;
+            line.background_style = .MODAL_TRANSP_BLACK;
+            line.show_background = true;
+            UIK.panel_begin(line);
 
-            text_rect := line_rect->inset(0, 0, 0, 8);
             if input_icon != null {
-                icon_rect := text_rect->cut_left(38)->fit_aspect(input_icon->get_aspect());
-                UI.quad(icon_rect, input_icon);
-                text_rect->cut_left(8);
+                icon_box := UIK.layout_column();
+                icon_box.width = UIK.pixels(42);
+                icon_box.height = UIK.pixels(42);
+                icon_box.cross_align = .CENTER;
+                icon_box.main_align = .CENTER;
+                icon_box.show_background = false;
+                UIK.panel_begin(icon_box);
+                UIK.image_fitted(input_icon, UIK.image_desc(.CONTAIN));
+                UIK.panel_end();
             }
 
-            UI.text(text_rect, line_ts, "%: %/%", {display_name, have, input.count});
+            line_text := UIK.text_body();
+            UIK.text_set_halign(&line_text, .LEFT);
+            if have >= input.count {
+                UIK.text_set_color(&line_text, v4{0.65, 1.0, 0.65, 1.0});
+            } else {
+                UIK.text_set_color(&line_text, v4{1.0, 0.5, 0.5, 1.0});
+            }
+            UIK.text(format_string("%: %/%", {display_name, have, input.count}), line_text);
+            UIK.panel_end();
         }
 
-        details_bg->cut_top(12);
-        out_title_rect := details_bg->cut_top(40);
-        UI.text(out_title_rect, section_ts, "Result");
+        UIK.spacer(UIK.pixels(1), UIK.pixels(8));
+        UIK.text("Result", section_title);
 
         for output: selected_recipe.outputs {
-            out_line := details_bg->cut_top(46)->inset(2);
             output_def := CraftingSystem.resolve_item_def(output.item_id);
             output_name := output.item_id;
             output_icon: Texture_Asset;
@@ -548,46 +595,77 @@ CraftingSystem :: struct {
                 output_icon = output_def->get_icon();
             }
 
-            out_ts := ts;
-            out_ts.size = 28;
-            out_ts.halign = .LEFT;
-            out_ts.offset.x = 0;
-            out_ts.color = {0.9, 0.95, 1, 1};
+            line := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
+            line.padding = v4{8, 10, 8, 10};
+            line.cross_align = .CENTER;
+            line.background_style = .MODAL_TRANSP_BLACK;
+            line.show_background = true;
+            UIK.panel_begin(line);
 
-            out_text_rect := out_line->inset(0, 0, 0, 8);
             if output_icon != null {
-                out_icon_rect := out_text_rect->cut_left(38)->fit_aspect(output_icon->get_aspect());
-                UI.quad(out_icon_rect, output_icon);
-                out_text_rect->cut_left(8);
+                icon_box := UIK.layout_column();
+                icon_box.width = UIK.pixels(42);
+                icon_box.height = UIK.pixels(42);
+                icon_box.cross_align = .CENTER;
+                icon_box.main_align = .CENTER;
+                icon_box.show_background = false;
+                UIK.panel_begin(icon_box);
+                UIK.image_fitted(output_icon, UIK.image_desc(.CONTAIN));
+                UIK.panel_end();
             }
 
-            UI.text(out_text_rect, out_ts, "% x%", {output_name, output.count});
+            line_text := UIK.text_body();
+            UIK.text_set_halign(&line_text, .LEFT);
+            UIK.text_set_color(&line_text, v4{0.9, 0.95, 1.0, 1.0});
+            UIK.text(format_string("% x%", {output_name, output.count}), line_text);
+            UIK.panel_end();
         }
 
-        can_craft := CraftingSystem.can_craft_recipe(player, selected_recipe);
-        action_row_rect := details_bg->bottom_center_rect()->grow(36, 340, 36, 340)->offset(0, 50);
-        action_layout := UI.make_directional_layout(action_row_rect, .RIGHT);
-        close_button_rect := action_layout->next(300)->inset(0, 6, 0, 0);
-        craft_button_rect := action_layout->next(300)->inset(0, 0, 0, 6);
+        UIK.list_end();
 
-        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
-        close_ts := ts;
-        close_ts.size = 32;
-        close_ts.halign = .CENTER;
-        if UI.button(close_button_rect, bs, close_ts, "Close").clicked {
+        can_craft := CraftingSystem.can_craft_recipe(player, selected_recipe);
+        action_row := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
+        action_row.show_background = false;
+        UIK.panel_begin(action_row);
+
+        close_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_RED);
+        close_desc.panel.width = UIK.flex(1);
+        close_desc.panel.height = UIK.pixels(84);
+        close_button_handle = UIK.button("crafting_close", "Close", close_desc);
+
+        craft_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN);
+        craft_desc.panel.width = UIK.flex(1);
+        craft_desc.panel.height = UIK.pixels(84);
+        craft_desc.disabled = !can_craft;
+        if !can_craft {
+            craft_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY);
+            craft_desc.panel.width = UIK.flex(1);
+            craft_desc.panel.height = UIK.pixels(84);
+            craft_desc.disabled = true;
+        }
+        craft_button_handle = UIK.button("crafting_craft", "Craft", craft_desc);
+
+        UIK.panel_end();
+        UIK.panel_end();
+        UIK.panel_end();
+        UIK.panel_end();
+        UIK.end();
+
+        if UIK.clicked(close_header_handle) || UIK.clicked(close_button_handle) {
             player.crafting_ui_open = false;
             game_sfx_play(.UI_CLICK, player.entity);
             return;
         }
 
-        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_2.png");
-        craft_ts := ts;
-        craft_ts.size = 32;
-        craft_ts.halign = .CENTER;
+        for recipe_button: recipe_buttons {
+            if !UIK.clicked(recipe_button.handle) continue;
 
-        UI.push_disabled(!can_craft);
-        defer UI.pop_disabled();
-        if UI.button(craft_button_rect, bs, craft_ts, "Craft").clicked {
+            player.selected_crafting_recipe_index = recipe_button.recipe_index;
+            game_sfx_play(.UI_CLICK, player.entity);
+            return;
+        }
+
+        if UIK.clicked(craft_button_handle) {
             crafted := CraftingSystem.try_craft_recipe(player, selected_recipe);
             if crafted {
                 game_sfx_play(.CRAFT_SUCCESS, player.entity);
