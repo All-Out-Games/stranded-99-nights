@@ -131,21 +131,38 @@ Beacon :: class : Interactable {
         this->set_text("Upgrade Beacon");
     }
 
+    get_active_fog_for_level :: method() -> Entity {
+        if level <= 1 return fog2;
+        if level == 2 return fog3;
+        if level == 3 return fog4;
+        if level == 4 return fog5;
+        if level == 5 return fog6;
+        return null;
+    }
+
     apply_level_world_state :: method() {
-        if fog2 != null {
-            fog2->set_local_enabled(level < 2);
+        active_fog := get_active_fog_for_level();
+
+        // Turn on the next fog band first so upgrades do not momentarily
+        // leave the world with no fog layer during the handoff.
+        if active_fog != null {
+            active_fog->set_local_enabled(true);
         }
-        if fog3 != null {
-            fog3->set_local_enabled(level < 3);
+
+        if fog2 != null && fog2 != active_fog {
+            fog2->set_local_enabled(false);
         }
-        if fog4 != null {
-            fog4->set_local_enabled(level < FOG4_DISABLE_LEVEL);
+        if fog3 != null && fog3 != active_fog {
+            fog3->set_local_enabled(false);
         }
-        if fog5 != null {
-            fog5->set_local_enabled(level < FOG5_DISABLE_LEVEL);
+        if fog4 != null && fog4 != active_fog {
+            fog4->set_local_enabled(false);
         }
-        if fog6 != null {
-            fog6->set_local_enabled(level < FOG6_DISABLE_LEVEL);
+        if fog5 != null && fog5 != active_fog {
+            fog5->set_local_enabled(false);
+        }
+        if fog6 != null && fog6 != active_fog {
+            fog6->set_local_enabled(false);
         }
         apply_safety_zone_visual_scale();
     }

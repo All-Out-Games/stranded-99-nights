@@ -10,6 +10,8 @@ MOB_BOSS_RETREAT_TRIGGER_RATIO :: 0.75;
 MOB_BOSS_REPATH_DELAY_SECONDS :: 1.0;
 MOB_BOSS_REPATH_TARGET_EPSILON_SQ :: 0.25;
 MOB_BOSS_PATH_ARRIVAL_EPSILON_SQ :: 0.01;
+MOB_TARGET_REFRESH_INTERVAL_SECONDS :: 0.15;
+MOB_SEPARATION_REFRESH_INTERVAL_SECONDS :: 0.08;
 MOB_KILLS_SAVE_KEY :: "mobs_killed";
 
 MobTracking :: struct {
@@ -71,6 +73,10 @@ Mob :: class : Component {
     boss_last_path_destination: v2;
     boss_has_active_path_target: bool;
     attack_sfx_asset: SFX_Asset;
+    cached_target_player: Player;
+    next_target_refresh_time_seconds: float;
+    cached_separation_vector: v2;
+    next_separation_refresh_time_seconds: float;
 
     ao_start :: method() {
         if max_health <= 0.0 { max_health = 100.0; }
@@ -99,6 +105,10 @@ Mob :: class : Component {
         boss_last_repath_player_pos = entity.world_position;
         boss_last_path_destination = entity.world_position;
         boss_has_active_path_target = false;
+        cached_target_player = null;
+        next_target_refresh_time_seconds = 0.0;
+        cached_separation_vector = {0.0, 0.0};
+        next_separation_refresh_time_seconds = 0.0;
         damage_pulse_elapsed_seconds = MOB_DAMAGE_PULSE_DURATION_SECONDS;
         base_local_scale = entity.local_scale;
         if base_local_scale.x == 0.0 { base_local_scale.x = 1.0; }
@@ -192,13 +202,6 @@ Mob :: class : Component {
             }
 
             target_pos = target.entity.world_position;
-            if !ignore_beacon_safety && BeaconSystem.is_position_inside_active_safety_zone(target_pos) {
-                target_player_id = 0;
-                damage_aggro_target_player_id = 0;
-                clear_boss_path_state();
-                return;
-            }
-
             path_target_pos = get_path_target_position(target_pos);
             attack_distance_target_pos = target_pos;
             attack_target_entity_id = target.entity.id;
@@ -322,6 +325,8 @@ Mob :: class : Component {
         boss_is_provoked = true;
         damage_aggro_target_player_id = player_id;
         target_player_id = player_id;
+        cached_target_player = null;
+        next_target_refresh_time_seconds = 0.0;
     }
 
     resolve_or_find_target_player :: method() -> Player {
@@ -329,39 +334,77 @@ Mob :: class : Component {
             return resolve_boss_target_player();
         }
 
+        now := get_time();
         effective_acquire_range := get_effective_acquire_range();
         effective_acquire_range_sq := effective_acquire_range * effective_acquire_range;
         ignore_beacon_safety := should_ignore_beacon_safety();
 
+        if cached_target_player != null {
+            if !#alive(cached_target_player) {
+                cached_target_player = null;
+            } else if cached_target_player.entity == null {
+                cached_target_player = null;
+            }
+        }
+
         if damage_aggro_target_player_id != 0 {
+            if cached_target_player != null && cached_target_player.entity.id == damage_aggro_target_player_id {
+                if is_valid_target_player(cached_target_player, ignore_beacon_safety) {
+                    target_player_id = cached_target_player.entity.id;
+                    return cached_target_player;
+                }
+                cached_target_player = null;
+            }
+
             forced_target_id := damage_aggro_target_player_id;
             foreach p: component_iterator(Player) {
                 if p.entity.id != forced_target_id continue;
                 if !is_valid_target_player(p, ignore_beacon_safety) break;
 
+                cached_target_player = p;
                 target_player_id = p.entity.id;
                 return p;
             }
 
+            cached_target_player = null;
             if target_player_id == forced_target_id {
                 target_player_id = 0;
             }
             damage_aggro_target_player_id = 0;
+            next_target_refresh_time_seconds = 0.0;
         }
 
         if target_player_id != 0 {
+            if cached_target_player != null && cached_target_player.entity.id == target_player_id {
+                if is_valid_target_player(cached_target_player, ignore_beacon_safety) {
+                    dist_sq := length_squared(cached_target_player.entity.world_position - entity.world_position);
+                    if dist_sq <= effective_acquire_range_sq {
+                        return cached_target_player;
+                    }
+                }
+                cached_target_player = null;
+            }
+
             foreach p: component_iterator(Player) {
                 if p.entity.id != target_player_id continue;
                 if !is_valid_target_player(p, ignore_beacon_safety) break;
 
                 dist_sq := length_squared(p.entity.world_position - entity.world_position);
                 if dist_sq <= effective_acquire_range_sq {
+                    cached_target_player = p;
                     return p;
                 }
                 break;
             }
+            cached_target_player = null;
             target_player_id = 0;
+            next_target_refresh_time_seconds = 0.0;
         }
+
+        if now < next_target_refresh_time_seconds {
+            return null;
+        }
+        next_target_refresh_time_seconds = now + MOB_TARGET_REFRESH_INTERVAL_SECONDS;
 
         closest: Player;
         closest_dist_sq := effective_acquire_range_sq;
@@ -376,11 +419,13 @@ Mob :: class : Component {
         }
 
         if closest != null {
+            cached_target_player = closest;
             damage_aggro_target_player_id = 0;
             target_player_id = closest.entity.id;
             return closest;
         }
 
+        cached_target_player = null;
         return null;
     }
 
@@ -624,6 +669,12 @@ Mob :: class : Component {
             return {0.0, 0.0};
         }
 
+        now := get_time();
+        if now < next_separation_refresh_time_seconds {
+            return cached_separation_vector;
+        }
+        next_separation_refresh_time_seconds = now + MOB_SEPARATION_REFRESH_INTERVAL_SECONDS;
+
         self_pos := entity.world_position;
         nearby_mobs: [..]Mob;
         Scene.get_all_components_in_range(self_pos, separation_radius, ref nearby_mobs);
@@ -647,7 +698,8 @@ Mob :: class : Component {
             push.y += away.y * strength;
         }
 
-        return v2{push.x * separation_strength, push.y * separation_strength};
+        cached_separation_vector = v2{push.x * separation_strength, push.y * separation_strength};
+        return cached_separation_vector;
     }
 
     setup_animation_state_machine :: method() {
@@ -737,6 +789,16 @@ Mob :: class : Component {
     }
 
     resolve_material_player_for_ui :: method() -> Player {
+        #static cached_local_player: Player;
+        #static cached_fallback_player: Player;
+        if cached_local_player != null && #alive(cached_local_player) && cached_local_player.entity != null && cached_local_player->is_local() {
+            return cached_local_player;
+        }
+        if cached_fallback_player != null && #alive(cached_fallback_player) && cached_fallback_player.entity != null && cached_fallback_player->is_local() {
+            cached_local_player = cached_fallback_player;
+            return cached_local_player;
+        }
+
         local_player: Player;
         fallback_player: Player;
         foreach p: component_iterator(Player) {
@@ -749,6 +811,8 @@ Mob :: class : Component {
             }
         }
 
+        cached_local_player = local_player;
+        cached_fallback_player = fallback_player;
         if local_player != null return local_player;
         return fallback_player;
     }

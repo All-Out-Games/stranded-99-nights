@@ -53,6 +53,10 @@ PLAYER_LIGHT_FIXED_RADIUS :: 40.0;
 PLAYER_LIGHT_INTENSITY :: 1.0;
 PLAYER_LIGHT_COLOR := v4.{1.0, 1.0, 1.0, 1.0};
 PLAYER_CAMERA_NORMAL_ZOOM_OUT_MULTIPLIER :: 1.35;
+PLAYER_CAMERA_POSITION_LERP_SPEED :: 5.0;
+PLAYER_CAMERA_POSITION_SNAP_DISTANCE_SQ :: 144.0;
+PLAYER_BEACON_HEAL_SCAN_INTERVAL_SECONDS :: 0.2;
+PLAYER_BEACON_HEAL_RESAMPLE_DISTANCE_SQ :: 1.0;
 PLAYER_CAMERA_VOYAGE_ZOOM_OUT_MULTIPLIER :: 1.65;
 PLAYER_DAMAGE_PULSE_DURATION_SECONDS :: 0.65;
 PLAYER_DAMAGE_PULSE_OSCILLATIONS :: 7.0;
@@ -358,8 +362,12 @@ Player :: class : Player_Base {
 	clock_cur_alpha: float;
 	clock_cur_rotation: float;
     default_camera_size: float;
+    camera_position_lerp_initialized: bool;
     damage_pulse_elapsed_seconds: float;
     beacon_heal_elapsed_seconds: float;
+    cached_beacon_heal_amount: float;
+    next_beacon_heal_scan_time_seconds: float;
+    last_beacon_heal_scan_position: v2;
 
     ao_start :: method() {
         health = 100.0;
@@ -387,8 +395,17 @@ Player :: class : Player_Base {
         ghost_last_world_position_initialized = true;
         damage_pulse_elapsed_seconds = PLAYER_DAMAGE_PULSE_DURATION_SECONDS;
         beacon_heal_elapsed_seconds = 0.0;
+        cached_beacon_heal_amount = 0.0;
+        next_beacon_heal_scan_time_seconds = 0.0;
+        last_beacon_heal_scan_position = entity.world_position;
         default_camera_size = max(camera.size, 1.0);
+        camera_position_lerp_initialized = false;
         camera.size = max(default_camera_size * PLAYER_CAMERA_NORMAL_ZOOM_OUT_MULTIPLIER, 1.0);
+        if this->is_local_or_server() {
+            camera.follow_player = false;
+            camera.position = entity.world_position;
+            camera_position_lerp_initialized = true;
+        }
 
         if Game.is_server() {
             init_weapon_items();
@@ -446,7 +463,7 @@ Player :: class : Player_Base {
             beacon_heal_elapsed_seconds = 0.0;
             return;
         }
-        beacon_heal_amount := this->get_beacon_heal_amount();
+        beacon_heal_amount := this->get_cached_beacon_heal_amount();
         if beacon_heal_amount <= 0.0 {
             beacon_heal_elapsed_seconds = 0.0;
             return;
@@ -455,6 +472,15 @@ Player :: class : Player_Base {
         beacon_heal_elapsed_seconds += dt;
         while beacon_heal_elapsed_seconds >= PLAYER_BEACON_HEAL_INTERVAL_SECONDS {
             beacon_heal_elapsed_seconds -= PLAYER_BEACON_HEAL_INTERVAL_SECONDS;
+
+            beacon_heal_amount = this->get_beacon_heal_amount();
+            cached_beacon_heal_amount = beacon_heal_amount;
+            next_beacon_heal_scan_time_seconds = get_time() + PLAYER_BEACON_HEAL_SCAN_INTERVAL_SECONDS;
+            last_beacon_heal_scan_position = entity.world_position;
+            if beacon_heal_amount <= 0.0 {
+                beacon_heal_elapsed_seconds = 0.0;
+                break;
+            }
 
             if health >= max_health continue;
 
@@ -487,6 +513,22 @@ Player :: class : Player_Base {
         return max_beacon_level.(float);
     }
 
+    get_cached_beacon_heal_amount :: method() -> float {
+        if entity == null return 0.0;
+
+        now := get_time();
+        pos := entity.world_position;
+        moved_since_last_scan_sq := length_squared(pos - last_beacon_heal_scan_position);
+        if now < next_beacon_heal_scan_time_seconds && moved_since_last_scan_sq < PLAYER_BEACON_HEAL_RESAMPLE_DISTANCE_SQ {
+            return cached_beacon_heal_amount;
+        }
+
+        cached_beacon_heal_amount = this->get_beacon_heal_amount();
+        next_beacon_heal_scan_time_seconds = now + PLAYER_BEACON_HEAL_SCAN_INTERVAL_SECONDS;
+        last_beacon_heal_scan_position = pos;
+        return cached_beacon_heal_amount;
+    }
+
     update_voyage_camera_zoom :: method() {
         manager := get_game_manager();
         if manager != null && manager->should_use_voyage_camera_zoom() {
@@ -494,6 +536,34 @@ Player :: class : Player_Base {
             return;
         }
         camera.size = max(default_camera_size * PLAYER_CAMERA_NORMAL_ZOOM_OUT_MULTIPLIER, 1.0);
+    }
+
+    update_camera_follow :: method(dt: float) {
+        if !this->is_local_or_server() return;
+        if entity == null return;
+
+        target_position := entity.world_position;
+        camera.follow_player = false;
+
+        if !camera_position_lerp_initialized {
+            camera.position = target_position;
+            camera_position_lerp_initialized = true;
+            return;
+        }
+
+        if dt <= 0.0 {
+            camera.position = target_position;
+            return;
+        }
+
+        delta := target_position - camera.position;
+        if length_squared(delta) >= PLAYER_CAMERA_POSITION_SNAP_DISTANCE_SQ {
+            camera.position = target_position;
+            return;
+        }
+
+        follow_t := clamp(PLAYER_CAMERA_POSITION_LERP_SPEED * dt, 0.0, 1.0);
+        camera.position = lerp(camera.position, target_position, follow_t);
     }
 
     update_melee_weapon_idle_aim :: method() {
@@ -515,6 +585,7 @@ Player :: class : Player_Base {
 
    ao_late_update :: method(dt: float) {
     this->update_ghost_facing_from_movement();
+    this->update_camera_follow(dt);
     dead_for_night := this->is_dead_for_night_state();
     if dead_for_night {
         this->close_all_ui_modals();
@@ -613,7 +684,8 @@ Player :: class : Player_Base {
     ao_end :: method() {
         // Called when this component is destroyed
         // Local-only: destroy LOS light.
-		if this->is_local() {
+		if this->is_local_or_server() {
+            camera.follow_player = true;
 			if local_light_entity != null && #alive(local_light_entity) {
 				local_light_entity->destroy();
 			}

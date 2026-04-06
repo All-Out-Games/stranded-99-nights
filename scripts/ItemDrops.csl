@@ -46,6 +46,8 @@ Item_Drop_Magnet :: class : Component {
 
     // Server chooses an attraction target; replicated for consistent client smoothing.
     target_player_user_id: string;
+    cached_target_player: Player;
+    next_target_refresh_time_seconds: float;
 
     // Client-side smoothing state (cosmetic).
     smoothed_world_position: v2;
@@ -58,6 +60,7 @@ Item_Drop_Magnet :: class : Component {
     time_claimed: float;
 
     DESPAWN_SECONDS :: 60.0;
+    ITEM_DROP_TARGET_REFRESH_INTERVAL_SECONDS :: 0.12;
 
     ao_start :: method() {
         spawn_time = get_time();
@@ -65,6 +68,8 @@ Item_Drop_Magnet :: class : Component {
 
         smoothed_world_position = entity.world_position;
         smoothed_initialized = true;
+        cached_target_player = null;
+        next_target_refresh_time_seconds = 0.0;
 
         if attract_radius <= 0 {
             attract_radius = 1.8;
@@ -92,6 +97,32 @@ Item_Drop_Magnet :: class : Component {
         return null;
     }
 
+    is_valid_target_player :: method(player: Player) -> bool {
+        if player == null return false;
+        if player.self == null return false;
+        if !player.enabled return false;
+        if player->is_dead_for_night_state() return false;
+        if player.entity == null return false;
+        if player.entity.self == null return false;
+        if !player.entity->get_world_enabled() return false;
+        if player.default_inventory == null return false;
+        if player.default_inventory.self == null return false;
+        if player.default_inventory.capacity <= 0 return false;
+
+        if exclusive_to_player.count > 0 && player->get_user_id() != exclusive_to_player {
+            return false;
+        }
+
+        if dropped_by_player_user_id.count > 0 {
+            if player->get_user_id() == dropped_by_player_user_id && get_time() < dropped_by_lockout_end_time {
+                return false;
+            }
+        }
+
+        delta := player.entity.world_position - entity.world_position;
+        return length_squared(delta) <= attract_radius * attract_radius;
+    }
+
     // Find the best player to attract to (closest in range).
     find_target_player :: method() -> Player {
         if defn == null {
@@ -103,30 +134,7 @@ Item_Drop_Magnet :: class : Component {
         best_d2 := attract_radius * attract_radius;
 
         foreach p: component_iterator(Player) {
-            if p == null continue;
-            if p.self == null continue;
-            if !p.enabled continue;
-            if p->is_dead_for_night_state() continue;
-            if p.entity == null continue;
-            if p.entity.self == null continue;
-            if !p.entity->get_world_enabled() continue;
-            if p.default_inventory == null continue;
-            if p.default_inventory.self == null continue;
-            if p.default_inventory.capacity <= 0 continue;
-
-            if exclusive_to_player.count > 0 {
-                if p->get_user_id() != exclusive_to_player {
-                    continue;
-                }
-            }
-        
-
-            // Dropper lockout: prevent the player who dropped this from attracting it briefly.
-            if dropped_by_player_user_id.count > 0 {
-                if p->get_user_id() == dropped_by_player_user_id && get_time() < dropped_by_lockout_end_time {
-                    continue;
-                }
-            }
+            if !is_valid_target_player(p) continue;
 
             delta := p.entity.world_position - origin;
             d2 := length_squared(delta);
@@ -137,6 +145,41 @@ Item_Drop_Magnet :: class : Component {
         }
 
         return best;
+    }
+
+    resolve_server_target_player :: method() -> Player {
+        if cached_target_player != null {
+            if !#alive(cached_target_player) || !is_valid_target_player(cached_target_player) {
+                cached_target_player = null;
+            }
+        }
+
+        now := get_time();
+        if now >= next_target_refresh_time_seconds {
+            next_target_refresh_time_seconds = now + ITEM_DROP_TARGET_REFRESH_INTERVAL_SECONDS;
+            cached_target_player = find_target_player();
+            if cached_target_player != null {
+                target_player_user_id = cached_target_player->get_user_id();
+            } else {
+                target_player_user_id = {};
+            }
+            return cached_target_player;
+        }
+
+        if cached_target_player != null {
+            return cached_target_player;
+        }
+
+        if target_player_user_id.count <= 0 {
+            return null;
+        }
+
+        cached_target_player = find_player_by_user_id(target_player_user_id);
+        if !is_valid_target_player(cached_target_player) {
+            cached_target_player = null;
+            target_player_user_id = {};
+        }
+        return cached_target_player;
     }
 
     try_claim :: method(player: Player) -> bool {
@@ -356,11 +399,7 @@ Item_Drop_Magnet :: class : Component {
         // Server picks target, clients follow for smooth visuals.
         target: Player;
         if Game.is_server() {
-            target = find_target_player();
-            target_player_user_id = {};
-            if target != null {
-                target_player_user_id = target->get_user_id();
-            }
+            target = resolve_server_target_player();
         } else {
             target = find_player_by_user_id(target_player_user_id);
             if target == null {

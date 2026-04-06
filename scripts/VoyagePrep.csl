@@ -14,8 +14,10 @@ VoyagePrep :: class : Interactable {
     stockpile: [..]VoyagePrep_Stockpile_Entry;
     ready_player_user_ids: [..]string;
     completion_feedback_sent: bool;
+    next_ready_player_trim_time_seconds: float;
 
     COMPLETION_NOTIFICATION_TEXT :: "Voyage Preperation Complete! Queue up to take a Voyage!";
+    READY_PLAYER_TRIM_INTERVAL_SECONDS :: 0.5;
 
     ao_start :: method() {
         this->set_listener(this);
@@ -25,10 +27,13 @@ VoyagePrep :: class : Interactable {
         }
 
         this->set_hold_text("Preparing...");
+        next_ready_player_trim_time_seconds = 0.0;
         reset_for_round();
     }
 
     ao_update :: method(dt: float) {
+        if get_time() < next_ready_player_trim_time_seconds return;
+        next_ready_player_trim_time_seconds = get_time() + READY_PLAYER_TRIM_INTERVAL_SECONDS;
         trim_ready_player_user_ids();
     }
 
@@ -50,6 +55,7 @@ VoyagePrep :: class : Interactable {
         stockpile->clear();
         ready_player_user_ids->clear();
         completion_feedback_sent = false;
+        next_ready_player_trim_time_seconds = 0.0;
         refresh_prompt_text();
     }
 

@@ -81,6 +81,8 @@ Beam_Visual :: class : Component {
     owner_id: u64;
     target_id: u64;
     beam_range: float;
+    cached_source_player: Player;
+    cached_target_mob: Mob;
 
     ao_update :: method(dt: float) {
         spine_anim := entity->get_component(Spine_Animator);
@@ -88,11 +90,20 @@ Beam_Visual :: class : Component {
         spine_anim->awaken();
 
         // Find source player
-        source: Player;
-        foreach p: component_iterator(Player) {
-            if p.entity.id == owner_id {
-                source = p;
-                break;
+        source := cached_source_player;
+        if source != null {
+            if !#alive(source) || source.entity == null || source.entity.id != owner_id {
+                source = null;
+                cached_source_player = null;
+            }
+        }
+        if source == null {
+            foreach p: component_iterator(Player) {
+                if p.entity.id == owner_id {
+                    source = p;
+                    cached_source_player = p;
+                    break;
+                }
             }
         }
         if source == null {
@@ -107,11 +118,20 @@ Beam_Visual :: class : Component {
         end_pos: v2;
         if target_id != 0 {
             // Targeted beam (Octo Siphoner) - aim at specific mob
-            target: Mob;
-            foreach mob: component_iterator(Mob) {
-                if mob.entity.id == target_id {
-                    target = mob;
-                    break;
+            target := cached_target_mob;
+            if target != null {
+                if !#alive(target) || target.entity == null || target.entity.id != target_id {
+                    target = null;
+                    cached_target_mob = null;
+                }
+            }
+            if target == null {
+                foreach mob: component_iterator(Mob) {
+                    if mob.entity.id == target_id {
+                        target = mob;
+                        cached_target_mob = mob;
+                        break;
+                    }
                 }
             }
             if target == null || !target->is_alive() {

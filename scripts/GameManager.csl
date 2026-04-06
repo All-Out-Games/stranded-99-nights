@@ -352,13 +352,75 @@ try_force_start_game :: proc(player: Player, source: string) {
     }
 }
 
-start :: proc(player: Player) {
+send_cheat_chat_message :: proc(player: Player, message: string) {
+    if player == null return;
+    Chat.server_send_message(message, player);
+}
+
+player_can_use_cheat_commands :: proc(player: Player) -> bool {
+    if player == null return false;
+    return player->is_admin() || player->is_youtuber();
+}
+
+show_cheat_command_help :: proc(player: Player, reason: string = "") {
+    if player == null return;
+    if !player_can_use_cheat_commands(player) return;
+
+    if reason.count > 0 {
+        send_cheat_chat_message(player, reason);
+    }
+
+    send_cheat_chat_message(player, "Cheat commands:");
+    send_cheat_chat_message(player, "/start - Force-start the run if it has not started yet.");
+    send_cheat_chat_message(player, "/win - Trigger the win sequence immediately.");
+    send_cheat_chat_message(player, "/g <item_id> [quantity] - Give yourself an item.");
+    send_cheat_chat_message(player, "/island <number> - Set the current island index (1 or greater).");
+    send_cheat_chat_message(player, format_string("/beacon <level 1-%> - Set every Beacon to that level.", {Beacon.MAX_LEVEL}));
+    send_cheat_chat_message(player, "/raid - Force the next night event to Raid.");
+    send_cheat_chat_message(player, "/supply - Force the next night event to Supply Drop.");
+    send_cheat_chat_message(player, "/merchant - Force the next night event to Fossil Merchant.");
+    send_cheat_chat_message(player, "/monster - Force the next night event to Monster.");
+    send_cheat_chat_message(player, "/cheats - Show this command list again.");
+}
+
+try_parse_positive_s64 :: proc(value: string) -> s64, bool {
+    if value.count <= 0 {
+        return 0, false;
+    }
+
+    parsed: s64 = 0;
+    for i: 0..value.count-1 {
+        ch := value[i];
+        if ch < 48 || ch > 57 {
+            return 0, false;
+        }
+
+        digit := (ch - 48).(s64);
+        parsed = parsed * 10 + digit;
+    }
+
+    return parsed, true;
+}
+
+start :: proc(player: Player, extra: string = "") {
+    if player == null return;
+
+    if extra.count > 0 {
+        show_cheat_command_help(player, "Incorrect usage: /start");
+        return;
+    }
+
     try_force_start_game(player, "/start");
 } @chat_command @youtuber
 
-win :: proc(player: Player) {
+win :: proc(player: Player, extra: string = "") {
     if !Game.is_server() return;
     if player == null return;
+
+    if extra.count > 0 {
+        show_cheat_command_help(player, "Incorrect usage: /win");
+        return;
+    }
 
     manager := ensure_game_manager_exists();
     if manager == null {
@@ -368,6 +430,17 @@ win :: proc(player: Player) {
 
     manager->start_run_complete_sequence();
     log_info("% triggered /win", {player->get_username()});
+} @chat_command @youtuber
+
+cheats :: proc(player: Player, extra: string = "") {
+    if player == null return;
+
+    if extra.count > 0 {
+        show_cheat_command_help(player, "Incorrect usage: /cheats");
+        return;
+    }
+
+    show_cheat_command_help(player);
 } @chat_command @youtuber
 
 get_give_command_max_stack :: proc(item_id: string) -> s64 {
@@ -399,8 +472,19 @@ get_give_command_max_stack :: proc(item_id: string) -> s64 {
     return 1;
 }
 
-g :: proc(player: Player, item_id: string, quantity: s64 = 1) {
+g :: proc(player: Player, item_id: string = "", quantity_text: string = "1") {
     if player == null return;
+
+    if item_id.count <= 0 {
+        show_cheat_command_help(player, "Incorrect usage: /g <item_id> [quantity]");
+        return;
+    }
+
+    quantity, quantity_ok := try_parse_positive_s64(quantity_text);
+    if !quantity_ok || quantity <= 0 {
+        show_cheat_command_help(player, "Incorrect usage: /g <item_id> [quantity]");
+        return;
+    }
 
     if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
        // Notifier.notify(player, "Inventory is unavailable.");
@@ -412,7 +496,7 @@ g :: proc(player: Player, item_id: string, quantity: s64 = 1) {
         defn = try_find_reusable_weapon_item_def_by_id(item_id);
     }
     if defn == null {
-        //Notifier.notify(player, "Unknown item id: %", {item_id});
+        show_cheat_command_help(player, format_string("Unknown item id: %", {item_id}));
         return;
     }
 
@@ -451,15 +535,17 @@ g :: proc(player: Player, item_id: string, quantity: s64 = 1) {
     //Notifier.notify(player, "Given % x%", {defn->get_name(), give_count});
 } @chat_command @youtuber
 
-island :: proc(player: Player, island_index: int) {
+island :: proc(player: Player, island_index_text: string = "") {
     if !Game.is_server() return;
     if player == null return;
 
-    if island_index <= 0 {
-        Notifier.notify(player, "Island must be greater than 0.");
+    island_index_raw, island_index_ok := try_parse_positive_s64(island_index_text);
+    if !island_index_ok || island_index_raw <= 0 {
+        show_cheat_command_help(player, "Incorrect usage: /island <number>");
         return;
     }
 
+    island_index := island_index_raw.(int);
     manager := ensure_game_manager_exists();
     if manager == null {
         Notifier.notify(player, "GameManager is unavailable.");
@@ -471,12 +557,16 @@ island :: proc(player: Player, island_index: int) {
     log_info("% set island to % via /island", {player->get_username(), island_index});
 } @chat_command @youtuber
 
-beacon :: proc(player: Player, beacon_level: int) {
+beacon :: proc(player: Player, beacon_level_text: string = "") {
     if !Game.is_server() return;
     if player == null return;
 
-    if beacon_level < 1 || beacon_level > Beacon.MAX_LEVEL {
-        Notifier.notify(player, "Beacon level must be between 1 and %.", {Beacon.MAX_LEVEL});
+    beacon_level, beacon_level_ok := try_parse_positive_s64(beacon_level_text);
+    if !beacon_level_ok || beacon_level < 1 || beacon_level > Beacon.MAX_LEVEL {
+        show_cheat_command_help(
+            player,
+            format_string("Incorrect usage: /beacon <level 1-%>", {Beacon.MAX_LEVEL})
+        );
         return;
     }
 
@@ -498,9 +588,14 @@ beacon :: proc(player: Player, beacon_level: int) {
     log_info("% set beacon level to % via /beacon", {player->get_username(), next_level});
 } @chat_command @youtuber
 
-raid :: proc(player: Player) {
+raid :: proc(player: Player, extra: string = "") {
     if !Game.is_server() return;
     if player == null return;
+
+    if extra.count > 0 {
+        show_cheat_command_help(player, "Incorrect usage: /raid");
+        return;
+    }
 
     manager := ensure_game_manager_exists();
     if manager == null {
@@ -513,9 +608,14 @@ raid :: proc(player: Player) {
     log_info("% queued a forced Raid event via /raid", {player->get_username()});
 } @chat_command @youtuber
 
-supply :: proc(player: Player) {
+supply :: proc(player: Player, extra: string = "") {
     if !Game.is_server() return;
     if player == null return;
+
+    if extra.count > 0 {
+        show_cheat_command_help(player, "Incorrect usage: /supply");
+        return;
+    }
 
     manager := ensure_game_manager_exists();
     if manager == null {
@@ -528,9 +628,14 @@ supply :: proc(player: Player) {
     log_info("% queued a forced Supply Drop event via /supply", {player->get_username()});
 } @chat_command @youtuber
 
-merchant :: proc(player: Player) {
+merchant :: proc(player: Player, extra: string = "") {
     if !Game.is_server() return;
     if player == null return;
+
+    if extra.count > 0 {
+        show_cheat_command_help(player, "Incorrect usage: /merchant");
+        return;
+    }
 
     manager := ensure_game_manager_exists();
     if manager == null {
@@ -543,9 +648,14 @@ merchant :: proc(player: Player) {
     log_info("% queued a forced Moon Merchant event via /merchant", {player->get_username()});
 } @chat_command @youtuber
 
-monster :: proc(player: Player) {
+monster :: proc(player: Player, extra: string = "") {
     if !Game.is_server() return;
     if player == null return;
+
+    if extra.count > 0 {
+        show_cheat_command_help(player, "Incorrect usage: /monster");
+        return;
+    }
 
     manager := ensure_game_manager_exists();
     if manager == null {
