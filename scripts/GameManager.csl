@@ -674,9 +674,17 @@ GameManager :: class : Component {
     MoonMerchantPrefab: string @ao_serialize;
     SurvivorPrefab: string @ao_serialize;
     Island1BossMob: string @ao_serialize;
+    Island2BossMob: string @ao_serialize;
+    Island3BossMob: string @ao_serialize;
+    Island4BossMob: string @ao_serialize;
+    Island5BossMob: string @ao_serialize;
     moon_merchant_spawn_radius: float @ao_serialize;
     moon_merchant_spawn_sample_attempts: s64 @ao_serialize;
     island1_boss_spawn_point: Entity @ao_serialize;
+    island2_boss_spawn_point: Entity @ao_serialize;
+    island3_boss_spawn_point: Entity @ao_serialize;
+    island4_boss_spawn_point: Entity @ao_serialize;
+    island5_boss_spawn_point: Entity @ao_serialize;
     SupplyDrops: [..]Entity @ao_serialize;
     Island1SurvivorSpawnPositions: [..]Entity @ao_serialize;
     Island2SurvivorSpawnPositions: [..]Entity @ao_serialize;
@@ -688,9 +696,9 @@ GameManager :: class : Component {
     active_survivor_entities: [..]Entity;
     active_moon_merchant_spawn_position: v2;
     moon_merchant_spawn_position_ready: bool;
-    active_island1_boss_entity: Entity;
-    island1_boss_defeated_for_run: bool;
-    island1_boss_spawns_enabled_for_run: bool;
+    active_reaper_target_player_id: u64;
+    active_reaper_island_number: int;
+    reaper_boss_defeated_for_run: [5]bool;
     next_raid_allowed_night_number: s64;
     last_notified_night_event: Night_Event_Type;
     current_run_seed: u64;
@@ -700,6 +708,8 @@ GameManager :: class : Component {
     NIGHT_DURATION_SECONDS :: 45.0;
     DAY_NIGHT_BLEND_TRANSITION_SECONDS :: 5.0;
     NIGHT_WARNING_LEAD_TIME_SECONDS :: 10.0;
+    POST_PROCESSING_SUNSET_BLEND :: 0.42;
+    POST_PROCESSING_SUNRISE_BLEND :: 0.32;
     PLAYERS_REQUIRED_TO_START :: 6;
     NIGHT_WARNING_NOTIFICATION_TEXT :: "The Sun is Setting soon!";
     SURVIVED_NIGHT_NOTIFICATION_TEXT :: "You Survived the Night! % more to go!";
@@ -762,8 +772,9 @@ GameManager :: class : Component {
     RUN_RNG_STREAM_NIGHT_EVENT :: 303;
     RUN_RNG_STREAM_RAID_TARGET :: 404;
     RUN_RNG_STREAM_REAPER_SPAWN :: 505;
+    RUN_RNG_STREAM_REAPER_TARGET :: 506;
     RUN_RNG_STREAM_MOON_MERCHANT_SPAWN :: 606;
-    RUN_RNG_STREAM_ISLAND1_BOSS_SPAWN :: 707;
+    RUN_RNG_STREAM_ISLAND_BOSS_SPAWN :: 707;
     warned_player_user_ids_for_current_day: [..]string;
     warned_player_entities_for_current_day: [..]Entity;
     night_warning_sfx_played_for_current_day: bool;
@@ -849,7 +860,6 @@ GameManager :: class : Component {
         // Music playback runs on both server and client.
 
         sync_active_island_entity();
-        disable_island1_boss_spawns_for_current_run();
         sync_moon_merchant_event_entity();
         try_start_island_transition_if_needed();
         update_island_transition();
@@ -868,7 +878,7 @@ GameManager :: class : Component {
 
         game_time_seconds += dt;
         phase_time_seconds += dt;
-        update_island1_boss_state();
+        update_reaper_boss_state();
 
         switch current_phase {
             case .LOBBY: {
@@ -892,9 +902,22 @@ GameManager :: class : Component {
     }
 
     ao_late_update :: method(dt: float) {
+        if has_local_player_for_visuals() {
+            apply_day_night_post_processing();
+        }
         if Game.is_server() return;
         if this.is_local_merchant_ui_open() return;
         draw_damage_numbers();
+    }
+
+    has_local_player_for_visuals :: method() -> bool {
+        foreach player: component_iterator(Player) {
+            if player != null && player.is_local() {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     is_local_merchant_ui_open :: method() -> bool {
@@ -925,7 +948,6 @@ GameManager :: class : Component {
 
     reset_game_state :: method() {
         clear_active_night_event();
-        clear_island1_boss();
         forced_next_night_event = .NONE;
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;
@@ -947,8 +969,9 @@ GameManager :: class : Component {
         nights = 0;
         next_raid_allowed_night_number = 0;
         current_run_seed = 0;
-        island1_boss_defeated_for_run = false;
-        island1_boss_spawns_enabled_for_run = true;
+        active_reaper_target_player_id = 0;
+        active_reaper_island_number = 0;
+        clear_reaper_boss_defeat_flags();
         highest_island_reached_this_run = max(Island, 1);
         run_complete_sequence_active = false;
         run_complete_sequence_reward_done = false;
@@ -1051,7 +1074,6 @@ GameManager :: class : Component {
             case .IN_ROUND: {
                 // Exit round hooks go here.
                 clear_active_night_event();
-                clear_island1_boss();
                 day_night_phase = .DAY;
                 day_night_phase_time_seconds = 0.0;
                 day_night_blend = 0.0;
@@ -1528,6 +1550,30 @@ GameManager :: class : Component {
         if supply_drop_index < 0 return null;
         if supply_drop_index >= SupplyDrops.count return null;
         return SupplyDrops[supply_drop_index];
+    }
+
+    get_boss_prefab_path_for_island :: method(island_number: int) -> string {
+        switch island_number {
+            case 1: if Island1BossMob.count > 0 return Island1BossMob;
+            case 2: if Island2BossMob.count > 0 return Island2BossMob;
+            case 3: if Island3BossMob.count > 0 return Island3BossMob;
+            case 4: if Island4BossMob.count > 0 return Island4BossMob;
+            case 5: if Island5BossMob.count > 0 return Island5BossMob;
+        }
+
+        return ReaperPrefab;
+    }
+
+    get_boss_spawn_point_for_island :: method(island_number: int) -> Entity {
+        switch island_number {
+            case 1: return island1_boss_spawn_point;
+            case 2: return island2_boss_spawn_point;
+            case 3: return island3_boss_spawn_point;
+            case 4: return island4_boss_spawn_point;
+            case 5: return island5_boss_spawn_point;
+        }
+
+        return null;
     }
 
     get_survivor_spawn_positions_for_island :: method(island_number: int) -> []Entity {
@@ -2022,6 +2068,12 @@ GameManager :: class : Component {
         return current_phase == .IN_ROUND && should_show_voyage_scene();
     }
 
+    should_lock_day_night_for_final_island :: method() -> bool {
+        if current_phase != .IN_ROUND return false;
+        if should_pause_day_night_for_voyage() return false;
+        return loaded_island >= 5;
+    }
+
     force_day_start_for_voyage :: method() {
         if day_night_phase == .DAY &&
             day_night_phase_time_seconds == 0.0 &&
@@ -2039,6 +2091,58 @@ GameManager :: class : Component {
         day_night_blend_to = 0.0;
         day_night_blend_transition_time_seconds = 0.0;
         play_music_track(.DAY);
+    }
+
+    force_midnight_for_final_island :: method() {
+        locked_night_time_seconds := NIGHT_DURATION_SECONDS * 0.5;
+        already_locked :=
+            day_night_phase == .NIGHT &&
+            abs(day_night_phase_time_seconds - locked_night_time_seconds) <= 0.001 &&
+            day_night_blend == 1.0 &&
+            day_night_blend_from == 1.0 &&
+            day_night_blend_to == 1.0 &&
+            day_night_blend_transition_time_seconds >= DAY_NIGHT_BLEND_TRANSITION_SECONDS;
+        if !already_locked {
+            clear_active_night_event();
+            forced_next_night_event = .NONE;
+            last_notified_night_event = .NONE;
+            day_night_phase = .NIGHT;
+            day_night_phase_time_seconds = locked_night_time_seconds;
+            day_night_blend = 1.0;
+            day_night_blend_from = 1.0;
+            day_night_blend_to = 1.0;
+            day_night_blend_transition_time_seconds = DAY_NIGHT_BLEND_TRANSITION_SECONDS;
+            warned_player_user_ids_for_current_day.clear();
+            warned_player_entities_for_current_day.clear();
+            night_warning_sfx_played_for_current_day = false;
+            play_music_track(.NIGHT);
+            log_info("Day/Night locked to mid-night on island %.", {loaded_island});
+        }
+
+        forced_next_night_event = .NONE;
+        ensure_final_island_boss_night();
+    }
+
+    ensure_final_island_boss_night :: method() {
+        island_number := max(loaded_island, 1);
+        if island_number < 5 return;
+
+        if is_reaper_boss_defeated_for_run(island_number) {
+            if active_reaper_entity == null {
+                current_night_event = .NONE;
+            }
+            return;
+        }
+
+        if current_night_event != .REAPER {
+            if current_night_event != .NONE {
+                clear_active_night_event();
+            }
+            current_night_event = .REAPER;
+            last_notified_night_event = .NONE;
+        }
+
+        apply_reaper_event();
     }
 
     get_voyage_progress_t :: method() -> float {
@@ -2065,6 +2169,10 @@ GameManager :: class : Component {
     update_day_night_cycle :: method(dt: float) {
         if should_pause_day_night_for_voyage() {
             force_day_start_for_voyage();
+            return;
+        }
+        if should_lock_day_night_for_final_island() {
+            force_midnight_for_final_island();
             return;
         }
 
@@ -2097,7 +2205,6 @@ GameManager :: class : Component {
 
         if day_night_phase_time_seconds >= NIGHT_DURATION_SECONDS {
             clear_active_night_event();
-            clear_island1_boss();
             day_night_phase = .DAY;
             day_night_phase_time_seconds = 0.0;
             warned_player_user_ids_for_current_day.clear();
@@ -2332,7 +2439,6 @@ GameManager :: class : Component {
         transition_to_phase(.LOBBY);
 
         clear_active_night_event();
-        clear_island1_boss();
         forced_next_night_event = .NONE;
         game_time_seconds = 0.0;
         phase_time_seconds = 0.0;
@@ -2351,8 +2457,9 @@ GameManager :: class : Component {
         last_enabled_island_number = -1;
         nights = 0;
         next_raid_allowed_night_number = 0;
-        island1_boss_defeated_for_run = false;
-        island1_boss_spawns_enabled_for_run = true;
+        active_reaper_target_player_id = 0;
+        active_reaper_island_number = 0;
+        clear_reaper_boss_defeat_flags();
         sync_active_island_entity();
 
         foreach p: component_iterator(Player) {
@@ -2411,7 +2518,7 @@ GameManager :: class : Component {
     cleanup_world_for_game_restart :: method() {
         if !Game.is_server() return;
 
-        clear_island1_boss();
+        clear_reaper_event();
         despawn_all_survivors_for_restart();
         despawn_all_pois_for_transition();
         destroy_all_mobs_for_game_over();
@@ -2781,14 +2888,25 @@ GameManager :: class : Component {
     }
 
     apply_reaper_event :: method() {
-        if ReaperPrefab.count <= 0 {
-            log_info("Night event Monster skipped: ReaperPrefab is empty.", {});
+        island_number := this.get_current_player_island_number();
+        if island_number <= 0 {
+            island_number = max(Island, 1);
+        }
+
+        if is_reaper_boss_defeated_for_run(island_number) {
+            log_info("Night event Monster skipped: island % boss already defeated this run.", {island_number});
             return;
         }
 
-        prefab := get_asset(Prefab_Asset, ReaperPrefab);
+        prefab_path := get_boss_prefab_path_for_island(island_number);
+        if prefab_path.count <= 0 {
+            log_info("Night event Monster skipped: no boss prefab configured for island %.", {island_number});
+            return;
+        }
+
+        prefab := get_asset(Prefab_Asset, prefab_path);
         if prefab == null {
-            log_info("Night event Monster skipped: prefab missing at '%'.", {ReaperPrefab});
+            log_info("Night event Monster skipped: prefab missing at '%'.", {prefab_path});
             return;
         }
 
@@ -2796,37 +2914,33 @@ GameManager :: class : Component {
             return;
         }
 
-        island_number := this.get_current_player_island_number();
-        spawn_slots := this.get_survivor_spawn_positions_for_island(island_number);
-        if spawn_slots.count <= 0 {
-            log_info("Night event Monster skipped: island % has no survivor spawn positions assigned.", {island_number});
+        target_player := choose_reaper_boss_target_player();
+        if target_player == null || target_player.entity == null {
+            log_info("Night event Monster skipped: no valid player target found.", {});
             return;
         }
 
-        available_slots: [..]Entity;
-        for slot: spawn_slots {
-            if slot == null continue;
-            available_slots.append(slot);
-        }
-
-        if available_slots.count <= 0 {
-            log_info("Night event Monster skipped: island % has no valid survivor spawn slots.", {island_number});
+        spawn_pos, found_spawn_pos := sample_reaper_boss_spawn_position(island_number);
+        if !found_spawn_pos {
+            log_info("Night event Monster skipped: island % has no valid boss spawn position.", {island_number});
             return;
         }
-
-        reaper_rng := get_run_rng(RUN_RNG_STREAM_REAPER_SPAWN, get_upcoming_night_number());
-        slot_index := rng_range_int(ref reaper_rng, 0, available_slots.count - 1).(s64);
-        spawn_slot := available_slots[slot_index];
-        spawn_pos := spawn_slot.world_position;
 
         active_reaper_entity = Scene.instantiate(prefab);
         if active_reaper_entity == null {
-            log_info("Night event Monster failed to instantiate prefab '%'.", {ReaperPrefab});
+            log_info("Night event Monster failed to instantiate prefab '%'.", {prefab_path});
             return;
         }
 
         active_reaper_entity.set_local_position(spawn_pos);
-        log_info("Night event started: MONSTER on island % at (%, %).", {island_number, spawn_pos.x, spawn_pos.y});
+        active_reaper_island_number = island_number;
+        assign_active_reaper_target_player(target_player);
+        log_info("Night event started: MONSTER on island % targeting % at (%, %).", {
+            island_number,
+            target_player.get_username(),
+            spawn_pos.x,
+            spawn_pos.y
+        });
     }
 
     clear_reaper_event :: method() {
@@ -2834,6 +2948,8 @@ GameManager :: class : Component {
             active_reaper_entity.destroy();
         }
         active_reaper_entity = null;
+        active_reaper_target_player_id = 0;
+        active_reaper_island_number = 0;
     }
 
     sync_moon_merchant_event_entity :: method() {
@@ -2948,25 +3064,31 @@ GameManager :: class : Component {
         }
     }
 
-    get_island1_boss_spawn_center :: method() -> v2 {
-        if island1_boss_spawn_point != null {
-            return island1_boss_spawn_point.world_position;
+    get_reaper_boss_spawn_center :: method(island_number: int) -> v2 {
+        spawn_point := get_boss_spawn_point_for_island(island_number);
+        if spawn_point != null {
+            return spawn_point.world_position;
         }
         if island1_spawn != null {
             return island1_spawn.world_position;
         }
+        island_entity := get_island_entity(island_number);
+        if island_entity != null {
+            return island_entity.world_position;
+        }
         return entity.world_position;
     }
 
-    sample_island1_boss_spawn_position :: method() -> v2, bool {
+    sample_reaper_boss_spawn_position :: method(island_number: int) -> v2, bool {
         navmesh := player_navmesh;
         if navmesh == null {
-            return get_island1_boss_spawn_center(), false;
+            return get_reaper_boss_spawn_center(island_number), true;
         }
 
-        center := get_island1_boss_spawn_center();
+        center := get_reaper_boss_spawn_center(island_number);
         radius_sq := ISLAND1_BOSS_SPAWN_RADIUS * ISLAND1_BOSS_SPAWN_RADIUS;
-        rng := get_run_rng(RUN_RNG_STREAM_ISLAND1_BOSS_SPAWN, 1);
+        island_spawn_index := get_upcoming_night_number() + (max(island_number - 1, 0)).(s64);
+        rng := get_run_rng(RUN_RNG_STREAM_ISLAND_BOSS_SPAWN, island_spawn_index);
         hint_as_int: int = 0;
 
         for attempt: 0..ISLAND1_BOSS_SPAWN_SAMPLE_ATTEMPTS-1 {
@@ -2995,69 +3117,102 @@ GameManager :: class : Component {
         return center, false;
     }
 
-    disable_island1_boss_spawns_for_current_run :: method() {
-        if !island1_boss_spawns_enabled_for_run return;
-        if Island <= 1 && loaded_island <= 1 && island_transition_target_island <= 1 return;
-
-        island1_boss_spawns_enabled_for_run = false;
-        clear_island1_boss();
-        log_info("Island 1 boss spawns disabled until the next full reset.", {});
+    clear_reaper_boss_defeat_flags :: method() {
+        for island_index: 0..4 {
+            reaper_boss_defeated_for_run[island_index] = false;
+        }
     }
 
-    spawn_island1_boss_for_night :: method() {
-        if !Game.is_server() return;
-        if !island1_boss_spawns_enabled_for_run return;
-        if island1_boss_defeated_for_run return;
-        if Island1BossMob.count <= 0 return;
-        if active_island1_boss_entity != null && #alive(active_island1_boss_entity) return;
-
-        prefab := get_asset(Prefab_Asset, Island1BossMob);
-        if prefab == null {
-            log_info("Island 1 boss spawn skipped: prefab missing at '%'.", {Island1BossMob});
-            return;
-        }
-
-        active_island1_boss_entity = Scene.instantiate(prefab);
-        if active_island1_boss_entity == null {
-            log_info("Island 1 boss spawn failed for prefab '%'.", {Island1BossMob});
-            return;
-        }
-
-        spawn_pos, found_spawn_pos := sample_island1_boss_spawn_position();
-        if !found_spawn_pos {
-            log_info("Island 1 boss spawn failed: no valid navmesh position found near spawn point.", {});
-            active_island1_boss_entity.destroy();
-            active_island1_boss_entity = null;
-            return;
-        }
-
-        active_island1_boss_entity.set_local_position(spawn_pos);
-        log_info("Island 1 boss spawned at (%, %).", {spawn_pos.x, spawn_pos.y});
+    is_reaper_boss_defeated_for_run :: method(island_number: int) -> bool {
+        island_index := island_number - 1;
+        if island_index < 0 return false;
+        if island_index >= 5 return false;
+        return reaper_boss_defeated_for_run[island_index];
     }
 
-    clear_island1_boss :: method() {
-        if active_island1_boss_entity != null && #alive(active_island1_boss_entity) {
-            active_island1_boss_entity.destroy();
-        }
-        active_island1_boss_entity = null;
+    set_reaper_boss_defeated_for_run :: method(island_number: int, defeated: bool) {
+        island_index := island_number - 1;
+        if island_index < 0 return;
+        if island_index >= 5 return;
+        reaper_boss_defeated_for_run[island_index] = defeated;
     }
 
-    update_island1_boss_state :: method() {
-        if !Game.is_server() return;
-        if active_island1_boss_entity == null return;
+    is_valid_reaper_boss_target_player :: method(player: Player) -> bool {
+        if player == null return false;
+        if player.entity == null return false;
+        if player.health <= 0.0 return false;
+        if player.is_dead_for_night_state() return false;
+        if !should_mobs_ignore_beacon_safety() && BeaconSystem.is_position_inside_active_safety_zone(player.entity.world_position) {
+            return false;
+        }
+        return true;
+    }
 
-        if !#alive(active_island1_boss_entity) {
-            active_island1_boss_entity = null;
-            return;
+    choose_reaper_boss_target_player :: method() -> Player {
+        valid_players: [..]Player;
+        foreach p: component_iterator(Player) {
+            if !is_valid_reaper_boss_target_player(p) continue;
+            valid_players.append(p);
         }
 
-        boss_mob := active_island1_boss_entity.get_component(Mob);
+        if valid_players.count <= 0 {
+            return null;
+        }
+
+        reaper_target_rng := get_run_rng(RUN_RNG_STREAM_REAPER_TARGET, get_upcoming_night_number());
+        target_index := rng_range_int(ref reaper_target_rng, 0, valid_players.count - 1).(s64);
+        return valid_players[target_index];
+    }
+
+    assign_active_reaper_target_player :: method(player: Player) {
+        active_reaper_target_player_id = 0;
+        if player == null return;
+        if player.entity == null return;
+
+        active_reaper_target_player_id = player.entity.id;
+        if active_reaper_entity == null return;
+
+        boss_mob := active_reaper_entity.get_component(Mob);
         if boss_mob == null return;
-        if boss_mob.is_alive() return;
+        boss_mob.set_boss_target_player(player.entity.id);
+    }
 
-        island1_boss_defeated_for_run = true;
-        active_island1_boss_entity = null;
-        log_info("Island 1 boss defeated for this run.", {});
+    update_reaper_boss_state :: method() {
+        if !Game.is_server() return;
+        if active_reaper_entity == null return;
+
+        if !#alive(active_reaper_entity) {
+            active_reaper_entity = null;
+            active_reaper_target_player_id = 0;
+            active_reaper_island_number = 0;
+            return;
+        }
+
+        boss_mob := active_reaper_entity.get_component(Mob);
+        if boss_mob == null return;
+        if !boss_mob.is_alive() {
+            if active_reaper_island_number > 0 {
+                set_reaper_boss_defeated_for_run(active_reaper_island_number, true);
+                log_info("Island % boss defeated for this run.", {active_reaper_island_number});
+            }
+            active_reaper_entity = null;
+            active_reaper_target_player_id = 0;
+            active_reaper_island_number = 0;
+            return;
+        }
+
+        if active_reaper_target_player_id != 0 {
+            foreach p: component_iterator(Player) {
+                if !is_valid_reaper_boss_target_player(p) continue;
+                if p.entity.id != active_reaper_target_player_id continue;
+                boss_mob.set_boss_target_player(active_reaper_target_player_id);
+                return;
+            }
+        }
+
+        next_target := choose_reaper_boss_target_player();
+        if next_target == null return;
+        assign_active_reaper_target_player(next_target);
     }
 
     notify_all_players_night_event_started :: method() {
@@ -3122,6 +3277,10 @@ GameManager :: class : Component {
         return current_night_event == .REAPER;
     }
 
+    can_players_damage_bosses :: method() -> bool {
+        return Island >= 5;
+    }
+
     is_moon_merchant_event_active :: method() -> bool {
         return current_night_event == .MOON_MERCHANT;
     }
@@ -3159,6 +3318,88 @@ GameManager :: class : Component {
         day_night_blend_transition_time_seconds = 0.0;
     }
 
+    smooth_day_night_visual_t :: method(t: float) -> float {
+        t = clamp(t, 0.0, 1.0);
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    get_visual_night_blend :: method() -> float {
+        if current_phase != .IN_ROUND return 0.0;
+        if run_complete_sequence_active return 0.0;
+        if should_pause_day_night_for_voyage() return 0.0;
+        if should_lock_day_night_for_final_island() return 1.0;
+
+        if day_night_phase == .DAY {
+            sunrise_t := smooth_day_night_visual_t(day_night_phase_time_seconds / DAY_NIGHT_BLEND_TRANSITION_SECONDS);
+            sunrise_blend := lerp(POST_PROCESSING_SUNRISE_BLEND, 0.0, sunrise_t);
+
+            dusk_start_time := max(DAY_DURATION_SECONDS - NIGHT_WARNING_LEAD_TIME_SECONDS, 0.0);
+            if day_night_phase_time_seconds <= dusk_start_time {
+                return sunrise_blend;
+            }
+
+            dusk_progress := (day_night_phase_time_seconds - dusk_start_time) / NIGHT_WARNING_LEAD_TIME_SECONDS;
+            dusk_t := smooth_day_night_visual_t(dusk_progress);
+            dusk_blend := lerp(0.0, POST_PROCESSING_SUNSET_BLEND, dusk_t);
+            return max(sunrise_blend, dusk_blend);
+        }
+
+        sunset_t := smooth_day_night_visual_t(day_night_phase_time_seconds / DAY_NIGHT_BLEND_TRANSITION_SECONDS);
+        sunset_blend := lerp(POST_PROCESSING_SUNSET_BLEND, 1.0, sunset_t);
+
+        dawn_start_time := max(NIGHT_DURATION_SECONDS - DAY_NIGHT_BLEND_TRANSITION_SECONDS, 0.0);
+        if day_night_phase_time_seconds < dawn_start_time {
+            return sunset_blend;
+        }
+
+        dawn_progress := (day_night_phase_time_seconds - dawn_start_time) / DAY_NIGHT_BLEND_TRANSITION_SECONDS;
+        dawn_t := smooth_day_night_visual_t(dawn_progress);
+        dawn_blend := lerp(1.0, POST_PROCESSING_SUNRISE_BLEND, dawn_t);
+        return min(sunset_blend, dawn_blend);
+    }
+
+    apply_day_night_post_processing :: method() {
+        visual_night_blend := get_visual_night_blend();
+
+        color_grade := Post_Processing.Color_Grade_Config{
+            color_filter = v3{
+                lerp(1.0, 0.83, visual_night_blend),
+                lerp(1.0, 0.88, visual_night_blend),
+                lerp(1.0, 1.06, visual_night_blend)
+            },
+            saturation = lerp(1.0, 0.82, visual_night_blend),
+            contrast = lerp(1.0, 1.12, visual_night_blend)
+        };
+        Post_Processing.color_grade(color_grade);
+
+        bloom := Post_Processing.Bloom_Config{
+            bloom_amount = lerp(0.0, 0.08, visual_night_blend)
+        };
+        Post_Processing.bloom(bloom);
+
+        vignette := Post_Processing.Vignette_Config{
+            radius = lerp(2.0, 1.45, visual_night_blend),
+            softness = lerp(1.0, 0.72, visual_night_blend)
+        };
+        Post_Processing.vignette(vignette);
+
+        film_grain := Post_Processing.Film_Grain_Config{
+            strength = lerp(0.0, 0.018, visual_night_blend),
+            noise_scale = lerp(1.0, 1.5, visual_night_blend)
+        };
+        Post_Processing.film_grain(film_grain);
+
+        chromatic_aberration := Post_Processing.Chromatic_Aberration_Config{
+            channel_offsets = v3{
+                lerp(0.0, 0.0005, visual_night_blend),
+                0.0,
+                lerp(0.0, -0.0005, visual_night_blend)
+            },
+            focal_point = v2{0.5, 0.5}
+        };
+        Post_Processing.chromatic_aberration(chromatic_aberration);
+    }
+
     update_day_night_blend :: method(dt: float) {
         day_night_blend_transition_time_seconds += dt;
         t := clamp(day_night_blend_transition_time_seconds / DAY_NIGHT_BLEND_TRANSITION_SECONDS, 0.0, 1.0);
@@ -3176,14 +3417,11 @@ GameManager :: class : Component {
     }
 
     get_night_blend :: method() -> float {
-        if should_pause_day_night_for_voyage() return 0.0;
-        return day_night_blend;
+        return get_visual_night_blend();
     }
 
     get_day_alpha_target :: method() -> float {
-        if current_phase != .IN_ROUND return 1.0;
-        if should_pause_day_night_for_voyage() return 1.0;
-        return 1.0 - day_night_blend;
+        return 1.0 - get_visual_night_blend();
     }
 
     get_day_night_clock_hours :: method() -> float {

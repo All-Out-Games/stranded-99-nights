@@ -68,6 +68,7 @@ Mob :: class : Component {
     night_stats_applied: bool;
     damage_aggro_target_player_id: u64;
     boss_is_provoked: bool;
+    boss_target_player_id: u64;
     boss_next_repath_time_seconds: float;
     boss_last_repath_player_pos: v2;
     boss_last_path_destination: v2;
@@ -101,6 +102,7 @@ Mob :: class : Component {
         target_player_id = 0;
         damage_aggro_target_player_id = 0;
         boss_is_provoked = false;
+        boss_target_player_id = 0;
         boss_next_repath_time_seconds = 0.0;
         boss_last_repath_player_pos = entity.world_position;
         boss_last_path_destination = entity.world_position;
@@ -323,7 +325,15 @@ Mob :: class : Component {
         if is_dead return;
 
         boss_is_provoked = true;
+        boss_target_player_id = player_id;
         damage_aggro_target_player_id = player_id;
+        target_player_id = player_id;
+        cached_target_player = null;
+        next_target_refresh_time_seconds = 0.0;
+    }
+
+    set_boss_target_player :: method(player_id: u64) {
+        boss_target_player_id = player_id;
         target_player_id = player_id;
         cached_target_player = null;
         next_target_refresh_time_seconds = 0.0;
@@ -532,6 +542,18 @@ Mob :: class : Component {
 
     resolve_boss_target_player :: method() -> Player {
         ignore_beacon_safety := should_ignore_beacon_safety();
+        if boss_target_player_id != 0 {
+            foreach p: component_iterator(Player) {
+                if p.entity == null continue;
+                if p.entity.id != boss_target_player_id continue;
+                if !is_valid_target_player(p, ignore_beacon_safety) break;
+
+                cached_target_player = p;
+                target_player_id = p.entity.id;
+                return p;
+            }
+        }
+
         closest: Player;
         closest_dist_sq: float;
         found_closest := false;
@@ -898,8 +920,18 @@ mob_apply_damage :: proc(mob: Mob, damage: float) -> bool {
     return mob.take_damage(damage);
 }
 
+mob_can_take_player_damage :: proc(mob: Mob) -> bool {
+    if mob == null return false;
+    if !mob.Boss return true;
+
+    manager := get_game_manager();
+    if manager == null return false;
+    return manager.can_players_damage_bosses();
+}
+
 mob_apply_damage_from_player :: proc(mob: Mob, damage: float, attacker_player_id: u64) -> bool {
     if mob == null return false;
+    if !mob_can_take_player_damage(mob) return false;
     mob.set_damage_aggro_target(attacker_player_id);
     return mob.take_damage(damage);
 }
@@ -928,7 +960,7 @@ mob_damage_all_in_range_from_player :: proc(pos: v2, range: float, damage: float
     for mob: nearby {
         if mob == null continue;
         if !mob.is_alive() continue;
-        mob_apply_damage_from_player(mob, damage, attacker_player_id);
+        if !mob_apply_damage_from_player(mob, damage, attacker_player_id) continue;
         hit_count += 1;
     }
     return hit_count;
@@ -951,6 +983,7 @@ mob_damage_closest_in_range_from_player :: proc(pos: v2, range: float, damage: f
     mob, found := Scene.get_closest_component_in_range(pos, range, Mob);
     if !found || mob == null return null, false;
     if !mob.is_alive() return null, false;
+    if !mob_can_take_player_damage(mob) return null, false;
 
     mob_apply_damage_from_player(mob, damage, attacker_player_id);
     return mob, true;

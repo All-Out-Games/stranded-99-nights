@@ -4,6 +4,12 @@ Merchant_Shop_Offer :: struct {
     stack_count: s64;
 }
 
+Merchant_Shop_Button :: struct {
+    offer_index: s64;
+    handle: UIK.Interact_Handle;
+    can_buy: bool;
+}
+
 Merchant :: class : Interactable {
     prompt_text: string @ao_serialize;
 
@@ -89,17 +95,20 @@ MerchantSystem :: struct {
 
         if !MerchantSystem.has_inventory_room_for_offer(player, offer) return false;
 
-        balance := Economy.get_balance(player, MOON_CURRENCY);
-        return balance >= offer.moon_cost;
+        return Economy.can_withdraw_currency(player, MOON_CURRENCY, offer.moon_cost);
     }
 
     try_buy_offer :: proc(player: Player, offer: Merchant_Shop_Offer) -> bool {
         if player == null return false;
-        if !Game.is_server() return false;
 
         defn := MerchantSystem.resolve_item_def(offer.item_id);
         if defn == null {
             Notifier.notify(player, "That item is not configured correctly.");
+            return false;
+        }
+
+        if offer.moon_cost < 0 {
+            Notifier.notify(player, "That offer is not configured correctly.");
             return false;
         }
 
@@ -114,7 +123,7 @@ MerchantSystem :: struct {
         }
 
         if !Economy.can_withdraw_currency(player, MOON_CURRENCY, offer.moon_cost) {
-            Notifier.notify(player, "You need more Fossils.");
+            Notifier.notify(player, "You need more %.", {MOON_CURRENCY_DISPLAY});
             return false;
         }
 
@@ -144,183 +153,279 @@ MerchantSystem :: struct {
         }
 
         offers := MerchantSystem.get_shop_offers();
+        balance := Economy.get_balance(player, MOON_CURRENCY);
+        modal_rect := UI.get_safe_screen_rect().center_rect().grow(430, 730, 430, 730);
+        close_header_handle: UIK.Interact_Handle;
+        close_button_handle: UIK.Interact_Handle;
+        buy_buttons: [..]Merchant_Shop_Button;
+        buy_buttons.reserve(offers.count);
 
-        ts := UI.default_text_settings();
-        ts.do_outline = true;
-        ts.outline_color = {0, 0, 0, 1};
-        ts.outline_thickness = 2;
+        fossil_icon := get_asset(Texture_Asset, MOON_CURRENCY_ICON_PATH);
+        if fossil_icon == null {
+            fossil_icon = get_asset(Texture_Asset, "Items/Moon.png");
+        }
 
-        bs := UI.default_button_settings();
-        bs.press_scaling = 0.35;
+        UIK.begin(UIK.modal(modal_rect, 1000, v4{0, 0, 0, 0.65}));
 
-        UI.push_layer(1000);
-        defer UI.pop_layer();
+        shell := UIK.panel_modal(.BLACK);
+        shell.padding = v4{0, 0, 0, 0};
+        shell.gap = 0;
+        UIK.panel_begin(shell);
 
-        UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {0, 0, 0, 0.6});
+        title_desc := UIK.title_area_desc(MOON_MERCHANT_DISPLAY_NAME);
+        title_desc.icon = fossil_icon;
+        close_header_handle = UIK.title_area(title_desc);
 
-        panel_rect := UI.get_safe_screen_rect().center_rect().grow(360, 620, 360, 620);
-        UI.quad(panel_rect, core_globals.white_sprite, {0.07, 0.08, 0.12, 0.97});
-        UI.quad(panel_rect.inset(5), core_globals.white_sprite, {0.13, 0.14, 0.19, 0.97});
+        content := UIK.layout_column();
+        content.width = UIK.flex(1);
+        content.height = UIK.flex(1);
+        content.padding = v4{12, 16, 12, 16};
+        content.gap = 0;
+        UIK.list_begin(format_string("merchant_offer_scroll_%", {player.get_user_id()}), content);
 
-        content := panel_rect.inset(20);
-        header := content.cut_top(70);
-        balance_bar := content.cut_top(54).inset(0, 0, 10, 0);
-        info_rect := content.cut_top(70).inset(0, 0, 8, 0);
-        body_bg := content;
+        info_panel := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+        info_panel.width = UIK.flex(1);
+        info_panel.height = UIK.fit();
+        info_panel.padding = v4{10, 14, 10, 14};
+        UIK.panel_begin(info_panel);
+        info_text := UIK.text_body();
+        UIK.text_set_halign(&info_text, .LEFT);
+        UIK.text("Spend Fossils on supply bundles and rare gear before the event ends.", info_text);
+        UIK.panel_end();
+        UIK.spacer(UIK.pixels(1), UIK.pixels(20));
 
-        title_ts := ts;
-        title_ts.size = 52;
-        title_ts.halign = .LEFT;
-        title_ts.valign = .CENTER;
-        UI.text(header, title_ts, MOON_MERCHANT_DISPLAY_NAME);
+        balance_panel := UIK.panel_interior(.INSET);
+        balance_panel.width = UIK.flex(1);
+        balance_panel.height = UIK.fit();
+        balance_panel.padding = v4{12, 12, 12, 12};
+        balance_panel.gap = 8;
+        UIK.panel_begin(balance_panel);
 
-        UI.quad(balance_bar, core_globals.white_sprite, {0.1, 0.11, 0.15, 0.9});
-        balance_ts := ts;
-        balance_ts.size = 30;
-        balance_ts.halign = .LEFT;
-        balance_ts.valign = .CENTER;
-        balance_ts.offset.x = 12;
-        balance_ts.color = {1.0, 0.92, 0.62, 1.0};
-        UI.text(balance_bar, balance_ts, "%: %", {MOON_CURRENCY_DISPLAY, Economy.get_balance(player, MOON_CURRENCY)});
+        balance_title := UIK.text_title();
+        UIK.text_set_halign(&balance_title, .LEFT);
+        UIK.text("Current Balance", balance_title);
 
-        info_ts := ts;
-        info_ts.size = 26;
-        info_ts.halign = .LEFT;
-        info_ts.valign = .TOP;
-        info_ts.word_wrap = true;
-        UI.text(info_rect, info_ts, "Spend Fossils on supply bundles!");
+        balance_row := UIK.layout_row();
+        balance_row.width = UIK.fit();
+        balance_row.height = UIK.fit();
+        balance_row.gap = 10;
+        balance_row.cross_align = .CENTER;
+        balance_row.show_background = false;
+        UIK.panel_begin(balance_row);
 
-        UI.quad(body_bg, core_globals.white_sprite, {0.08, 0.09, 0.12, 0.8});
-        section_title_rect := body_bg.cut_top(42).inset(2, 8, 2, 8);
-        section_ts := ts;
-        section_ts.size = 30;
-        section_ts.halign = .LEFT;
-        section_ts.valign = .CENTER;
-        section_ts.offset.x = 0;
-        UI.text(section_title_rect, section_ts, "Shop Inventory");
+        if fossil_icon != null {
+            icon_box := UIK.layout_column();
+            icon_box.width = UIK.pixels(40);
+            icon_box.height = UIK.pixels(40);
+            icon_box.cross_align = .CENTER;
+            icon_box.main_align = .CENTER;
+            icon_box.show_background = false;
+            UIK.panel_begin(icon_box);
+            UIK.image_fitted(fossil_icon, UIK.image_desc(.CONTAIN));
+            UIK.panel_end();
+        }
 
-        offers_rect := body_bg.inset(4, 8, 84, 8);
+        balance_text := UIK.text_button();
+        UIK.text_set_halign(&balance_text, .LEFT);
+        UIK.text_set_color(&balance_text, v4{1.0, 0.92, 0.62, 1.0});
+        UIK.text(format_string("%: %", {MOON_CURRENCY_DISPLAY, balance}), balance_text);
+        UIK.panel_end();
+        UIK.panel_end();
+        UIK.spacer(UIK.pixels(1), UIK.pixels(20));
+
+        stock_panel := UIK.panel_interior(.INSET);
+        stock_panel.width = UIK.flex(1);
+        stock_panel.height = UIK.fit();
+        stock_panel.padding = v4{12, 12, 12, 12};
+        stock_panel.gap = 6;
+        UIK.panel_begin(stock_panel);
+
+        stock_title := UIK.text_title();
+        UIK.text_set_halign(&stock_title, .LEFT);
+        UIK.text("Shop Inventory", stock_title);
+
+        stock_body := UIK.text_body();
+        UIK.text_set_halign(&stock_body, .LEFT);
+        UIK.text("Each purchase goes straight into your inventory if you have room.", stock_body);
+        UIK.panel_end();
+        UIK.spacer(UIK.pixels(1), UIK.pixels(20));
 
         if offers.count <= 0 {
-            empty_rect := offers_rect.center_rect().grow(40, 220, 40, 220);
-            empty_ts := ts;
-            empty_ts.size = 28;
-            empty_ts.halign = .CENTER;
-            empty_ts.valign = .CENTER;
-            empty_ts.color = {1.0, 0.55, 0.55, 1.0};
-            UI.text(empty_rect, empty_ts, "No merchant offers are configured.");
-        }
-        else {
-            scroll_bar_area := offers_rect.cut_left(20).inset(1);
-
-            scroll_settings: Scroll_View_Settings;
-            scroll_settings.vertical = true;
-            scroll_settings.horizontal = false;
-            scroll_settings.clip_padding = {2, 2, 2, 2};
-
-            scroll_id := format_string("merchant_offer_scroll_%", {player.get_user_id()});
-            sv := UI.push_scroll_view(offers_rect, scroll_id, scroll_settings); {
-                defer UI.pop_scroll_view();
-
-                row_base := sv.content_rect;
-                offer_index: s64 = 0;
-                while offer_index < offers.count {
-                    offer := offers[offer_index];
-
-                    row := row_base.cut_top(92).inset(4, 8, 4, 8);
-                    UI.quad(row, core_globals.white_sprite, {0.12, 0.13, 0.17, 0.95});
-
-                    defn := MerchantSystem.resolve_item_def(offer.item_id);
-                    display_name := offer.item_id;
-                    icon: Texture_Asset;
-                    if defn != null {
-                        display_name = defn.get_name();
-                        icon = defn.get_icon();
-                    }
-
-                    can_buy := MerchantSystem.can_buy_offer(player, offer);
-                    room_ok := MerchantSystem.has_inventory_room_for_offer(player, offer);
-                    balance_ok := Economy.get_balance(player, MOON_CURRENCY) >= offer.moon_cost;
-
-                    button_rect := row.cut_right(220).inset(8, 8, 8, 16);
-                    text_rect := row.inset(8, 8, 8, 8);
-                    if icon != null {
-                        icon_rect := text_rect.cut_left(54).fit_aspect(icon.get_aspect());
-                        UI.quad(icon_rect, icon);
-                        text_rect.cut_left(12);
-                    }
-
-                    name_rect := text_rect.cut_top(34);
-                    detail_rect := text_rect;
-
-                    name_ts := ts;
-                    name_ts.size = 30;
-                    name_ts.halign = .LEFT;
-                    name_ts.valign = .CENTER;
-                    name_ts.color = {0.95, 0.97, 1.0, 1.0};
-                    stack_count := ItemManager.ClampSpawnCountToMaxStack(defn, offer.stack_count);
-                    UI.text(name_rect, name_ts, "% x%", {display_name, stack_count});
-
-                    detail_ts := ts;
-                    detail_ts.size = 22;
-                    detail_ts.halign = .LEFT;
-                    detail_ts.valign = .CENTER;
-                    detail_ts.color = {0.76, 0.82, 0.9, 1.0};
-                    if defn == null {
-                        detail_ts.color = {1.0, 0.55, 0.55, 1.0};
-                        UI.text(detail_rect, detail_ts, "Missing item definition: %", {offer.item_id});
-                    } else if !room_ok {
-                        detail_ts.color = {1.0, 0.55, 0.55, 1.0};
-                        UI.text(detail_rect, detail_ts, "Need inventory room. Cost: % Fossils", {offer.moon_cost});
-                    } else if !balance_ok {
-                        detail_ts.color = {1.0, 0.78, 0.52, 1.0};
-                        UI.text(detail_rect, detail_ts, "Not enough Fossils. Cost: %", {offer.moon_cost});
-                    } else {
-                        UI.text(detail_rect, detail_ts, "Cost: % Fossils", {offer.moon_cost});
-                    }
-
-                    button_bs := bs;
-                    button_ts := ts;
-                    button_ts.size = 26;
-                    button_ts.halign = .CENTER;
-                    button_ts.valign = .CENTER;
-
-                    if !can_buy {
-                        button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
-                    } else {
-                        button_bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_2.png");
-                    }
-
-                    UI.push_id("merchant_offer_%", {offer_index});
-                    UI.push_disabled(!can_buy);
-                    if UI.button(button_rect, button_bs, button_ts, "Buy").clicked {
-                        if MerchantSystem.try_buy_offer(player, offer) {
-                            game_sfx_play(.CRAFT_SUCCESS, player.entity);
-                        } else {
-                            game_sfx_play(.UI_ERROR, player.entity);
-                        }
-                    }
-                    UI.pop_disabled();
-                    UI.pop_id();
-
-                    offer_index += 1;
+            empty_panel := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+            empty_panel.width = UIK.flex(1);
+            empty_panel.height = UIK.fit();
+            empty_panel.padding = v4{18, 18, 18, 18};
+            empty_panel.main_align = .CENTER;
+            empty_panel.cross_align = .CENTER;
+            UIK.panel_begin(empty_panel);
+            empty_text := UIK.text_body();
+            UIK.text_set_color(&empty_text, v4{1.0, 0.55, 0.55, 1.0});
+            UIK.text("No merchant offers are configured.", empty_text);
+            UIK.panel_end();
+        } else {
+            for offer_index: 0..offers.count - 1 {
+                if offer_index > 0 {
+                    UIK.spacer(UIK.pixels(1), UIK.pixels(20));
                 }
-            }
 
-            scroll_bar_rect := sv.compute_scroll_bar_rect(scroll_bar_area);
-            UI.quad(scroll_bar_area, core_globals.white_sprite, {0.02, 0.02, 0.03, 1});
-            UI.quad(scroll_bar_rect, core_globals.white_sprite, {0.15, 0.15, 0.2, 1});
+                offer := offers[offer_index];
+                defn := MerchantSystem.resolve_item_def(offer.item_id);
+                display_name := offer.item_id;
+                icon: Texture_Asset;
+                stack_count := offer.stack_count;
+                if defn != null {
+                    display_name = defn.get_name();
+                    icon = defn.get_icon();
+                    stack_count = ItemManager.ClampSpawnCountToMaxStack(defn, offer.stack_count);
+                }
+
+                room_ok := MerchantSystem.has_inventory_room_for_offer(player, offer);
+                balance_ok := Economy.can_withdraw_currency(player, MOON_CURRENCY, offer.moon_cost);
+                can_buy := MerchantSystem.can_buy_offer(player, offer);
+                offer_valid := offer.moon_cost >= 0 && offer.stack_count > 0;
+
+                entry := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+                entry.width = UIK.flex(1);
+                entry.height = UIK.fit();
+                entry.padding = v4{12, 12, 12, 12};
+                entry.gap = 12;
+                UIK.panel_begin(entry);
+
+                row := UIK.layout_row();
+                row.width = UIK.flex(1);
+                row.height = UIK.fit();
+                row.gap = 12;
+                row.cross_align = .CENTER;
+                row.show_background = false;
+                UIK.panel_begin(row);
+
+                if icon != null {
+                    icon_box := UIK.layout_column();
+                    icon_box.width = UIK.pixels(62);
+                    icon_box.height = UIK.pixels(62);
+                    icon_box.cross_align = .CENTER;
+                    icon_box.main_align = .CENTER;
+                    icon_box.show_background = false;
+                    UIK.panel_begin(icon_box);
+                    UIK.image_fitted(icon, UIK.image_desc(.CONTAIN));
+                    UIK.panel_end();
+                }
+
+                text_panel := UIK.layout_column();
+                text_panel.width = UIK.flex(1);
+                text_panel.height = UIK.fit();
+                text_panel.gap = 4;
+                text_panel.show_background = false;
+                UIK.panel_begin(text_panel);
+
+                item_name := UIK.text_button();
+                UIK.text_set_halign(&item_name, .LEFT);
+                UIK.text(format_string("% x%", {display_name, stack_count}), item_name);
+
+                item_status := UIK.text_body();
+                UIK.text_set_halign(&item_status, .LEFT);
+                if defn == null {
+                    UIK.text_set_color(&item_status, v4{1.0, 0.55, 0.55, 1.0});
+                    UIK.text(format_string("Missing item definition: %", {offer.item_id}), item_status);
+                } else if !offer_valid {
+                    UIK.text_set_color(&item_status, v4{1.0, 0.55, 0.55, 1.0});
+                    UIK.text("This offer is not configured correctly.", item_status);
+                } else if !room_ok {
+                    UIK.text_set_color(&item_status, v4{1.0, 0.55, 0.55, 1.0});
+                    UIK.text("Need more inventory room for this purchase.", item_status);
+                } else if !balance_ok {
+                    UIK.text_set_color(&item_status, v4{1.0, 0.78, 0.52, 1.0});
+                    UIK.text("You do not have enough Fossils yet.", item_status);
+                } else {
+                    UIK.text_set_color(&item_status, v4{0.76, 0.82, 0.9, 1.0});
+                    UIK.text("Ready to buy.", item_status);
+                }
+                UIK.panel_end();
+
+                buy_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN);
+                buy_desc.panel.width = UIK.pixels(220);
+                buy_desc.panel.height = UIK.pixels(72);
+                button_label := "Buy";
+                if defn == null {
+                    buy_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY);
+                    buy_desc.panel.width = UIK.pixels(220);
+                    buy_desc.panel.height = UIK.pixels(72);
+                    buy_desc.disabled = true;
+                    button_label = "Unavailable";
+                } else if !offer_valid {
+                    buy_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY);
+                    buy_desc.panel.width = UIK.pixels(220);
+                    buy_desc.panel.height = UIK.pixels(72);
+                    buy_desc.disabled = true;
+                    button_label = "Invalid";
+                } else if !room_ok {
+                    buy_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY);
+                    buy_desc.panel.width = UIK.pixels(220);
+                    buy_desc.panel.height = UIK.pixels(72);
+                    buy_desc.disabled = true;
+                    button_label = "No Room";
+                } else if !balance_ok {
+                    buy_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_RED);
+                    buy_desc.panel.width = UIK.pixels(220);
+                    buy_desc.panel.height = UIK.pixels(72);
+                    buy_desc.disabled = true;
+                    button_label = "Need Fossils";
+                }
+                buy_handle := UIK.button(format_string("merchant_buy_%", {offer_index}), button_label, buy_desc);
+                buy_buttons.append(Merchant_Shop_Button{offer_index, buy_handle, can_buy});
+                UIK.panel_end();
+
+                cost_row := UIK.layout_row();
+                cost_row.width = UIK.fit();
+                cost_row.height = UIK.fit();
+                cost_row.gap = 8;
+                cost_row.cross_align = .CENTER;
+                cost_row.show_background = false;
+                UIK.panel_begin(cost_row);
+                if fossil_icon != null {
+                    UIK.currency(fossil_icon, offer.moon_cost, UIK.text_body());
+                } else {
+                    cost_text := UIK.text_body();
+                    UIK.text_set_halign(&cost_text, .LEFT);
+                    UIK.text(format_string("Cost: % %", {offer.moon_cost, MOON_CURRENCY_DISPLAY}), cost_text);
+                }
+                UIK.panel_end();
+                UIK.panel_end();
+            }
         }
 
-        action_row := body_bg.bottom_center_rect().grow(36, 180, 36, 180).offset(0, 46);
-        close_ts := ts;
-        close_ts.size = 30;
-        close_ts.halign = .CENTER;
+        UIK.list_end();
 
-        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
-        if UI.button(action_row, bs, close_ts, "Close").clicked {
+        action_row := UIK.layout_row(UIK.flex(1), UIK.fit(), 0);
+        action_row.padding = v4{12, 0, 12, 12};
+        action_row.show_background = false;
+        UIK.panel_begin(action_row);
+
+        close_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_RED);
+        close_desc.panel.width = UIK.flex(1);
+        close_desc.panel.height = UIK.pixels(82);
+        close_button_handle = UIK.button("merchant_close", "Close", close_desc);
+
+        UIK.panel_end();
+        UIK.panel_end();
+        UIK.end();
+
+        if UIK.clicked(close_header_handle) || UIK.clicked(close_button_handle) {
             game_sfx_play(.UI_CLICK, player.entity);
             MerchantSystem.close_modal(player);
+            return;
+        }
+
+        for buy_button: buy_buttons {
+            if !buy_button.can_buy continue;
+            if !UIK.clicked(buy_button.handle) continue;
+
+            offer := offers[buy_button.offer_index];
+            if MerchantSystem.try_buy_offer(player, offer) {
+                game_sfx_play(.CRAFT_SUCCESS, player.entity);
+            } else {
+                game_sfx_play(.UI_ERROR, player.entity);
+            }
             return;
         }
     }

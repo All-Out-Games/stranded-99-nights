@@ -1,5 +1,7 @@
 import "core:ao"
 
+FINAL_VOYAGE_STORMCORE_REQUIRED :: 5;
+
 VoyagePrep_Requirement :: struct {
     item_id: string;
     count: s64;
@@ -77,6 +79,7 @@ VoyagePrep :: class : Interactable {
         #static island1_requirements: [..]VoyagePrep_Requirement;
         #static island2_requirements: [..]VoyagePrep_Requirement;
         #static island3_requirements: [..]VoyagePrep_Requirement;
+        #static island4_requirements: [..]VoyagePrep_Requirement;
         #static initted: bool;
 
         if !initted {
@@ -92,6 +95,10 @@ VoyagePrep :: class : Interactable {
             island3_requirements.append({"sulfur", 20});
             island3_requirements.append({"medkit", 5});
             island3_requirements.append({"obsidian.shard", 5});
+
+            island4_requirements.append({"scrap", 30});
+            island4_requirements.append({"fish", 15});
+            island4_requirements.append({"stormcore", FINAL_VOYAGE_STORMCORE_REQUIRED});
         }
 
         manager := get_game_manager();
@@ -103,6 +110,9 @@ VoyagePrep :: class : Interactable {
         }
         if manager != null && manager.Island == 3 {
             return island3_requirements;
+        }
+        if manager != null && manager.Island == 4 {
+            return island4_requirements;
         }
 
         empty: [..]VoyagePrep_Requirement;
@@ -184,6 +194,22 @@ VoyagePrep :: class : Interactable {
         if has_ready_player_user_id(user_id) return;
 
         ready_player_user_ids.append(user_id);
+    }
+
+    unset_player_ready :: method(player: Player) {
+        if player == null return;
+
+        user_id := player.get_user_id();
+        if user_id.count <= 0 return;
+
+        i: s64 = 0;
+        while i < ready_player_user_ids.count {
+            if ready_player_user_ids[i] == user_id {
+                ready_player_user_ids.ordered_remove_by_index(i);
+                return;
+            }
+            i += 1;
+        }
     }
 
     clear_ready_players :: method() {
@@ -296,7 +322,11 @@ VoyagePrepSystem :: struct {
 
         prep.set_player_ready(player);
         if prep.are_all_players_ready() {
-            return VoyagePrepSystem.try_start_voyage(prep);
+            if VoyagePrepSystem.try_start_voyage(prep) {
+                return true;
+            }
+            prep.unset_player_ready(player);
+            return false;
         }
         return true;
     }

@@ -1,0 +1,264 @@
+Parasitic_Rex.png
+	size: 4096, 240
+	filter: Linear, Linear
+	scale: 0.5
+Back_Eyebrow
+	bounds: 2873, 18, 31, 29
+Stage_2/Back_Eyebrow
+	bounds: 2873, 18, 31, 29
+Back_Foot
+	bounds: 1212, 19, 49, 60
+Stage_2/Back_Foot
+	bounds: 1212, 19, 49, 60
+Back_Foot_Claws
+	bounds: 2065, 29, 52, 31
+Stage_2/Back_Foot_Claws
+	bounds: 2065, 29, 52, 31
+Stage_3/Back_Foot_Claws
+	bounds: 2065, 29, 52, 31
+Back_Forearm
+	bounds: 2576, 205, 43, 26
+Stage_2/Back_Forearm
+	bounds: 2576, 205, 43, 26
+Stage_3/Back_Forearm
+	bounds: 2576, 205, 43, 26
+Back_Hand
+	bounds: 2009, 25, 34, 34
+Stage_2/Back_Hand
+	bounds: 2009, 25, 34, 34
+Stage_3/Back_Hand
+	bounds: 2009, 25, 34, 34
+Back_Lower_Leg
+	bounds: 647, 24, 60, 56
+Stage_2/Back_Lower_Leg
+	bounds: 647, 24, 60, 56
+Back_Shoulder
+	bounds: 604, 27, 37, 36
+Back_Upper_Arm
+	bounds: 1381, 29, 28, 43
+Stage_2/Back_Upper_Arm
+	bounds: 1381, 29, 28, 43
+Back_Upper_Leg
+	bounds: 2663, 15, 93, 87
+Front_Eyeball
+	bounds: 566, 17, 32, 32
+Front_Eyebrow
+	bounds: 964, 39, 57, 34
+Stage_2/Front_Eyebrow
+	bounds: 964, 39, 57, 34
+Front_Foot
+	bounds: 3799, 21, 52, 71
+Stage_2/Front_Foot
+	bounds: 3799, 21, 52, 71
+Front_Foot_Claws
+	bounds: 901, 39, 57, 34
+Stage_2/Front_Foot_Claws
+	bounds: 901, 39, 57, 34
+Stage_3/Front_Foot_Claws
+	bounds: 901, 39, 57, 34
+Front_Forearm
+	bounds: 1159, 42, 46, 31
+Stage_2/Front_Forearm
+	bounds: 1159, 42, 46, 31
+Stage_3/Front_Forearm
+	bounds: 1159, 42, 46, 31
+Front_Hand
+	bounds: 785, 28, 39, 34
+Stage_2/Front_Hand
+	bounds: 785, 28, 39, 34
+Stage_3/Front_Hand
+	bounds: 785, 28, 39, 34
+Front_Lower_Leg
+	bounds: 3300, 20, 70, 64
+Stage_2/Front_Lower_Leg
+	bounds: 3300, 20, 70, 64
+Front_Pupil
+	bounds: 484, 218, 8, 13
+Stage_2/Front_Pupil
+	bounds: 484, 218, 8, 13
+Front_Shoulder
+	bounds: 1814, 31, 51, 43
+Front_Upper_Arm
+	bounds: 1111, 31, 42, 42
+Stage_2/Front_Upper_Arm
+	bounds: 1111, 31, 42, 42
+Front_Upper_Leg
+	bounds: 3985, 49, 105, 117
+Head_Base
+	bounds: 6, 6, 111, 113
+	rotate: 90
+Lower_Jaw
+	bounds: 3687, 12, 106, 86
+Neck
+	bounds: 3863, 7, 99, 102
+Stage_2/Neck
+	bounds: 3863, 7, 99, 102
+Shadow
+	bounds: 6, 123, 298, 108
+	offsets: 4, 1, 306, 110
+Stage_2/Back_Shoulder
+	bounds: 1534, 27, 52, 47
+Stage_2/Back_Upper_Leg
+	bounds: 124, 6, 109, 111
+Stage_2/Front_Eyeball
+	bounds: 2827, 199, 34, 32
+Stage_2/Front_Shoulder
+	bounds: 1476, 27, 52, 47
+Stage_2/Front_Upper_Leg
+	bounds: 2313, 39, 109, 112
+	rotate: 90
+Stage_2/Head_Base
+	bounds: 3541, 92, 125, 139
+Stage_2/Lower_Jaw
+	bounds: 3586, 8, 89, 93
+Stage_2/Tail
+	bounds: 2313, 102, 258, 129
+Stage_2/Torso
+	bounds: 875, 78, 188, 153
+Stage_2/Upper_Jaw
+	bounds: 3434, 89, 142, 101
+	rotate: 90
+Stage_3/Back_Eye
+	bounds: 3637, 203, 28, 28
+	offsets: 0, 1, 29, 29
+Stage_3/Back_Foot
+	bounds: 448, 12, 63, 72
+Stage_3/Back_Lower_Leg
+	bounds: 1032, 28, 73, 61
+Stage_4/Back_Lower_Leg
+	bounds: 1032, 28, 73, 61
+Stage_3/Back_Shoulder
+	bounds: 1418, 26, 52, 48
+Stage_4/Back_Shoulder
+	bounds: 1418, 26, 52, 48
+Stage_3/Back_Upper_Arm
+	bounds: 3124, 26, 43, 48
+Stage_3/Back_Upper_Leg
+	bounds: 3892, 115, 109, 116
+Stage_4/Back_Upper_Leg
+	bounds: 3892, 115, 109, 116
+Stage_3/Front_Eye
+	bounds: 408, 24, 34, 36
+Stage_3/Front_Eyebrow
+	bounds: 1750, 35, 58, 39
+Stage_3/Front_Foot
+	bounds: 3386, 18, 66, 71
+Stage_3/Front_Lower_Leg
+	bounds: 2431, 36, 74, 62
+Stage_4/Front_Lower_Leg
+	bounds: 2431, 36, 74, 62
+Stage_3/Front_Shoulder
+	bounds: 2254, 26, 52, 49
+Stage_4/Front_Shoulder
+	bounds: 2254, 26, 52, 49
+Stage_3/Front_Upper_Arm
+	bounds: 3074, 26, 44, 48
+Stage_3/Front_Upper_Leg
+	bounds: 1889, 40, 109, 115
+	rotate: 90
+Stage_4/Front_Upper_Leg
+	bounds: 1889, 40, 109, 115
+	rotate: 90
+Stage_3/Head_Base
+	bounds: 3304, 86, 125, 145
+Stage_3/Lower_Jaw
+	bounds: 239, 9, 60, 108
+Stage_3/Neck
+	bounds: 3671, 94, 137, 117
+	rotate: 90
+Stage_3/Tail
+	bounds: 1889, 102, 263, 129
+Stage_3/Torso
+	bounds: 310, 54, 193, 177
+Stage_3/Upper_Jaw
+	bounds: 3096, 80, 151, 98
+	rotate: 90
+Stage_3/Upper_Jaw_Tendril_1
+	bounds: 2510, 26, 16, 71
+Stage_3/Upper_Jaw_Tendril_3
+	bounds: 4070, 179, 16, 52
+Stage_4/Back_Foot
+	bounds: 830, 21, 66, 72
+Stage_4/Back_Foot_Back_Claw
+	bounds: 713, 22, 39, 27
+Stage_4/Back_Foot_Front_Claws
+	bounds: 1592, 36, 73, 38
+Stage_4/Back_Forearm
+	bounds: 1324, 40, 51, 32
+Stage_4/Back_Hand
+	bounds: 3200, 18, 49, 58
+Stage_4/Back_Upper_Arm
+	bounds: 2153, 17, 45, 58
+Stage_4/Front_Eye
+	bounds: 4007, 180, 57, 51
+Stage_4/Front_Foot
+	bounds: 3456, 13, 66, 70
+Stage_4/Front_Foot_Back_Claw
+	bounds: 517, 22, 40, 27
+Stage_4/Front_Foot_Front_Claws
+	bounds: 1671, 36, 73, 38
+Stage_4/Front_Forearm
+	bounds: 1267, 39, 51, 33
+Stage_4/Front_Hand
+	bounds: 3527, 25, 50, 58
+Stage_4/Front_Upper_Arm
+	bounds: 2204, 17, 44, 58
+Stage_4/Head_Base
+	bounds: 2944, 16, 125, 98
+Stage_4/Neck_Back
+	bounds: 2533, 51, 144, 91
+Stage_4/Neck_Front
+	bounds: 2801, 53, 144, 91
+Stage_4/Neck_Tendril_2
+	bounds: 2793, 34, 13, 74
+	rotate: 90
+Stage_4/Tail
+	bounds: 2576, 102, 245, 129
+Stage_4/Torso_Back
+	bounds: 692, 54, 178, 177
+Stage_4/Torso_Front
+	bounds: 508, 54, 178, 177
+Stage_4/Torso_Tendrils_1
+	bounds: 1889, 213, 18, 80
+	rotate: 90
+Stage_4/Torso_Tendrils_2
+	bounds: 3173, 9, 20, 65
+Stage_4/Torso_Tendrils_3
+	bounds: 3255, 16, 24, 60
+Stage_4/Torso_Tendrils_4
+	bounds: 2313, 211, 20, 58
+	rotate: 90
+Stage_4/Upper_Jaw
+	bounds: 3200, 82, 149, 98
+	rotate: 90
+Stage_4/Upper_Jaw_Tendril_2
+	bounds: 2010, 65, 32, 138
+	rotate: 90
+Stage_4/Upper_Jaw_Tendril_3
+	bounds: 305, 33, 16, 94
+	rotate: 90
+Stage_4/Upper_Jaw_Tendril_4
+	bounds: 2761, 15, 26, 82
+Tail
+	bounds: 2827, 120, 263, 111
+Torso
+	bounds: 1069, 78, 186, 153
+Upper_Jaw
+	bounds: 3794, 98, 133, 92
+	rotate: 90
+swipe_VFX/swipe_red
+	bounds: 2158, 81, 150, 149
+	rotate: 90
+swipe_VFX/swipe_white1
+	bounds: 1260, 78, 153, 152
+	offsets: 1, 1, 155, 154
+	rotate: 90
+swipe_VFX/swipe_white2
+	bounds: 1732, 80, 151, 151
+	offsets: 1, 1, 154, 153
+swipe_VFX/swipe_white3
+	bounds: 1575, 80, 151, 151
+	offsets: 1, 1, 154, 153
+swipe_VFX/swipe_white4
+	bounds: 1418, 80, 151, 151
+	offsets: 1, 1, 154, 153

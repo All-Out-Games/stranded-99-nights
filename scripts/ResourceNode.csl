@@ -10,6 +10,7 @@ Resource_Type :: enum {
     SULFUR;
     ICESHARD;
     OBSIDIAN;
+    STORMCORE;
 }
 
 ResourceNodeTracking :: struct {
@@ -34,6 +35,7 @@ ResourceNodeTracking :: struct {
             case .SULFUR: return "sulfur_harvested";
             case .ICESHARD: return "iceshard_harvested";
             case .OBSIDIAN: return "obsidian_harvested";
+            case .STORMCORE: return "stormcore_harvested";
             case .NONE: return "";
         }
         return "";
@@ -191,6 +193,7 @@ ResourceNode :: class : Interactable {
             case .SULFUR: return "sulfur";
             case .ICESHARD: return "ice.shard";
             case .OBSIDIAN: return "obsidian.shard";
+            case .STORMCORE: return "stormcore";
             case .NONE: return "";
         }
         return "";
