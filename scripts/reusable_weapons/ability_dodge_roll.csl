@@ -54,15 +54,15 @@ Dodge_Roll_Effect :: class : Effect_Base {
         }
 
         if direction.x > 0.001 {
-            player->set_facing_right(true);
+            player.set_facing_right(true);
         } else if direction.x < -0.001 {
-            player->set_facing_right(false);
+            player.set_facing_right(false);
         }
-        player->set_aim_target(player.entity.world_position + direction * DODGE_ROLL_FALLBACK_AIM_DISTANCE);
+        player.set_aim_target(player.entity.world_position + direction * DODGE_ROLL_FALLBACK_AIM_DISTANCE);
         game_sfx_play(.DODGE_ROLL, player.entity);
 
         if player.animator != null && player.animator.instance != null && player.animator.instance.state_machine != null {
-            player.animator.instance.state_machine->set_trigger(DODGE_ROLL_TRIGGER);
+            player.animator.instance.state_machine.set_trigger(DODGE_ROLL_TRIGGER);
         }
     }
 
@@ -94,7 +94,7 @@ Dodge_Roll_Ability :: class : Ability_Base {
 
     can_use :: proc(ability: Ability_Base) -> bool {
         p := ability.player.(Player);
-        active_effect := p.entity->get_active_effect();
+        active_effect := p.entity.get_active_effect();
         return active_effect == null || active_effect.#type != Dodge_Roll_Effect;
     }
 
@@ -114,7 +114,7 @@ Dodge_Roll_Ability :: class : Ability_Base {
             effect.direction = direction;
             effect.speed = speed;
             effect.standstill_startup_ramp = !has_motion_intent;
-            p.entity->set_active_effect(effect);
+            p.entity.set_active_effect(effect);
         }
 
         ability.current_cooldown = DODGE_ROLL_COOLDOWN_SECONDS;

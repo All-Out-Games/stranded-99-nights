@@ -45,14 +45,14 @@ CraftingSystem :: struct {
         if recipe.outputs.count > 0 {
             out_def := CraftingSystem.resolve_item_def(recipe.outputs[0].item_id);
             if out_def != null {
-                return out_def->get_icon();
+                return out_def.get_icon();
             }
         }
 
         if recipe.inputs.count > 0 {
             in_def := CraftingSystem.resolve_item_def(recipe.inputs[0].item_id);
             if in_def != null {
-                return in_def->get_icon();
+                return in_def.get_icon();
             }
         }
 
@@ -78,14 +78,14 @@ CraftingSystem :: struct {
         if recipe == null return;
         if item_id.count <= 0 return;
         if count <= 0 return;
-        recipe.inputs->append(CraftingSystem.make_stack(item_id, count));
+        recipe.inputs.append(CraftingSystem.make_stack(item_id, count));
     }
 
     add_output :: proc(recipe: Crafting_Recipe, item_id: string, count: s64) {
         if recipe == null return;
         if item_id.count <= 0 return;
         if count <= 0 return;
-        recipe.outputs->append(CraftingSystem.make_stack(item_id, count));
+        recipe.outputs.append(CraftingSystem.make_stack(item_id, count));
     }
 
     get_recipes :: proc() -> [..]Crafting_Recipe {
@@ -94,7 +94,7 @@ CraftingSystem :: struct {
 
         if !initted {
             initted = true;
-            recipes->clear();
+            recipes.clear();
 
             
 
@@ -106,7 +106,7 @@ CraftingSystem :: struct {
             CraftingSystem.add_input(r4, "wood", 7);
             CraftingSystem.add_input(r4, "scrap", 3);
             CraftingSystem.add_output(r4, "spear", 1);
-            recipes->append(r4);
+            recipes.append(r4);
 
             r5 := CraftingSystem.make_recipe(
                 "craft_sword",
@@ -116,7 +116,7 @@ CraftingSystem :: struct {
             CraftingSystem.add_input(r5, "wood", 10);
             CraftingSystem.add_input(r5, "scrap", 10);
             CraftingSystem.add_output(r5, "sword", 1);
-            recipes->append(r5);
+            recipes.append(r5);
 
             r6 := CraftingSystem.make_recipe(
                 "craft_crossbow",
@@ -127,7 +127,7 @@ CraftingSystem :: struct {
             CraftingSystem.add_input(r6, "fiber", 4);
             CraftingSystem.add_input(r6, "scrap", 6);
             CraftingSystem.add_output(r6, "crossbow", 1);
-            recipes->append(r6);
+            recipes.append(r6);
 
             r9 := CraftingSystem.make_recipe(
                 "craft_bandage",
@@ -136,7 +136,7 @@ CraftingSystem :: struct {
             );
             CraftingSystem.add_input(r9, "fiber", 2);
             CraftingSystem.add_output(r9, "bandage", 1);
-            recipes->append(r9);
+            recipes.append(r9);
 
             r10 := CraftingSystem.make_recipe(
                 "craft_medkit",
@@ -146,7 +146,7 @@ CraftingSystem :: struct {
             CraftingSystem.add_input(r10, "fish", 2);
             CraftingSystem.add_input(r10, "fiber", 2);
             CraftingSystem.add_output(r10, "medkit", 1);
-            recipes->append(r10);
+            recipes.append(r10);
 
             r7 := CraftingSystem.make_recipe(
                 "craft_arrow_bundle",
@@ -157,7 +157,7 @@ CraftingSystem :: struct {
             CraftingSystem.add_input(r7, "scrap", 1);
             CraftingSystem.add_input(r7, "fiber", 1);
             CraftingSystem.add_output(r7, "arrow", 10);
-            recipes->append(r7);
+            recipes.append(r7);
 
             r8 := CraftingSystem.make_recipe(
                 "craft_ar_ammo_bundle",
@@ -167,7 +167,7 @@ CraftingSystem :: struct {
             CraftingSystem.add_input(r8, "sulfur", 6);
             CraftingSystem.add_input(r8, "scrap", 10);
             CraftingSystem.add_output(r8, "ar_ammo", 30);
-            recipes->append(r8);
+            recipes.append(r8);
 
             r8b := CraftingSystem.make_recipe(
                 "craft_heavy_ammo_bundle",
@@ -177,7 +177,7 @@ CraftingSystem :: struct {
             CraftingSystem.add_input(r8b, "sulfur", 10);
             CraftingSystem.add_input(r8b, "scrap", 15);
             CraftingSystem.add_output(r8b, "heavy_ammo", 30);
-            recipes->append(r8b);
+            recipes.append(r8b);
 
             r8c := CraftingSystem.make_recipe(
                 "craft_tornado_ammo_bundle",
@@ -187,7 +187,7 @@ CraftingSystem :: struct {
             CraftingSystem.add_input(r8c, "scrap", 10);
             CraftingSystem.add_input(r8c, "wood", 10);
             CraftingSystem.add_output(r8c, "tornado_ammo", 5);
-            recipes->append(r8c);
+            recipes.append(r8c);
 
             
         }
@@ -216,9 +216,9 @@ CraftingSystem :: struct {
         total: s64 = 0;
         i := 0;
         while i < inventory.capacity {
-            item := inventory->get_item(i);
+            item := inventory.get_item(i);
             if item != null {
-                if item->get_definition() == defn {
+                if item.get_definition() == defn {
                     total += item.quantity;
                 }
             }
@@ -235,9 +235,9 @@ CraftingSystem :: struct {
         remaining := count;
         i := 0;
         while i < inventory.capacity && remaining > 0 {
-            item := inventory->get_item(i);
+            item := inventory.get_item(i);
             if item != null {
-                if item->get_definition() == defn {
+                if item.get_definition() == defn {
                     if item.quantity <= remaining {
                         remaining -= item.quantity;
                         Items.destroy_item_instance(item);
@@ -278,7 +278,8 @@ CraftingSystem :: struct {
             if output_def == null return false;
 
             room := Items.calculate_room_in_inventory_for_item(output_def, inv);
-            if room < output.count {
+            output_count := ItemManager.ClampSpawnCountToMaxStack(output_def, output.count);
+            if room < output_count {
                 return false;
             }
         }
@@ -304,7 +305,7 @@ CraftingSystem :: struct {
 
             have := CraftingSystem.get_item_count_in_inventory(inv, input_def);
             if have < input.count {
-                Notifier.notify(player, "Need % x% (have %)", {input_def->get_name(), input.count, have});
+                Notifier.notify(player, "Need % x% (have %)", {input_def.get_name(), input.count, have});
                 return false;
             }
         }
@@ -317,8 +318,9 @@ CraftingSystem :: struct {
             }
 
             room := Items.calculate_room_in_inventory_for_item(output_def, inv);
-            if room < output.count {
-                Notifier.notify(player, "Not enough room for %", {output_def->get_name()});
+            output_count := ItemManager.ClampSpawnCountToMaxStack(output_def, output.count);
+            if room < output_count {
+                Notifier.notify(player, "Not enough room for %", {output_def.get_name()});
                 return false;
             }
         }
@@ -334,7 +336,8 @@ CraftingSystem :: struct {
 
         for output: recipe.outputs {
             output_def := CraftingSystem.resolve_item_def(output.item_id);
-            new_item := Items.create_item_instance(output_def, output.count);
+            output_count := ItemManager.ClampSpawnCountToMaxStack(output_def, output.count);
+            new_item := ItemManager.CreateItemFromDefinition(output_def, output_count);
             if new_item == null {
                 Notifier.notify(player, "Craft failed while creating output item.", {});
                 return false;
@@ -356,12 +359,12 @@ CraftingSystem :: struct {
         if !player.crafting_ui_open return;
 
         recipes := CraftingSystem.get_recipes();
-        modal_rect := UI.get_safe_screen_rect()->center_rect()->grow(420, 720, 420, 720);
+        modal_rect := UI.get_safe_screen_rect().center_rect().grow(420, 720, 420, 720);
         close_header_handle: UIK.Interact_Handle;
         close_button_handle: UIK.Interact_Handle;
         craft_button_handle: UIK.Interact_Handle;
         recipe_buttons: [..]Crafting_Recipe_Button;
-        recipe_buttons->reserve(recipes.count);
+        recipe_buttons.reserve(recipes.count);
 
         UIK.begin(UIK.modal(modal_rect, 1000, v4{0, 0, 0, 0.65}));
 
@@ -452,7 +455,7 @@ CraftingSystem :: struct {
         recipe_list.height = UIK.flex(1);
         recipe_list.gap = 8;
         recipe_list.padding = v4{2, 2, 2, 2};
-        UIK.list_begin(format_string("craft_recipe_scroll_%", {player->get_user_id()}), recipe_list);
+        UIK.list_begin(format_string("craft_recipe_scroll_%", {player.get_user_id()}), recipe_list);
         for i: 0..recipes.count - 1 {
             recipe := recipes[i];
             if recipe == null continue;
@@ -464,20 +467,18 @@ CraftingSystem :: struct {
             row.show_background = false;
             UIK.panel_begin(row);
 
-            recipe_desc := UIK.layout_row();
+            recipe_desc := UIK.panel_styled(.BUTTON_BASIC_GREY);
+            if is_selected {
+                recipe_desc = UIK.panel_styled(.BUTTON_BASIC_GREEN);
+            }
             recipe_desc.width = UIK.flex(1);
             recipe_desc.height = UIK.flex(1);
             recipe_desc.padding = v4{10, 16, 10, 16};
             recipe_desc.gap = 12;
             recipe_desc.cross_align = .CENTER;
-            recipe_desc.background_style = .BUTTON_BASIC_GREY;
-            recipe_desc.show_background = true;
-            if is_selected {
-                recipe_desc.background_style = .BUTTON_BASIC_GREEN;
-            }
 
             recipe_handle := UIK.panel_begin_interactive(format_string("craft_recipe_%", {i}), recipe_desc);
-            recipe_buttons->append(Crafting_Recipe_Button{i, recipe_handle});
+            recipe_buttons.append(Crafting_Recipe_Button{i, recipe_handle});
 
             icon := CraftingSystem.get_primary_recipe_icon(recipe);
             if icon != null {
@@ -522,7 +523,7 @@ CraftingSystem :: struct {
         details_content.height = UIK.flex(1);
         details_content.padding = v4{2, 4, 2, 4};
         details_content.gap = 8;
-        UIK.list_begin(format_string("craft_detail_scroll_%", {player->get_user_id()}), details_content);
+        UIK.list_begin(format_string("craft_detail_scroll_%", {player.get_user_id()}), details_content);
 
         details_title := UIK.text_title();
         UIK.text_set_halign(&details_title, .LEFT);
@@ -548,16 +549,17 @@ CraftingSystem :: struct {
             display_name := input.item_id;
             input_icon: Texture_Asset;
             if input_def != null {
-                display_name = input_def->get_name();
+                display_name = input_def.get_name();
                 have = CraftingSystem.get_item_count_in_inventory(player.default_inventory, input_def);
-                input_icon = input_def->get_icon();
+                input_icon = input_def.get_icon();
             }
 
-            line := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
+            line := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+            line.width = UIK.flex(1);
+            line.height = UIK.fit();
+            line.gap = 10;
             line.padding = v4{8, 10, 8, 10};
             line.cross_align = .CENTER;
-            line.background_style = .MODAL_TRANSP_BLACK;
-            line.show_background = true;
             UIK.panel_begin(line);
 
             if input_icon != null {
@@ -591,15 +593,16 @@ CraftingSystem :: struct {
             output_name := output.item_id;
             output_icon: Texture_Asset;
             if output_def != null {
-                output_name = output_def->get_name();
-                output_icon = output_def->get_icon();
+                output_name = output_def.get_name();
+                output_icon = output_def.get_icon();
             }
 
-            line := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
+            line := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+            line.width = UIK.flex(1);
+            line.height = UIK.fit();
+            line.gap = 10;
             line.padding = v4{8, 10, 8, 10};
             line.cross_align = .CENTER;
-            line.background_style = .MODAL_TRANSP_BLACK;
-            line.show_background = true;
             UIK.panel_begin(line);
 
             if output_icon != null {
@@ -617,7 +620,8 @@ CraftingSystem :: struct {
             line_text := UIK.text_body();
             UIK.text_set_halign(&line_text, .LEFT);
             UIK.text_set_color(&line_text, v4{0.9, 0.95, 1.0, 1.0});
-            UIK.text(format_string("% x%", {output_name, output.count}), line_text);
+            output_count := ItemManager.ClampSpawnCountToMaxStack(output_def, output.count);
+            UIK.text(format_string("% x%", {output_name, output_count}), line_text);
             UIK.panel_end();
         }
 

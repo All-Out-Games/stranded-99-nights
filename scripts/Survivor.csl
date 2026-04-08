@@ -23,7 +23,7 @@ Survivor :: class : Interactable {
     CRY_LOOP_SFX_PATH :: "cry_loop.wav";
 
     ao_start :: method() {
-        this->set_listener(this);
+        this.set_listener(this);
 
         if radius <= 0.0 {
             radius = 2.0;
@@ -44,8 +44,8 @@ Survivor :: class : Interactable {
             drop_spawn_radius = 0.0;
         }
 
-        this->set_text("Rescue");
-        this->set_hold_text("Rescuing...");
+        this.set_text("Rescue");
+        this.set_hold_text("Rescuing...");
 
         if Game.is_server() && survivor_color == .NONE {
             rng := rng_root_seed();
@@ -71,7 +71,7 @@ Survivor :: class : Interactable {
 
         rescued = true;
         rescued_time = get_time();
-        this->set_text("Rescued");
+        this.set_text("Rescued");
         stop_cry_loop();
         play_rescue_animation();
 
@@ -92,7 +92,7 @@ Survivor :: class : Interactable {
         resolved_rescue = true;
         if Game.is_server() {
             stop_cry_loop();
-            entity->destroy();
+            entity.destroy();
         }
     }
 
@@ -131,14 +131,14 @@ Survivor :: class : Interactable {
         if applied_survivor_color == survivor_color return;
 
         if spine_animator == null {
-            spine_animator = entity->get_component(Spine_Animator);
+            spine_animator = entity.get_component(Spine_Animator);
         }
         if spine_animator == null return;
 
-        spine_animator->awaken();
+        spine_animator.awaken();
         if spine_animator.instance == null return;
 
-        spine_animator.instance->set_color_replace_color(survivor_color);
+        spine_animator.instance.set_color_replace_color(survivor_color);
         applied_survivor_color = survivor_color;
     }
 
@@ -167,14 +167,14 @@ Survivor :: class : Interactable {
         if rescue_animation_name.count <= 0 return;
 
         if spine_animator == null {
-            spine_animator = entity->get_component(Spine_Animator);
+            spine_animator = entity.get_component(Spine_Animator);
         }
         if spine_animator == null return;
 
-        spine_animator->awaken();
+        spine_animator.awaken();
         if spine_animator.instance == null return;
 
-        spine_animator.instance->set_animation(rescue_animation_name, false, 0);
+        spine_animator.instance.set_animation(rescue_animation_name, false, 0);
     }
 
     reward_player :: method(player: Player) {
@@ -188,7 +188,7 @@ Survivor :: class : Interactable {
         manager := get_game_manager();
         if manager == null return;
 
-        moon_reward := manager->get_survivor_moon_reward_amount();
+        moon_reward := manager.get_survivor_moon_reward_amount();
         if moon_reward <= 0 return;
 
         Economy.deposit_currency(player, MOON_CURRENCY, moon_reward);
@@ -223,7 +223,7 @@ Survivor :: class : Interactable {
                 if i < loot_item_amounts.count {
                     amount = max(loot_item_amounts[i], 1);
                 }
-                reward_entries->append(Survivor_Loot_Entry{defn, amount});
+                reward_entries.append(Survivor_Loot_Entry{defn, amount});
             }
             i += 1;
         }

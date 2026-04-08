@@ -114,13 +114,13 @@ Mob :: class : Component {
         if base_local_scale.x == 0.0 { base_local_scale.x = 1.0; }
         if base_local_scale.y == 0.0 { base_local_scale.y = 1.0; }
 
-        movement_agent = entity->get_component(Movement_Agent);
+        movement_agent = entity.get_component(Movement_Agent);
         if movement_agent == null {
-            movement_agent = entity->add_component(Movement_Agent);
+            movement_agent = entity.add_component(Movement_Agent);
         }
 
         if spine_animator == null {
-            spine_animator = entity->get_component(Spine_Animator);
+            spine_animator = entity.get_component(Spine_Animator);
         }
 
         if idle_animation_name == "" { idle_animation_name = "idle"; }
@@ -146,15 +146,15 @@ Mob :: class : Component {
         if is_dead {
             update_is_moving_animation_state();
             if get_time() >= death_time_seconds + despawn_delay_seconds {
-                entity->destroy();
+                entity.destroy();
             }
             return;
         }
 
         if movement_agent == null {
-            movement_agent = entity->get_component(Movement_Agent);
+            movement_agent = entity.get_component(Movement_Agent);
             if movement_agent == null {
-                movement_agent = entity->add_component(Movement_Agent);
+                movement_agent = entity.add_component(Movement_Agent);
             }
         }
 
@@ -165,7 +165,7 @@ Mob :: class : Component {
         ignore_beacon_safety := false;
         manager := get_game_manager();
         if manager != null {
-            ignore_beacon_safety = manager->should_mobs_ignore_beacon_safety();
+            ignore_beacon_safety = manager.should_mobs_ignore_beacon_safety();
         }
 
         target: Player;
@@ -175,7 +175,7 @@ Mob :: class : Component {
         attack_distance_target_pos: v2;
         attacking_voyage_boat := false;
 
-        if manager != null && manager->is_voyage_damage_redirect_active() {
+        if manager != null && manager.is_voyage_damage_redirect_active() {
             voyage_boat := resolve_voyage_boat_target();
             if voyage_boat == null {
                 movement_agent.velocity = {0.0, 0.0};
@@ -183,12 +183,12 @@ Mob :: class : Component {
                 return;
             }
 
-            voyage_target_entity := voyage_boat->resolve_attack_target_entity(entity.id);
+            voyage_target_entity := voyage_boat.resolve_attack_target_entity(entity.id);
             if voyage_target_entity != null {
                 target_pos = voyage_target_entity.world_position;
                 attack_target_entity_id = voyage_target_entity.id;
             } else {
-                target_pos = voyage_boat->get_attack_position();
+                target_pos = voyage_boat.get_attack_position();
                 attack_target_entity_id = voyage_boat.entity.id;
             }
             path_target_pos = get_path_target_position(target_pos);
@@ -222,7 +222,7 @@ Mob :: class : Component {
         };
         dist_sq := length_squared(to_target);
         attack_range_sq := attack_range * attack_range;
-        if !attacking_voyage_boat && Boss && !this->is_boss_fully_aggro() {
+        if !attacking_voyage_boat && Boss && !this.is_boss_fully_aggro() {
             destination = get_boss_keep_away_destination(path_target_pos);
             if !ignore_beacon_safety {
                 destination = BeaconSystem.clamp_position_outside_safety_zones(destination, self_pos);
@@ -243,7 +243,7 @@ Mob :: class : Component {
                 return;
             }
 
-            path_result := movement_agent->set_path_target(boss_last_path_destination, move_speed);
+            path_result := movement_agent.set_path_target(boss_last_path_destination, move_speed);
             if path_result.success {
                 face_from_movement_direction(path_result.move_direction);
             } else {
@@ -257,9 +257,9 @@ Mob :: class : Component {
         if dist_sq <= attack_range_sq {
             if now >= next_attack_time_seconds {
                 if attacking_voyage_boat {
-                    manager->apply_voyage_damage(manager->get_voyage_mob_damage());
+                    manager.apply_voyage_damage(manager.get_voyage_mob_damage());
                 } else {
-                    target->apply_mob_damage(attack_damage);
+                    target.apply_mob_damage(attack_damage);
                 }
                 trigger_attack_animation();
                 next_attack_time_seconds = now + attack_speed;
@@ -267,7 +267,7 @@ Mob :: class : Component {
             return;
         }
 
-        path_result := movement_agent->set_path_target(destination, move_speed);
+        path_result := movement_agent.set_path_target(destination, move_speed);
         if path_result.success {
             face_from_movement_direction(path_result.move_direction);
         } else {
@@ -439,7 +439,7 @@ Mob :: class : Component {
             if boat.entity == null continue;
             if !#alive(boat.entity) continue;
 
-            dist_sq := length_squared(boat->get_attack_position() - entity.world_position);
+            dist_sq := length_squared(boat.get_attack_position() - entity.world_position);
             if !found_closest || dist_sq < closest_dist_sq {
                 closest = boat;
                 closest_dist_sq = dist_sq;
@@ -470,13 +470,13 @@ Mob :: class : Component {
     should_ignore_beacon_safety :: method() -> bool {
         manager := get_game_manager();
         if manager == null return false;
-        return manager->should_mobs_ignore_beacon_safety();
+        return manager.should_mobs_ignore_beacon_safety();
     }
 
     should_path_to_closest_reachable_target_point :: method() -> bool {
         manager := get_game_manager();
         if manager == null return false;
-        return manager->should_mobs_path_to_closest_reachable_target_point();
+        return manager.should_mobs_path_to_closest_reachable_target_point();
     }
 
     get_path_target_position :: method(target_pos: v2) -> v2 {
@@ -490,7 +490,7 @@ Mob :: class : Component {
 
         hint_as_int: int = 0;
         snapped_pos: v2;
-        if navmesh->try_find_closest_point_on_navmesh(target_pos, ref snapped_pos, ref hint_as_int) {
+        if navmesh.try_find_closest_point_on_navmesh(target_pos, ref snapped_pos, ref hint_as_int) {
             return snapped_pos;
         }
 
@@ -508,11 +508,11 @@ Mob :: class : Component {
 
         hint_as_int: int = 0;
         snapped_pos: v2;
-        if navmesh->try_find_closest_point_on_navmesh(desired_pos, ref snapped_pos, ref hint_as_int) {
+        if navmesh.try_find_closest_point_on_navmesh(desired_pos, ref snapped_pos, ref hint_as_int) {
             return snapped_pos;
         }
 
-        if navmesh->try_find_closest_point_on_navmesh(fallback_pos, ref snapped_pos, ref hint_as_int) {
+        if navmesh.try_find_closest_point_on_navmesh(fallback_pos, ref snapped_pos, ref hint_as_int) {
             return snapped_pos;
         }
 
@@ -523,7 +523,7 @@ Mob :: class : Component {
         if player == null return false;
         if player.entity == null return false;
         if player.health <= 0.0 return false;
-        if player->is_dead_for_night_state() return false;
+        if player.is_dead_for_night_state() return false;
         if !ignore_beacon_safety && BeaconSystem.is_position_inside_active_safety_zone(player.entity.world_position) {
             return false;
         }
@@ -562,9 +562,9 @@ Mob :: class : Component {
 
         manager := get_game_manager();
         if manager == null return false;
-        if !manager->is_night_time() return false;
+        if !manager.is_night_time() return false;
 
-        current_night := manager->get_nights() + 1;
+        current_night := manager.get_nights() + 1;
         return current_night >= NightAggro;
     }
 
@@ -594,8 +594,8 @@ Mob :: class : Component {
         is_night := false;
         is_raid_night := false;
         if manager != null {
-            is_night = manager->is_night_time();
-            is_raid_night = manager->is_raid_event_active();
+            is_night = manager.is_night_time();
+            is_raid_night = manager.is_raid_event_active();
         }
 
         if is_night {
@@ -628,7 +628,7 @@ Mob :: class : Component {
         manager := get_game_manager();
         if manager == null return;
         if movement_agent == null return;
-        movement_agent->set_navmesh_to_lock_to(manager.player_navmesh);
+        movement_agent.set_navmesh_to_lock_to(manager.player_navmesh);
     }
 
     face_from_movement_direction :: method(dir: v2) {
@@ -644,7 +644,7 @@ Mob :: class : Component {
             scale.x = -abs_x;
         }
         scale.y = base_local_scale.y;
-        entity->set_local_scale(scale);
+        entity.set_local_scale(scale);
     }
 
     get_spread_destination :: method(target_pos: v2, target_id: u64) -> v2 {
@@ -683,7 +683,7 @@ Mob :: class : Component {
         for other: nearby_mobs {
             if other == null continue;
             if other == this continue;
-            if !other->is_alive() continue;
+            if !other.is_alive() continue;
 
             delta := v2{self_pos.x - other.entity.world_position.x, self_pos.y - other.entity.world_position.y};
             dist_sq := length_squared(delta);
@@ -705,63 +705,63 @@ Mob :: class : Component {
     setup_animation_state_machine :: method() {
         if spine_animator == null return;
 
-        spine_animator->awaken();
+        spine_animator.awaken();
         if spine_animator.instance == null return;
 
         animation_state_machine = State_Machine.create();
 
-        moving_var := animation_state_machine->create_variable("mob_is_moving", .BOOL);
-        attack_var := animation_state_machine->create_variable("mob_attack", .TRIGGER);
-        death_var := animation_state_machine->create_variable("mob_death", .TRIGGER);
+        moving_var := animation_state_machine.create_variable("mob_is_moving", .BOOL);
+        attack_var := animation_state_machine.create_variable("mob_attack", .TRIGGER);
+        death_var := animation_state_machine.create_variable("mob_death", .TRIGGER);
 
-        layer := animation_state_machine->create_layer("main", 0);
-        idle_state := layer->create_state(idle_animation_name, true);
-        move_state := layer->create_state(move_animation_name, true);
-        attack_state := layer->create_state(attack_animation_name, false);
-        death_state := layer->create_state(death_animation_name, false);
-        layer->set_initial_state(idle_state);
+        layer := animation_state_machine.create_layer("main", 0);
+        idle_state := layer.create_state(idle_animation_name, true);
+        move_state := layer.create_state(move_animation_name, true);
+        attack_state := layer.create_state(attack_animation_name, false);
+        death_state := layer.create_state(death_animation_name, false);
+        layer.set_initial_state(idle_state);
 
-        idle_to_move := layer->create_transition(idle_state, move_state, false);
-        idle_to_move->create_bool_condition(moving_var, true);
+        idle_to_move := layer.create_transition(idle_state, move_state, false);
+        idle_to_move.create_bool_condition(moving_var, true);
 
-        move_to_idle := layer->create_transition(move_state, idle_state, false);
-        move_to_idle->create_bool_condition(moving_var, false);
+        move_to_idle := layer.create_transition(move_state, idle_state, false);
+        move_to_idle.create_bool_condition(moving_var, false);
 
-        any_to_attack := layer->create_global_transition(attack_state, true);
-        any_to_attack->create_trigger_condition(attack_var);
+        any_to_attack := layer.create_global_transition(attack_state, true);
+        any_to_attack.create_trigger_condition(attack_var);
 
-        attack_to_move := layer->create_transition(attack_state, move_state, true);
-        attack_to_move->create_bool_condition(moving_var, true);
+        attack_to_move := layer.create_transition(attack_state, move_state, true);
+        attack_to_move.create_bool_condition(moving_var, true);
 
-        attack_to_idle := layer->create_transition(attack_state, idle_state, true);
-        attack_to_idle->create_bool_condition(moving_var, false);
+        attack_to_idle := layer.create_transition(attack_state, idle_state, true);
+        attack_to_idle.create_bool_condition(moving_var, false);
 
-        any_to_death := layer->create_global_transition(death_state, false);
-        any_to_death->create_trigger_condition(death_var);
+        any_to_death := layer.create_global_transition(death_state, false);
+        any_to_death.create_trigger_condition(death_var);
 
-        spine_animator.instance->set_state_machine(animation_state_machine, true);
+        spine_animator.instance.set_state_machine(animation_state_machine, true);
     }
 
     update_is_moving_animation_state :: method() {
         if animation_state_machine == null return;
         if is_dead {
-            animation_state_machine->set_bool("mob_is_moving", false);
+            animation_state_machine.set_bool("mob_is_moving", false);
             return;
         }
 
         if movement_agent == null {
-            animation_state_machine->set_bool("mob_is_moving", false);
+            animation_state_machine.set_bool("mob_is_moving", false);
             return;
         }
 
         moving := length_squared(movement_agent.velocity) > 0.01;
-        animation_state_machine->set_bool("mob_is_moving", moving);
+        animation_state_machine.set_bool("mob_is_moving", moving);
     }
 
     trigger_attack_animation :: method() {
         if animation_state_machine == null return;
         if is_dead return;
-        animation_state_machine->set_trigger("mob_attack");
+        animation_state_machine.set_trigger("mob_attack");
         play_attack_sfx();
     }
 
@@ -785,16 +785,16 @@ Mob :: class : Component {
 
     trigger_death_animation :: method() {
         if animation_state_machine == null return;
-        animation_state_machine->set_trigger("mob_death");
+        animation_state_machine.set_trigger("mob_death");
     }
 
     resolve_material_player_for_ui :: method() -> Player {
         #static cached_local_player: Player;
         #static cached_fallback_player: Player;
-        if cached_local_player != null && #alive(cached_local_player) && cached_local_player.entity != null && cached_local_player->is_local() {
+        if cached_local_player != null && #alive(cached_local_player) && cached_local_player.entity != null && cached_local_player.is_local() {
             return cached_local_player;
         }
-        if cached_fallback_player != null && #alive(cached_fallback_player) && cached_fallback_player.entity != null && cached_fallback_player->is_local() {
+        if cached_fallback_player != null && #alive(cached_fallback_player) && cached_fallback_player.entity != null && cached_fallback_player.is_local() {
             cached_local_player = cached_fallback_player;
             return cached_local_player;
         }
@@ -805,7 +805,7 @@ Mob :: class : Component {
             if fallback_player == null {
                 fallback_player = p;
             }
-            if p->is_local() {
+            if p.is_local() {
                 local_player = p;
                 break;
             }
@@ -867,7 +867,7 @@ Mob :: class : Component {
         ts.color = {1, 1, 1, 1};
         dn.TextSettings = ts;
 
-        manager.damage_numbers->append(dn);
+        manager.damage_numbers.append(dn);
     }
 
     update_damage_pulse :: method(dt: float) {
@@ -895,13 +895,13 @@ Mob :: class : Component {
 
 mob_apply_damage :: proc(mob: Mob, damage: float) -> bool {
     if mob == null return false;
-    return mob->take_damage(damage);
+    return mob.take_damage(damage);
 }
 
 mob_apply_damage_from_player :: proc(mob: Mob, damage: float, attacker_player_id: u64) -> bool {
     if mob == null return false;
-    mob->set_damage_aggro_target(attacker_player_id);
-    return mob->take_damage(damage);
+    mob.set_damage_aggro_target(attacker_player_id);
+    return mob.take_damage(damage);
 }
 
 mob_damage_all_in_range :: proc(pos: v2, range: float, damage: float) -> s64 {
@@ -912,8 +912,8 @@ mob_damage_all_in_range :: proc(pos: v2, range: float, damage: float) -> s64 {
     hit_count: s64 = 0;
     for mob: nearby {
         if mob == null continue;
-        if !mob->is_alive() continue;
-        mob->take_damage(damage);
+        if !mob.is_alive() continue;
+        mob.take_damage(damage);
         hit_count += 1;
     }
     return hit_count;
@@ -927,7 +927,7 @@ mob_damage_all_in_range_from_player :: proc(pos: v2, range: float, damage: float
     hit_count: s64 = 0;
     for mob: nearby {
         if mob == null continue;
-        if !mob->is_alive() continue;
+        if !mob.is_alive() continue;
         mob_apply_damage_from_player(mob, damage, attacker_player_id);
         hit_count += 1;
     }
@@ -939,9 +939,9 @@ mob_damage_closest_in_range :: proc(pos: v2, range: float, damage: float) -> Mob
 
     mob, found := Scene.get_closest_component_in_range(pos, range, Mob);
     if !found || mob == null return null, false;
-    if !mob->is_alive() return null, false;
+    if !mob.is_alive() return null, false;
 
-    mob->take_damage(damage);
+    mob.take_damage(damage);
     return mob, true;
 }
 
@@ -950,7 +950,7 @@ mob_damage_closest_in_range_from_player :: proc(pos: v2, range: float, damage: f
 
     mob, found := Scene.get_closest_component_in_range(pos, range, Mob);
     if !found || mob == null return null, false;
-    if !mob->is_alive() return null, false;
+    if !mob.is_alive() return null, false;
 
     mob_apply_damage_from_player(mob, damage, attacker_player_id);
     return mob, true;

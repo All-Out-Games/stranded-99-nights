@@ -48,7 +48,7 @@ POI :: class : Component {
             return false;
         }
 
-        spawned->set_local_position(entity.world_position);
+        spawned.set_local_position(entity.world_position);
         spawned_entity = spawned;
         return true;
     }
@@ -70,7 +70,7 @@ POI :: class : Component {
     destroy_spawned_entity :: method() {
         if spawned_entity == null return;
         if #alive(spawned_entity) {
-            spawned_entity->destroy();
+            spawned_entity.destroy();
         }
         spawned_entity = null;
     }

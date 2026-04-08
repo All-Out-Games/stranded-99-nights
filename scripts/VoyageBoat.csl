@@ -10,7 +10,7 @@ VoyageBoat :: class : Component {
 
     ao_start :: method() {
         damage_pulse_elapsed_seconds = VOYAGE_BOAT_DAMAGE_PULSE_DURATION_SECONDS;
-        sprite_renderer = entity->get_component(Sprite_Renderer);
+        sprite_renderer = entity.get_component(Sprite_Renderer);
         base_sprite_color = {1, 1, 1, 1};
         if sprite_renderer != null {
             base_sprite_color = sprite_renderer.color;

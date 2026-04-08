@@ -31,14 +31,14 @@ Interior :: class : Component {
     }
 
     cache_base_alphas :: method() {
-        base_alphas->clear();
+        base_alphas.clear();
 
         for sprite_renderer: sprite_renderers {
             alpha := 1.0;
             if sprite_renderer != null {
                 alpha = sprite_renderer.color.w;
             }
-            base_alphas->append(alpha);
+            base_alphas.append(alpha);
         }
     }
 

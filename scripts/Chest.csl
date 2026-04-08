@@ -30,7 +30,7 @@ Chest :: class : Interactable {
     resolved_open: bool;
 
     ao_start :: method() {
-        this->set_listener(this);
+        this.set_listener(this);
 
         if radius <= 0.0 {
             radius = 1.8;
@@ -51,8 +51,8 @@ Chest :: class : Interactable {
             drop_spawn_radius = 0.0;
         }
 
-        this->set_text("Open Chest");
-        this->set_hold_text("Opening...");
+        this.set_text("Open Chest");
+        this.set_hold_text("Opening...");
     }
 
     can_use :: method(player: Player) -> bool {
@@ -66,7 +66,7 @@ Chest :: class : Interactable {
 
         opened = true;
         opened_time = get_time();
-        this->set_text("Opened");
+        this.set_text("Opened");
         game_sfx_play(.CHEST_OPEN, entity);
         play_open_animation();
 
@@ -86,7 +86,7 @@ Chest :: class : Interactable {
 
         resolved_open = true;
         if Game.is_server() {
-            entity->destroy();
+            entity.destroy();
         }
     }
 
@@ -94,14 +94,14 @@ Chest :: class : Interactable {
         if open_animation_name.count <= 0 return;
 
         if spine_animator == null {
-            spine_animator = entity->get_component(Spine_Animator);
+            spine_animator = entity.get_component(Spine_Animator);
         }
         if spine_animator == null return;
 
-        spine_animator->awaken();
+        spine_animator.awaken();
         if spine_animator.instance == null return;
 
-        spine_animator.instance->set_animation(open_animation_name, false, 0);
+        spine_animator.instance.set_animation(open_animation_name, false, 0);
     }
 
     find_loot_definition :: method(item_id: string) -> Item_Definition {
@@ -142,7 +142,7 @@ Chest :: class : Interactable {
                 if i < loot_item_amounts.count {
                     amount = max(loot_item_amounts[i], 1);
                 }
-                remaining_entries->append(Chest_Loot_Entry{defn, amount});
+                remaining_entries.append(Chest_Loot_Entry{defn, amount});
             }
             i += 1;
         }

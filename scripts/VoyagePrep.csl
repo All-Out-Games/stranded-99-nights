@@ -26,13 +26,13 @@ VoyagePrep :: class : Interactable {
     READY_PLAYER_TRIM_INTERVAL_SECONDS :: 0.5;
 
     ao_start :: method() {
-        this->set_listener(this);
+        this.set_listener(this);
 
         if radius <= 0.0 {
             radius = 2.0;
         }
 
-        this->set_hold_text("Preparing...");
+        this.set_hold_text("Preparing...");
         next_ready_player_trim_time_seconds = 0.0;
         reset_for_round();
     }
@@ -51,15 +51,15 @@ VoyagePrep :: class : Interactable {
     on_interact :: method(player: Player) {
         if player == null return;
 
-        player->close_all_non_log_ui_modals();
+        player.close_all_non_log_ui_modals();
         player.voyage_prep_ui_open = true;
         player.active_voyage_prep = this;
         game_sfx_play(.UI_CLICK, player.entity);
     }
 
     reset_for_round :: method() {
-        stockpile->clear();
-        ready_player_user_ids->clear();
+        stockpile.clear();
+        ready_player_user_ids.clear();
         completion_feedback_sent = false;
         next_ready_player_trim_time_seconds = 0.0;
         refresh_prompt_text();
@@ -67,10 +67,10 @@ VoyagePrep :: class : Interactable {
 
     refresh_prompt_text :: method() {
         if is_complete() {
-            this->set_text("Queue Voyage");
+            this.set_text("Queue Voyage");
             return;
         }
-        this->set_text("Prepare Voyage");
+        this.set_text("Prepare Voyage");
     }
 
     get_requirements :: method() -> [..]VoyagePrep_Requirement {
@@ -81,17 +81,17 @@ VoyagePrep :: class : Interactable {
 
         if !initted {
             initted = true;
-            island1_requirements->append({"scrap", 10});
-            island1_requirements->append({"root.resin", 3});
-            island1_requirements->append({"fish", 10});
+            island1_requirements.append({"scrap", 10});
+            island1_requirements.append({"root.resin", 3});
+            island1_requirements.append({"fish", 10});
 
-            island2_requirements->append({"scrap", 15});
-            island2_requirements->append({"ice.shard", 5});
-            island2_requirements->append({"bandage", 5});
+            island2_requirements.append({"scrap", 15});
+            island2_requirements.append({"ice.shard", 5});
+            island2_requirements.append({"bandage", 5});
 
-            island3_requirements->append({"sulfur", 20});
-            island3_requirements->append({"medkit", 5});
-            island3_requirements->append({"obsidian.shard", 5});
+            island3_requirements.append({"sulfur", 20});
+            island3_requirements.append({"medkit", 5});
+            island3_requirements.append({"obsidian.shard", 5});
         }
 
         manager := get_game_manager();
@@ -132,7 +132,7 @@ VoyagePrep :: class : Interactable {
             i += 1;
         }
 
-        stockpile->append({item_id, amount});
+        stockpile.append({item_id, amount});
     }
 
     is_complete :: method() -> bool {
@@ -156,7 +156,7 @@ VoyagePrep :: class : Interactable {
 
         manager := get_game_manager();
         if manager != null && Game.is_server() {
-            manager->show_broadcast_notification(COMPLETION_NOTIFICATION_TEXT);
+            manager.show_broadcast_notification(COMPLETION_NOTIFICATION_TEXT);
         }
     }
 
@@ -173,21 +173,21 @@ VoyagePrep :: class : Interactable {
 
     is_player_ready :: method(player: Player) -> bool {
         if player == null return false;
-        return has_ready_player_user_id(player->get_user_id());
+        return has_ready_player_user_id(player.get_user_id());
     }
 
     set_player_ready :: method(player: Player) {
         if player == null return;
 
-        user_id := player->get_user_id();
+        user_id := player.get_user_id();
         if user_id.count <= 0 return;
         if has_ready_player_user_id(user_id) return;
 
-        ready_player_user_ids->append(user_id);
+        ready_player_user_ids.append(user_id);
     }
 
     clear_ready_players :: method() {
-        ready_player_user_ids->clear();
+        ready_player_user_ids.clear();
     }
 
     has_current_player_user_id :: method(user_id: string) -> bool {
@@ -195,7 +195,7 @@ VoyagePrep :: class : Interactable {
 
         foreach player: component_iterator(Player) {
             if player == null continue;
-            if player->get_user_id() == user_id {
+            if player.get_user_id() == user_id {
                 return true;
             }
         }
@@ -211,7 +211,7 @@ VoyagePrep :: class : Interactable {
                 continue;
             }
 
-            ready_player_user_ids->ordered_remove_by_index(i);
+            ready_player_user_ids.ordered_remove_by_index(i);
         }
     }
 
@@ -249,12 +249,12 @@ VoyagePrepSystem :: struct {
     try_deposit_item :: proc(player: Player, prep: VoyagePrep, item_id: string) -> bool {
         if player == null return false;
         if prep == null return false;
-        if prep->is_complete() return false;
+        if prep.is_complete() return false;
         if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
             return false;
         }
 
-        requirements := prep->get_requirements();
+        requirements := prep.get_requirements();
         found_requirement: VoyagePrep_Requirement;
         has_requirement := false;
         for requirement: requirements {
@@ -269,7 +269,7 @@ VoyagePrepSystem :: struct {
             return false;
         }
 
-        already_stockpiled := prep->get_stockpile_count(item_id);
+        already_stockpiled := prep.get_stockpile_count(item_id);
         if already_stockpiled >= found_requirement.count {
             return false;
         }
@@ -284,18 +284,18 @@ VoyagePrepSystem :: struct {
             return false;
         }
 
-        prep->add_stockpile_item(item_id, 1);
-        prep->handle_completion_if_needed();
+        prep.add_stockpile_item(item_id, 1);
+        prep.handle_completion_if_needed();
         return true;
     }
 
     try_ready_player :: proc(player: Player, prep: VoyagePrep) -> bool {
         if player == null return false;
         if prep == null return false;
-        if !prep->is_complete() return false;
+        if !prep.is_complete() return false;
 
-        prep->set_player_ready(player);
-        if prep->are_all_players_ready() {
+        prep.set_player_ready(player);
+        if prep.are_all_players_ready() {
             return VoyagePrepSystem.try_start_voyage(prep);
         }
         return true;
@@ -306,10 +306,10 @@ VoyagePrepSystem :: struct {
 
         manager := get_game_manager();
         if manager == null return false;
-        if !prep->are_all_players_ready() return false;
-        if !manager->try_start_next_island_voyage() return false;
+        if !prep.are_all_players_ready() return false;
+        if !manager.try_start_next_island_voyage() return false;
 
-        prep->clear_ready_players();
+        prep.clear_ready_players();
         VoyagePrepSystem.close_modal_for_component(prep);
         return true;
     }
@@ -333,29 +333,29 @@ VoyagePrepSystem :: struct {
         if !player.voyage_prep_ui_open return;
 
         prep := player.active_voyage_prep;
-        if prep == null || prep.entity == null || !prep.entity->get_local_enabled() {
+        if prep == null || prep.entity == null || !prep.entity.get_local_enabled() {
             VoyagePrepSystem.close_modal(player);
             return;
         }
 
-        requirements := prep->get_requirements();
-        ready_count := prep->get_ready_player_count();
-        player_count := prep->get_current_player_count();
+        requirements := prep.get_requirements();
+        ready_count := prep.get_ready_player_count();
+        player_count := prep.get_current_player_count();
 
         ready_text := format_string("Crew Ready: %/%", {ready_count, player_count});
         status_text := "Fill every supply category before the crew can ready up.";
         status_tint := v4{1.0, 0.88, 0.7, 1.0};
-        if prep->is_complete() {
+        if prep.is_complete() {
             status_text = "Voyage prep complete. Queue up with the crew to launch.";
             status_tint = v4{0.65, 1.0, 0.65, 1.0};
         }
 
-        modal_rect := UI.get_safe_screen_rect()->center_rect()->grow(414, 690, 414, 690);
+        modal_rect := UI.get_safe_screen_rect().center_rect().grow(414, 690, 414, 690);
         close_header_handle: UIK.Interact_Handle;
         close_button_handle: UIK.Interact_Handle;
         ready_button_handle: UIK.Interact_Handle;
         deposit_buttons: [..]VoyagePrep_Deposit_Button;
-        deposit_buttons->reserve(requirements.count);
+        deposit_buttons.reserve(requirements.count);
 
         UIK.begin(UIK.modal(modal_rect, 1000, v4{0, 0, 0, 0.65}));
 
@@ -371,7 +371,7 @@ VoyagePrepSystem :: struct {
         content.height = UIK.flex(1);
         content.padding = v4{12, 16, 12, 16};
         content.gap = 16;
-        UIK.list_begin(format_string("voyage_prep_scroll_%", {player->get_user_id()}), content);
+        UIK.list_begin(format_string("voyage_prep_scroll_%", {player.get_user_id()}), content);
 
         info_panel := UIK.panel_styled(.MODAL_TRANSP_BLACK);
         info_panel.width = UIK.flex(1);
@@ -428,25 +428,26 @@ VoyagePrepSystem :: struct {
 
         for requirement: requirements {
             defn := ItemManager.TryFindItem(requirement.item_id);
-            stockpiled := prep->get_stockpile_count(requirement.item_id);
+            stockpiled := prep.get_stockpile_count(requirement.item_id);
             have: s64 = 0;
             display_name := requirement.item_id;
             icon: Texture_Asset;
 
             if defn != null {
-                display_name = defn->get_name();
+                display_name = defn.get_name();
                 have = BeaconSystem.get_item_count_in_inventory(player.default_inventory, defn);
-                icon = defn->get_icon();
+                icon = defn.get_icon();
             }
 
             requirement_met := stockpiled >= requirement.count;
             can_deposit := have > 0 && !requirement_met;
 
-            entry := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
+            entry := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+            entry.width = UIK.flex(1);
+            entry.height = UIK.fit();
+            entry.gap = 10;
             entry.padding = v4{10, 10, 10, 20};
             entry.cross_align = .CENTER;
-            entry.background_style = .MODAL_TRANSP_BLACK;
-            entry.show_background = true;
             UIK.panel_begin(entry);
 
             if icon != null {
@@ -503,7 +504,7 @@ VoyagePrepSystem :: struct {
             }
 
             deposit_handle := UIK.button(format_string("voyage_prep_deposit_%", {requirement.item_id}), button_label, deposit_desc);
-            deposit_buttons->append(VoyagePrep_Deposit_Button{requirement.item_id, deposit_handle, can_deposit});
+            deposit_buttons.append(VoyagePrep_Deposit_Button{requirement.item_id, deposit_handle, can_deposit});
             UIK.panel_end();
         }
         UIK.panel_end();
@@ -543,15 +544,15 @@ VoyagePrepSystem :: struct {
         ready_desc.panel.width = UIK.flex(1);
         ready_desc.panel.height = UIK.pixels(82);
         button_label := "Ready?";
-        already_ready := prep->is_player_ready(player);
-        can_ready := prep->is_complete() && !already_ready;
+        already_ready := prep.is_player_ready(player);
+        can_ready := prep.is_complete() && !already_ready;
         if already_ready {
             ready_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_BLUE);
             ready_desc.panel.width = UIK.flex(1);
             ready_desc.panel.height = UIK.pixels(82);
             ready_desc.disabled = true;
             button_label = "Ready!";
-        } else if !prep->is_complete() {
+        } else if !prep.is_complete() {
             ready_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY);
             ready_desc.panel.width = UIK.flex(1);
             ready_desc.panel.height = UIK.pixels(82);

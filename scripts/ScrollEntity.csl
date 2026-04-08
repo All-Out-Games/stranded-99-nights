@@ -9,7 +9,7 @@ ScrollEntity :: class : Component {
             travel_time_seconds = 1.0;
         }
 
-        entity->set_local_position(v2.{0.0, 0.0});
+        entity.set_local_position(v2.{0.0, 0.0});
         elapsed_time_seconds = 0.0;
     }
 
@@ -17,10 +17,10 @@ ScrollEntity :: class : Component {
         elapsed_time_seconds += dt;
 
         progress := clamp(elapsed_time_seconds / travel_time_seconds, 0.0, 1.0);
-        entity->set_local_position(lerp(v2.{0.0, 0.0}, destination, progress));
+        entity.set_local_position(lerp(v2.{0.0, 0.0}, destination, progress));
 
         if progress >= 1.0 {
-            entity->set_local_position(v2.{0.0, 0.0});
+            entity.set_local_position(v2.{0.0, 0.0});
             elapsed_time_seconds = 0.0;
         }
     }

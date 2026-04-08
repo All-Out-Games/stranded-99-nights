@@ -15,7 +15,7 @@ Fish_Heal_Effect_Lifetime :: class : Component {
     ao_update :: method(dt: float) {
         elapsed += dt;
         if lifetime > 0.0 && elapsed >= lifetime {
-            entity->destroy();
+            entity.destroy();
         }
     }
 }
@@ -27,7 +27,7 @@ player_get_selected_hotbar_item :: proc(player: Player) -> Item_Instance {
     if player.default_inventory.capacity <= 0 return null;
     if player.last_selected_index < 0 return null;
     if player.last_selected_index >= player.default_inventory.capacity return null;
-    return player.default_inventory->get_item(player.last_selected_index);
+    return player.default_inventory.get_item(player.last_selected_index);
 }
 
 is_healing_item_id :: proc(item_id: string) -> bool {
@@ -51,10 +51,10 @@ player_is_holding_healing_item :: proc(player: Player) -> bool {
     if selected == null return false;
     if selected.quantity <= 0 return false;
 
-    defn := selected->get_definition();
+    defn := selected.get_definition();
     if defn == null return false;
 
-    return is_healing_item_id(defn->get_id());
+    return is_healing_item_id(defn.get_id());
 }
 
 player_get_selected_heal_amount :: proc(player: Player) -> float {
@@ -62,10 +62,10 @@ player_get_selected_heal_amount :: proc(player: Player) -> float {
     if selected == null return 0.0;
     if selected.quantity <= 0 return 0.0;
 
-    defn := selected->get_definition();
+    defn := selected.get_definition();
     if defn == null return 0.0;
 
-    return get_heal_amount_for_item_id(defn->get_id());
+    return get_heal_amount_for_item_id(defn.get_id());
 }
 
 player_get_selected_healing_item_icon :: proc(player: Player) -> Texture_Asset {
@@ -73,11 +73,11 @@ player_get_selected_healing_item_icon :: proc(player: Player) -> Texture_Asset {
     if selected == null return null;
     if selected.quantity <= 0 return null;
 
-    defn := selected->get_definition();
+    defn := selected.get_definition();
     if defn == null return null;
-    if !is_healing_item_id(defn->get_id()) return null;
+    if !is_healing_item_id(defn.get_id()) return null;
 
-    return defn->get_icon();
+    return defn.get_icon();
 }
 
 consume_selected_item_stack :: proc(player: Player, amount: s64) -> bool {
@@ -102,10 +102,10 @@ spawn_fish_heal_effect :: proc(player: Player) {
     effect_entity := Scene.instantiate(prefab);
     if effect_entity == null return;
 
-    effect_entity->set_parent(player.entity, false);
-    effect_entity->set_local_position(v2{0.0, 0.0});
+    effect_entity.set_parent(player.entity, false);
+    effect_entity.set_local_position(v2{0.0, 0.0});
 
-    effect_lifetime := effect_entity->add_component(Fish_Heal_Effect_Lifetime);
+    effect_lifetime := effect_entity.add_component(Fish_Heal_Effect_Lifetime);
     effect_lifetime.lifetime = FISH_HEAL_EFFECT_DURATION;
 }
 

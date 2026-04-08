@@ -14,7 +14,7 @@ ItemManager :: struct {
 
         if !initted {
             initted = true;
-            defs->clear();
+            defs.clear();
 
 
             wood_icon := get_asset(Texture_Asset, "Items/Wood.png");
@@ -35,7 +35,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(wood);
+            defs.append(wood);
 
             // Scrap
             scrap := Items.register_item_definition(
@@ -43,7 +43,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(scrap);
+            defs.append(scrap);
 
             // Fiber
             fiber := Items.register_item_definition(
@@ -51,7 +51,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(fiber);
+            defs.append(fiber);
 
             // Fish
             fish := Items.register_item_definition(
@@ -59,7 +59,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(fish);
+            defs.append(fish);
 
              // Sulfur
             sulfur := Items.register_item_definition(
@@ -67,7 +67,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(sulfur);
+            defs.append(sulfur);
 
              // Root Resin
             root_resin := Items.register_item_definition(
@@ -75,7 +75,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(root_resin);
+            defs.append(root_resin);
 
             // Ice Shard
             ice_shard := Items.register_item_definition(
@@ -83,7 +83,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(ice_shard);
+            defs.append(ice_shard);
 
             // Obsidian Shard
             obsidian_shard := Items.register_item_definition(
@@ -91,7 +91,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(obsidian_shard);
+            defs.append(obsidian_shard);
 
             // Bandage
             bandage := Items.register_item_definition(
@@ -99,7 +99,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(bandage);
+            defs.append(bandage);
 
             // Medkit
             medkit := Items.register_item_definition(
@@ -107,7 +107,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(medkit);
+            defs.append(medkit);
 
             // Arrow
             arrow := Items.register_item_definition(
@@ -115,7 +115,7 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(arrow);
+            defs.append(arrow);
 
 
             // Crafting progression items (temporary icons until dedicated art is added).
@@ -124,14 +124,14 @@ ItemManager :: struct {
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(plank);
+            defs.append(plank);
 
             stick := Items.register_item_definition(
                 {"stick", "Stick", wood_icon, 64, .COMMON},
                 Item_Definition,
                 Item_Instance
             );
-            defs->append(stick);
+            defs.append(stick);
 
         }
 
@@ -157,7 +157,7 @@ ItemManager :: struct {
 
     GetArticle :: proc(defn: Item_Definition) -> string {
         if defn == null return "a";
-        switch defn->get_id() {
+        switch defn.get_id() {
             case "Gold":   return "some";
             case "Silver": return "some";
             case "Axe":    return "an";
@@ -171,9 +171,47 @@ ItemManager :: struct {
         return ItemManager.CreateItemFromDefinition(defn, count);
     }
 
+    GetMaxStackLimit :: proc(defn: Item_Definition) -> s64 {
+        if defn == null return 1;
+
+        switch defn.get_id() {
+            case "wood":           return 64;
+            case "scrap":          return 64;
+            case "fiber":          return 64;
+            case "fish":           return 64;
+            case "sulfur":         return 64;
+            case "root.resin":     return 64;
+            case "ice.shard":      return 64;
+            case "obsidian.shard": return 64;
+            case "bandage":        return 64;
+            case "medkit":         return 64;
+            case "arrow":          return 64;
+            case "plank":          return 64;
+            case "stick":          return 64;
+        }
+
+        i := 0;
+        while i < AMMO_TYPE_COUNT {
+            ammo_info := get_ammo_info(i);
+            if ammo_info.id == defn.get_id() {
+                return ammo_info.stack_size;
+            }
+            i += 1;
+        }
+
+        return 1;
+    }
+
+    ClampSpawnCountToMaxStack :: proc(defn: Item_Definition, count: s64) -> s64 {
+        max_stack := ItemManager.GetMaxStackLimit(defn);
+        if max_stack <= 0 return count;
+        if count > max_stack return max_stack;
+        return count;
+    }
+
     CreateItemFromDefinition :: proc(defn: Item_Definition, count: s64 = 1) -> Item_Instance {
-        
-        instance := Items.create_item_instance(defn, count);
+        spawn_count := ItemManager.ClampSpawnCountToMaxStack(defn, count);
+        instance := Items.create_item_instance(defn, spawn_count);
 
         // C# special-case:
         // `if (defn.Id == "Breakable_Item") instance.Durability = 1f;`
@@ -187,20 +225,20 @@ ItemManager :: struct {
     TryUseItem :: proc(player: Player, item: Item_Instance) {
         // Placeholder port. Hook this up to inventory UI / hotbar selection if needed.
         if player == null return;
-        if !player->is_local_or_server() return;
+        if !player.is_local_or_server() return;
 
         if item == null {
             log_warning("Tried to use a null item", {});
             return;
         }
 
-        defn := item->get_definition();
+        defn := item.get_definition();
         if defn == null {
             log_warning("Tried to use an item with no definition", {});
             return;
         }
 
-        id := defn->get_id();
+        id := defn.get_id();
         if id == "" {
             log_warning("Tried to use an empty item", {});
         }
@@ -224,7 +262,7 @@ ItemManager :: struct {
     TryFindItem :: proc(item_id: string) -> Item_Definition {
         defs := ItemManager._definitions();
         for defn: defs {
-            if defn != null && defn->get_id() == item_id {
+            if defn != null && defn.get_id() == item_id {
                 return defn;
             }
         }
@@ -234,7 +272,7 @@ ItemManager :: struct {
     TryFindItemByName :: proc(item_name: string) -> Item_Definition {
         defs := ItemManager._definitions();
         for defn: defs {
-            if defn != null && defn->get_name() == item_name {
+            if defn != null && defn.get_name() == item_name {
                 return defn;
             }
         }

@@ -60,7 +60,7 @@ TutorialSystem :: struct {
 
         if TutorialSystem.get_active_step(player) == .SURVIVE_5_NIGHTS {
             manager := get_game_manager();
-            if manager != null && manager->get_nights() >= 5 {
+            if manager != null && manager.get_nights() >= 5 {
                 TutorialSystem.mark_step_complete(player, .SURVIVE_5_NIGHTS);
             }
         }
@@ -304,7 +304,7 @@ TutorialSystem :: struct {
         foreach mob: component_iterator(Mob) {
             if mob == null continue;
             if mob.entity == null continue;
-            if !mob->is_alive() continue;
+            if !mob.is_alive() continue;
 
             delta := mob.entity.world_position - player_pos;
             dist_sq := length_squared(delta);
@@ -323,9 +323,9 @@ TutorialSystem :: struct {
 
         manager := get_game_manager();
         if manager == null return;
-        if manager->get_phase() != .IN_ROUND return;
-        if manager->get_round_start_overlay_alpha() > 0.0 return;
-        if manager->should_draw_round_start_text() return;
+        if manager.get_phase() != .IN_ROUND return;
+        if manager.get_round_start_overlay_alpha() > 0.0 return;
+        if manager.should_draw_round_start_text() return;
 
         step := TutorialSystem.get_active_step(player);
         if step == .NONE return;
@@ -346,7 +346,7 @@ TutorialSystem :: struct {
         step_ts.outline_thickness = 3;
         step_ts.outline_color = {0, 0, 0, 1};
 
-        text_rect := UI.get_safe_screen_rect()->center_rect()->grow(110, 620, 110, 620)->offset(0, 230);
+        text_rect := UI.get_safe_screen_rect().center_rect().grow(110, 620, 110, 620).offset(0, 230);
         UI.text(text_rect, step_ts, TutorialSystem.get_step_text(step));
 
         if player.crafting_ui_open || player.beacon_ui_open || player.merchant_ui_open || player.voyage_prep_ui_open || player.codex_ui_open || player.log_page_ui_open {
@@ -355,7 +355,7 @@ TutorialSystem :: struct {
 
         target_pos, has_target := TutorialSystem.get_step_target_position(player, step);
         if has_target {
-            player->DrawArrowToPosition(target_pos);
+            player.DrawArrowToPosition(target_pos);
         }
     }
 }

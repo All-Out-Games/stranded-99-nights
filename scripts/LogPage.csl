@@ -14,12 +14,17 @@ LogPageTracking :: struct {
     }
 }
 
+Codex_Entry_Button :: struct {
+    log_index: int;
+    handle: UIK.Interact_Handle;
+}
+
 LogPageSystem :: struct {
     open_page_modal :: proc(player: Player, log_index: int, keep_codex_open: bool = false) {
         if player == null return;
         if log_index <= 0 return;
 
-        player->close_all_non_log_ui_modals();
+        player.close_all_non_log_ui_modals();
         player.codex_ui_open = keep_codex_open;
         player.log_page_ui_open = true;
         player.active_log_page_index = log_index;
@@ -34,7 +39,7 @@ LogPageSystem :: struct {
     open_codex :: proc(player: Player) {
         if player == null return;
 
-        player->close_all_non_log_ui_modals();
+        player.close_all_non_log_ui_modals();
         player.codex_ui_open = true;
         player.log_page_ui_open = false;
         player.active_log_page_index = 0;
@@ -51,11 +56,10 @@ LogPageSystem :: struct {
         manager := get_game_manager();
         if manager == null return;
 
-        page_count := manager->get_picked_up_log_page_count();
+        page_count := manager.get_picked_up_log_page_count();
         if page_count <= 0 return;
 
         bs := UI.default_button_settings();
-        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_5.png");
         bs.press_scaling = 0.35;
 
         ts := UI.default_text_settings();
@@ -66,35 +70,34 @@ LogPageSystem :: struct {
         ts.outline_thickness = 2;
         ts.outline_color = {0, 0, 0, 1};
 
-        button_rect := UI.get_safe_screen_rect()->bottom_left_rect()->grow(34, 145, 34, 145)->offset(150, 165);
-        if UI.button(button_rect, bs, ts, format_string("Codex (%)", {page_count})).clicked {
+        button_rect := UI.get_safe_screen_rect().bottom_left_rect().grow(34, 145, 34, 145).offset(150, 165);
+        button_label := format_string("Codex (%)", {page_count});
+
+        codex_icon := get_asset(Texture_Asset, "blue-book-icon_07e660.png");
+        if codex_icon != null {
+            bs.sprite = codex_icon;
+            button_rect = UI.get_safe_screen_rect().bottom_left_rect().grow(48, 48, 48, 48).offset(100, 180);
+            button_label = "";
+        } else {
+            bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_5.png");
+        }
+
+        if UI.button(button_rect, bs, ts, button_label).clicked {
             LogPageSystem.open_codex(player);
             game_sfx_play(.UI_CLICK, player.entity);
         }
     }
 
-    draw_codex_entry_button :: proc(player: Player, rect: Rect, log_index: int) {
-        if player == null return;
-        if log_index <= 0 return;
-
-        bs := UI.default_button_settings();
-        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_8.png");
-        bs.press_scaling = 0.35;
-
-        ts := UI.default_text_settings();
-        ts.size = 28;
-        ts.halign = .CENTER;
-        ts.valign = .CENTER;
-        ts.do_outline = true;
-        ts.outline_thickness = 2;
-        ts.outline_color = {0, 0, 0, 1};
-
-        UI.push_id("codex_log_%", {log_index});
-        defer UI.pop_id();
-        if UI.button(rect, bs, ts, format_string("Log Page %", {log_index})).clicked {
-            LogPageSystem.open_page_modal(player, log_index, true);
-            game_sfx_play(.UI_CLICK, player.entity);
-        }
+    draw_codex_entry_button :: proc(log_index: int) -> UIK.Interact_Handle {
+        button_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_BLUE);
+        button_desc.panel.width = UIK.flex(1);
+        button_desc.panel.height = UIK.flex(1);
+        button_desc.label_text.role = .BUTTON_AUTO;
+        return UIK.button(
+            format_string("codex_log_%", {log_index}),
+            format_string("Log Page %", {log_index}),
+            button_desc
+        );
     }
 
     draw_codex_ui :: proc(player: Player) {
@@ -107,79 +110,129 @@ LogPageSystem :: struct {
             return;
         }
 
-        page_count := manager->get_picked_up_log_page_count();
+        page_count := manager.get_picked_up_log_page_count();
         if page_count <= 0 {
             LogPageSystem.close_codex(player);
             return;
         }
 
-        ts := UI.default_text_settings();
-        ts.do_outline = true;
-        ts.outline_color = {0, 0, 0, 1};
-        ts.outline_thickness = 2;
+        modal_rect := UI.get_safe_screen_rect().center_rect().grow(414, 690, 414, 690);
+        scroll_id := format_string("codex_modal_scroll_%", {player.get_user_id()});
+        close_header_handle: UIK.Interact_Handle;
+        close_button_handle: UIK.Interact_Handle;
+        entry_buttons: [..]Codex_Entry_Button;
+        entry_buttons.reserve(page_count);
 
-        bs := UI.default_button_settings();
-        bs.sprite = get_asset(Texture_Asset, "$AO/new/modal/buttons_2/button_3.png");
-        bs.press_scaling = 0.35;
+        UIK.begin(UIK.modal(modal_rect, 1000, v4{0, 0, 0, 0.65}));
 
-        UI.push_screen_draw_context();
-        defer UI.pop_draw_context();
-        UI.push_layer(2400);
-        defer UI.pop_layer();
+        shell := UIK.panel_modal(.BLACK);
+        shell.padding = v4{0, 0, 0, 0};
+        shell.gap = 0;
+        UIK.panel_begin(shell);
 
-        UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {0, 0, 0, 0.78});
+        title_desc := UIK.title_area_desc("Codex");
+        codex_icon := get_asset(Texture_Asset, "blue-book-icon_07e660.png");
+        if codex_icon != null {
+            title_desc.icon = codex_icon;
+        }
+        close_header_handle = UIK.title_area(title_desc);
 
-        panel_rect := UI.get_safe_screen_rect()->center_rect()->grow(360, 540, 360, 540);
-        UI.quad(panel_rect, core_globals.white_sprite, {0.06, 0.07, 0.09, 0.96});
-        UI.quad(panel_rect->inset(5), core_globals.white_sprite, {0.12, 0.13, 0.18, 0.98});
+        content := UIK.layout_column();
+        content.width = UIK.flex(1);
+        content.height = UIK.flex(1);
+        content.padding = v4{12, 16, 12, 16};
+        content.gap = 16;
+        UIK.list_begin(scroll_id, content);
 
-        content_rect := panel_rect->inset(20);
-        header_rect := content_rect->cut_top(70);
-        info_rect := content_rect->cut_top(50);
-        close_rect := content_rect->cut_bottom(92)->bottom_center_rect()->grow(36, 165, 36, 165)->offset(0, 8);
-        list_rect := content_rect;
+        info_panel := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+        info_panel.width = UIK.flex(1);
+        info_panel.height = UIK.fit();
+        info_panel.padding = v4{10, 14, 10, 14};
+        UIK.panel_begin(info_panel);
+        info_text := UIK.text_body();
+        UIK.text_set_halign(&info_text, .LEFT);
+        UIK.text(
+            "Recovered pages stay in your codex for this run. Open any discovered entry to read it again.",
+            info_text
+        );
+        UIK.panel_end();
 
-        title_ts := ts;
-        title_ts.size = 52;
-        title_ts.halign = .LEFT;
-        title_ts.valign = .CENTER;
-        UI.text(header_rect, title_ts, "Codex");
+        summary_panel := UIK.panel_interior(.INSET);
+        summary_panel.width = UIK.flex(1);
+        summary_panel.height = UIK.fit();
+        summary_panel.padding = v4{12, 12, 12, 12};
+        summary_panel.gap = 6;
+        UIK.panel_begin(summary_panel);
 
-        info_ts := ts;
-        info_ts.size = 26;
-        info_ts.halign = .LEFT;
-        info_ts.valign = .CENTER;
-        info_ts.color = {0.82, 0.9, 1.0, 1.0};
-        UI.text(info_rect, info_ts, "Recovered Pages This Run: %", {page_count});
+        summary_title := UIK.text_title();
+        UIK.text_set_halign(&summary_title, .LEFT);
+        UIK.text("Recovered Pages", summary_title);
+
+        summary_body := UIK.text_body();
+        UIK.text_set_halign(&summary_body, .LEFT);
+        UIK.text_set_color(&summary_body, v4{0.82, 0.9, 1.0, 1.0});
+        UIK.text(format_string("Recovered this run: %", {page_count}), summary_body);
+        UIK.panel_end();
 
         display_index := 0;
         while display_index < page_count {
-            row_rect := list_rect->cut_top(82)->inset(4);
-            left_rect := row_rect->subrect(0.0, 0.0, 0.5, 1.0)->inset(0, 6, 0, 0);
-            right_rect := row_rect->subrect(0.5, 0.0, 1.0, 1.0)->inset(0, 0, 0, 6);
+            row := UIK.layout_row(UIK.flex(1), UIK.pixels(78), 10);
+            row.cross_align = .STRETCH;
+            row.show_background = false;
+            UIK.panel_begin(row);
 
-            left_log_index, has_left := manager->get_picked_up_log_page_at(display_index);
+            left_log_index, has_left := manager.get_picked_up_log_page_at(display_index);
             if has_left {
-                LogPageSystem.draw_codex_entry_button(player, left_rect, left_log_index);
+                left_handle := LogPageSystem.draw_codex_entry_button(left_log_index);
+                entry_buttons.append(Codex_Entry_Button{left_log_index, left_handle});
+            } else {
+                UIK.spacer(UIK.flex(1), UIK.pixels(1));
             }
 
             if display_index + 1 < page_count {
-                right_log_index, has_right := manager->get_picked_up_log_page_at(display_index + 1);
+                right_log_index, has_right := manager.get_picked_up_log_page_at(display_index + 1);
                 if has_right {
-                    LogPageSystem.draw_codex_entry_button(player, right_rect, right_log_index);
+                    right_handle := LogPageSystem.draw_codex_entry_button(right_log_index);
+                    entry_buttons.append(Codex_Entry_Button{right_log_index, right_handle});
+                } else {
+                    UIK.spacer(UIK.flex(1), UIK.pixels(1));
                 }
+            } else {
+                UIK.spacer(UIK.flex(1), UIK.pixels(1));
             }
 
+            UIK.panel_end();
             display_index += 2;
         }
 
-        close_ts := ts;
-        close_ts.size = 32;
-        close_ts.halign = .CENTER;
-        close_ts.valign = .CENTER;
-        if UI.button(close_rect, bs, close_ts, "Close").clicked {
+        UIK.list_end();
+
+        action_row := UIK.layout_row(UIK.flex(1), UIK.fit(), 0);
+        action_row.padding = v4{12, 0, 12, 12};
+        action_row.show_background = false;
+        UIK.panel_begin(action_row);
+
+        close_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_RED);
+        close_desc.panel.width = UIK.flex(1);
+        close_desc.panel.height = UIK.pixels(82);
+        close_button_handle = UIK.button("codex_close", "Close", close_desc);
+
+        UIK.panel_end();
+        UIK.panel_end();
+        UIK.end();
+
+        if UIK.clicked(close_header_handle) || UIK.clicked(close_button_handle) {
             LogPageSystem.close_codex(player);
             game_sfx_play(.UI_CLICK, player.entity);
+            return;
+        }
+
+        for entry_button: entry_buttons {
+            if !UIK.clicked(entry_button.handle) continue;
+
+            LogPageSystem.open_page_modal(player, entry_button.log_index, true);
+            game_sfx_play(.UI_CLICK, player.entity);
+            return;
         }
     }
 
@@ -212,16 +265,16 @@ LogPageSystem :: struct {
 
         UI.quad(UI.get_screen_rect(), core_globals.white_sprite, {0, 0, 0, 0.82});
 
-        panel_rect := UI.get_safe_screen_rect()->center_rect()->grow(505, 435, 505, 435);
+        panel_rect := UI.get_safe_screen_rect().center_rect().grow(505, 435, 505, 435);
         UI.quad(panel_rect, core_globals.white_sprite, {0.08, 0.06, 0.04, 0.94});
-        UI.quad(panel_rect->inset(6), core_globals.white_sprite, {0.16, 0.12, 0.08, 0.96});
+        UI.quad(panel_rect.inset(6), core_globals.white_sprite, {0.16, 0.12, 0.08, 0.96});
 
-        content_rect := panel_rect->inset(18);
-        close_rect := content_rect->cut_bottom(96)->bottom_center_rect()->grow(36, 165, 36, 165)->offset(0, 8);
-        page_rect := content_rect->inset(0, 0, 12, 0);
+        content_rect := panel_rect.inset(18);
+        close_rect := content_rect.cut_bottom(96).bottom_center_rect().grow(36, 165, 36, 165).offset(0, 8);
+        page_rect := content_rect.inset(0, 0, 12, 0);
 
         if page_texture != null {
-            UI.quad(page_rect->fit_aspect(page_texture->get_aspect()), page_texture);
+            UI.quad(page_rect.fit_aspect(page_texture.get_aspect()), page_texture);
         } else {
             UI.quad(page_rect, core_globals.white_sprite, {0.22, 0.18, 0.12, 1.0});
 
@@ -230,7 +283,7 @@ LogPageSystem :: struct {
             missing_ts.halign = .CENTER;
             missing_ts.valign = .CENTER;
             missing_ts.word_wrap = true;
-            UI.text(page_rect->inset(24), missing_ts, "Missing log page texture: %", {texture_path});
+            UI.text(page_rect.inset(24), missing_ts, "Missing log page texture: %", {texture_path});
         }
 
         close_ts := ts;
@@ -257,25 +310,25 @@ LogPage :: class : Interactable {
             log_index = 1;
         }
 
-        this->set_listener(this);
-        this->set_text("Read Log");
+        this.set_listener(this);
+        this.set_text("Read Log");
         prompt_offset = v2{0.0, 1.0};
         if radius <= 0.0 {
             radius = 1.8;
         }
 
         manager := get_game_manager();
-        if manager != null && manager->has_log_page_for_run(log_index) {
+        if manager != null && manager.has_log_page_for_run(log_index) {
             is_collected = true;
             if entity != null {
-                entity->set_local_enabled(false);
+                entity.set_local_enabled(false);
             }
             return;
         }
 
         is_collected = false;
         if entity != null {
-            entity->set_local_enabled(true);
+            entity.set_local_enabled(true);
         }
     }
 
@@ -283,7 +336,7 @@ LogPage :: class : Interactable {
         if player == null return false;
         if is_collected return false;
         if entity == null return false;
-        return entity->get_local_enabled();
+        return entity.get_local_enabled();
     }
 
     on_interact :: method(player: Player) {
@@ -293,9 +346,9 @@ LogPage :: class : Interactable {
         manager := ensure_game_manager_exists();
         if manager == null return;
 
-        did_acquire := manager->acquire_log_page_for_run(log_index);
+        did_acquire := manager.acquire_log_page_for_run(log_index);
         is_collected = true;
-        entity->set_local_enabled(false);
+        entity.set_local_enabled(false);
 
         if did_acquire {
             LogPageSystem.open_page_modal(player, log_index);
@@ -307,7 +360,7 @@ LogPage :: class : Interactable {
     reset_for_run_restart :: method() {
         is_collected = false;
         if entity != null {
-            entity->set_local_enabled(true);
+            entity.set_local_enabled(true);
         }
     }
 }

@@ -132,7 +132,7 @@ MobSpawner :: class : Component {
         manager := get_game_manager();
         if manager == null return base_cap;
 
-        scale := manager->get_non_night_only_spawner_spawn_scale();
+        scale := manager.get_non_night_only_spawner_spawn_scale();
         if scale <= 1.0 return base_cap;
 
         scaled_cap := (base_cap.(float) * scale + 0.5).(s64);
@@ -158,7 +158,7 @@ MobSpawner :: class : Component {
         manager := get_game_manager();
         if manager == null return false;
         if IslandIndex == -1 {
-            return manager->is_voyage_damage_redirect_active();
+            return manager.is_voyage_damage_redirect_active();
         }
         return manager.Island == IslandIndex;
     }
@@ -168,7 +168,7 @@ MobSpawner :: class : Component {
         while i < spawned_mobs.count {
             mob_entity := spawned_mobs[i];
             if mob_entity == null || !#alive(mob_entity) {
-                spawned_mobs->unordered_remove_by_index(i);
+                spawned_mobs.unordered_remove_by_index(i);
                 continue;
             }
             i += 1;
@@ -179,9 +179,9 @@ MobSpawner :: class : Component {
         for mob_entity: spawned_mobs {
             if mob_entity == null continue;
             if !#alive(mob_entity) continue;
-            mob_entity->destroy();
+            mob_entity.destroy();
         }
-        spawned_mobs->clear();
+        spawned_mobs.clear();
     }
 
     try_spawn_one_mob :: method() -> bool {
@@ -217,7 +217,7 @@ MobSpawner :: class : Component {
         desired_pos := sample_spawn_position_in_radius();
         spawn_pos: v2;
         hint_as_int := navmesh_triangle_hint.(int);
-        if !navmesh->try_find_closest_point_on_navmesh(desired_pos, ref spawn_pos, ref hint_as_int) {
+        if !navmesh.try_find_closest_point_on_navmesh(desired_pos, ref spawn_pos, ref hint_as_int) {
             return false;
         }
         navmesh_triangle_hint = hint_as_int.(s64);
@@ -229,8 +229,8 @@ MobSpawner :: class : Component {
         spawned_entity := Scene.instantiate(prefab);
         if spawned_entity == null return false;
 
-        spawned_entity->set_local_position(spawn_pos);
-        spawned_mobs->append(spawned_entity);
+        spawned_entity.set_local_position(spawn_pos);
+        spawned_mobs.append(spawned_entity);
         return true;
     }
 
@@ -273,7 +273,7 @@ MobSpawner :: class : Component {
     can_spawn_night_only_mobs :: method() -> bool {
         manager := get_game_manager();
         if manager == null return false;
-        if !manager->is_night_time() return false;
-        return manager->get_nights() > NightCounter;
+        if !manager.is_night_time() return false;
+        return manager.get_nights() > NightCounter;
     }
 }

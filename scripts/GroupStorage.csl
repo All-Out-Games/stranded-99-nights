@@ -4,7 +4,7 @@ GroupStorage :: class : Interactable {
     prompt_text: string @ao_serialize;
 
     ao_start :: method() {
-        this->set_listener(this);
+        this.set_listener(this);
 
         if radius <= 0.0 {
             radius = 2.0;
@@ -14,8 +14,8 @@ GroupStorage :: class : Interactable {
             prompt_text = "Group Storage";
         }
 
-        this->set_text(prompt_text);
-        this->set_hold_text("Opening...");
+        this.set_text(prompt_text);
+        this.set_hold_text("Opening...");
     }
 
     can_use :: method(player: Player) -> bool {

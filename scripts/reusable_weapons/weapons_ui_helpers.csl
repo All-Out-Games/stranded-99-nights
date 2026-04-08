@@ -11,9 +11,9 @@ draw_health_bar :: proc(player: Player) {
     UI.push_scale_factor(5.0 / 540.0);
     defer UI.pop_scale_factor();
 
-    health_rect := player.username_rect->top_center_rect()->offset(0, 5);
-    health_rect = health_rect->grow(13, 70, 0, 70);
-    border_rect := health_rect->grow(5.5, 4, 5.5, 4)->offset(0, -2);
+    health_rect := player.username_rect.top_center_rect().offset(0, 5);
+    health_rect = health_rect.grow(13, 70, 0, 70);
+    border_rect := health_rect.grow(5.5, 4, 5.5, 4).offset(0, -2);
 
     back := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_back.png");
     fill := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_fill.png");
@@ -24,7 +24,7 @@ draw_health_bar :: proc(player: Player) {
 
     // Health fill
     health_pct := player.health / player.max_health;
-    fill_rect := health_rect->subrect(0, 0, health_pct, 1);
+    fill_rect := health_rect.subrect(0, 0, health_pct, 1);
     UI.quad(fill_rect, fill, {1, 1, 1, 1});
 
     // Pip markers
@@ -44,7 +44,7 @@ draw_health_bar :: proc(player: Player) {
             new_width := pip_width * shrink;
             new_x_min := x_min + (pip_width - new_width) / 2.0;
             new_x_max := new_x_min + new_width;
-            pip_rect := health_rect->subrect(new_x_min, 0, new_x_max, 1);
+            pip_rect := health_rect.subrect(new_x_min, 0, new_x_max, 1);
             UI.quad(pip_rect, pip, {1, 1, 1, 1});
         }
         i += 1;
@@ -75,8 +75,8 @@ draw_mob_health_bar :: proc(mob: Mob, material_player: Player = null) {
     UI.push_scale_factor(5.0 / 540.0);
     defer UI.pop_scale_factor();
 
-    health_rect := Rect{pos, pos}->grow(13, 70, 0, 70);
-    border_rect := health_rect->grow(5.5, 4, 5.5, 4)->offset(0, -2);
+    health_rect := Rect{pos, pos}.grow(13, 70, 0, 70);
+    border_rect := health_rect.grow(5.5, 4, 5.5, 4).offset(0, -2);
 
     back := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_back.png");
     fill := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_fill.png");
@@ -85,7 +85,7 @@ draw_mob_health_bar :: proc(mob: Mob, material_player: Player = null) {
     UI.quad(border_rect, back, {1, 1, 1, 1});
 
     health_pct := clamp(mob.health / mob.max_health, 0.0, 1.0);
-    fill_rect := health_rect->subrect(0, 0, health_pct, 1);
+    fill_rect := health_rect.subrect(0, 0, health_pct, 1);
     UI.quad(fill_rect, fill, {1, 1, 1, 1});
 
     total_pips :: 6;
@@ -104,7 +104,7 @@ draw_mob_health_bar :: proc(mob: Mob, material_player: Player = null) {
             new_width := pip_width * shrink;
             new_x_min := x_min + (pip_width - new_width) / 2.0;
             new_x_max := new_x_min + new_width;
-            pip_rect := health_rect->subrect(new_x_min, 0, new_x_max, 1);
+            pip_rect := health_rect.subrect(new_x_min, 0, new_x_max, 1);
             UI.quad(pip_rect, pip, {1, 1, 1, 1});
         }
         i += 1;

@@ -8,6 +8,7 @@ Entity :: class {
     calculate_interpolation_offset :: method() -> v2                                                                                                                    #foreign "entity_calculate_interpolation_offset";
     mark_teleported            :: method()                                                                                                                              #foreign "entity_mark_teleported";
     get_name                   :: method() -> string                                                                                                                    #foreign "entity_get_name";
+    set_name                   :: method(new_name: string)                                                                                                              #foreign "entity_set_name";
     set_parent                 :: method(new_parent: Entity, keep_world_position: bool)                                                                                 #foreign "entity_set_parent";
     set_local_position         :: method(p: v2)                                                                                                                         #foreign "entity_set_local_position";
     lerp_local_position        :: method(target: v2, t: float)                                                                                                          #foreign "entity_lerp_local_position";

@@ -26,7 +26,7 @@ Beam_Ability :: class : Ability_Base {
         wt := p.equipped_weapon_type;
         if wt == .NONE {
             // No weapon equipped: don't enable mouse IK / facing.
-            p->set_mouse_ik_enabled(false);
+            p.set_mouse_ik_enabled(false);
             return;
         }
         config := get_weapon_config(wt);
@@ -38,15 +38,15 @@ Beam_Ability :: class : Ability_Base {
         if aiming.aim {
             p.last_aim_direction = aiming.aim_direction;
             if aiming.aim_direction.x > 0.01 {
-                p->set_facing_right(true);
+                p.set_facing_right(true);
             } else if aiming.aim_direction.x < -0.01 {
-                p->set_facing_right(false);
+                p.set_facing_right(false);
             }
-            p->set_mouse_ik_enabled(true);
-            p->set_aim_target(p.entity.world_position + aiming.aim_direction * 5.0);
+            p.set_mouse_ik_enabled(true);
+            p.set_aim_target(p.entity.world_position + aiming.aim_direction * 5.0);
             draw_thin_aiming_line(p.entity.world_position, aiming.aim_direction, 1.0);
         } else {
-            p->set_mouse_ik_enabled(false);
+            p.set_mouse_ik_enabled(false);
         }
 
         should_fire := false;
@@ -98,7 +98,7 @@ Beam_Ability :: class : Ability_Base {
                     beam_count := 0;
                     for target: nearby {
                         if target == null continue;
-                        if !target->is_alive() continue;
+                        if !target.is_alive() continue;
                         if beam_count >= 5 break;
                         spawn_beam_entity(p.entity.id, target.entity.id, "pink", "pink_beam_loop_AL_mIK", config.beam_range);
                         beam_count += 1;
@@ -154,7 +154,7 @@ Beam_Ability :: class : Ability_Base {
                 (beam_end.x - p.animator.entity.world_position.x) / scale_x,
                 (beam_end.y - p.animator.entity.world_position.y) / scale_y
             };
-            p.animator.instance->set_bone_local_position("BEAM_TARGET", beam_end_local);
+            p.animator.instance.set_bone_local_position("BEAM_TARGET", beam_end_local);
         }
 
         // Stop beam
@@ -182,7 +182,7 @@ Beam_Ability :: class : Ability_Base {
 
         // Out of ammo
         if should_fire && !weapon_has_ammo(p, wt) {
-            if p->is_local() {
+            if p.is_local() {
                 Notifier.notify("Out of ammo!");
             }
             if self.was_shooting {

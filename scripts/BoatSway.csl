@@ -35,13 +35,13 @@ BoatSway :: class : Component {
         y_offset := sin((t * position_frequency * 1.31) + position_phase_offset + 1.57) * vertical_amplitude;
         rotation_offset := sin((t * rotation_frequency) + rotation_phase_offset) * rotation_amplitude_degrees;
 
-        entity->set_local_position(base_local_position + v2.{x_offset, y_offset});
-        entity->set_local_rotation(base_local_rotation + rotation_offset);
+        entity.set_local_position(base_local_position + v2.{x_offset, y_offset});
+        entity.set_local_rotation(base_local_rotation + rotation_offset);
     }
 
     ao_end :: method() {
         if entity == null return;
-        entity->set_local_position(base_local_position);
-        entity->set_local_rotation(base_local_rotation);
+        entity.set_local_position(base_local_position);
+        entity.set_local_rotation(base_local_rotation);
     }
 }

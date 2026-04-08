@@ -5,7 +5,7 @@ draw_ability_name_label :: proc(button_rect: Rect, label: string) {
 	bg := get_asset(Texture_Asset, "$AO/white.png");
 
 	// Draw a small strip at the bottom of the button for readability.
-	label_rect := button_rect->inset(8)->cut_bottom(30);
+	label_rect := button_rect.inset(8).cut_bottom(30);
 	UI.quad(label_rect, bg, v4.{0, 0, 0, 0.55});
 
 	ts := UI.default_text_settings();
@@ -30,7 +30,7 @@ Private_Server_Start_Ability :: class : Ability_Base {
         p := ability.player.(Player);
         manager := get_game_manager();
         if manager == null return false;
-        return manager->can_player_force_start_from_lobby(p);
+        return manager.can_player_force_start_from_lobby(p);
     }
 
     on_update :: proc(ability: Ability_Base, params: ref Ability_Update_Params) {

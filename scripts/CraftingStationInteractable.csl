@@ -4,7 +4,7 @@ CraftingStationInteractable :: class : Interactable {
     prompt_text: string @ao_serialize;
 
     ao_start :: method() {
-        this->set_listener(this);
+        this.set_listener(this);
 
         if radius <= 0.0 {
             radius = 1.8;
@@ -14,8 +14,8 @@ CraftingStationInteractable :: class : Interactable {
             prompt_text = "Craft";
         }
 
-        this->set_text(prompt_text);
-        this->set_hold_text("Opening...");
+        this.set_text(prompt_text);
+        this.set_hold_text("Opening...");
     }
 
     can_use :: method(player: Player) -> bool {
@@ -26,7 +26,7 @@ CraftingStationInteractable :: class : Interactable {
     on_interact :: method(player: Player) {
         if player == null return;
 
-        player->close_all_non_log_ui_modals();
+        player.close_all_non_log_ui_modals();
         player.crafting_ui_open = true;
         player.selected_crafting_recipe_index = CraftingSystem.clamp_recipe_index(player.selected_crafting_recipe_index);
         game_sfx_play(.UI_CLICK, player.entity);

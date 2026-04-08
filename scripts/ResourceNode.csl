@@ -59,7 +59,7 @@ ResourceNode :: class : Interactable {
     HARVEST_ANIM_DURATION :: 0.22;
 
     ao_start :: method() {
-        this->set_listener(this);
+        this.set_listener(this);
 
         if respawn_time_seconds <= 0.0 {
             respawn_time_seconds = 10.0;
@@ -76,8 +76,8 @@ ResourceNode :: class : Interactable {
         }
         cached_active_radius = radius;
 
-        this->set_text("Gather");
-        this->set_hold_text("Gathering...");
+        this.set_text("Gather");
+        this.set_hold_text("Gathering...");
     }
 
     can_use :: method(player: Player) -> bool {
@@ -147,7 +147,7 @@ ResourceNode :: class : Interactable {
 
         elapsed := get_time() - last_harvest_time;
         if elapsed < 0.0 || elapsed > HARVEST_ANIM_DURATION {
-            target->set_local_scale(anim_base_scale);
+            target.set_local_scale(anim_base_scale);
             return;
         }
 
@@ -156,7 +156,7 @@ ResourceNode :: class : Interactable {
         pulse := sin(t * PI);
         sx := lerp(1.0, 0.78, pulse);
         sy := lerp(1.0, 1.12, pulse);
-        target->set_local_scale({anim_base_scale.x * sx, anim_base_scale.y * sy});
+        target.set_local_scale({anim_base_scale.x * sx, anim_base_scale.y * sy});
     }
 
     set_depleted_state :: method(depleted: bool) {
@@ -164,19 +164,19 @@ ResourceNode :: class : Interactable {
 
         if depleted {
             depleted_until_time = get_time() + max(respawn_time_seconds, 0.0);
-            this->set_text("Depleted");
+            this.set_text("Depleted");
             radius = 0.0;
 
             if visual_target != null {
-                visual_target->set_local_enabled(false);
+                visual_target.set_local_enabled(false);
             }
         }
         else {
-            this->set_text("Gather");
+            this.set_text("Gather");
             radius = max(cached_active_radius, 0.0);
 
             if visual_target != null {
-                visual_target->set_local_enabled(true);
+                visual_target.set_local_enabled(true);
             }
         }
     }
