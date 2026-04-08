@@ -666,6 +666,10 @@ Player :: class : Player_Base {
             this.draw_supply_drop_arrow();
         }
 
+        if this.is_local_or_server() && !crafting_ui_open && !beacon_ui_open && !merchant_ui_open && !voyage_prep_ui_open {
+            this.draw_island5_story_boss_arrow();
+        }
+
         if this.is_local_or_server() && !dead_for_night && !crafting_ui_open && !beacon_ui_open && !merchant_ui_open && !voyage_prep_ui_open {
             LogPageSystem.draw_codex_button(this);
         }
@@ -1488,6 +1492,22 @@ Player :: class : Player_Base {
         if entity == null return;
 
         target_pos, has_target := manager.get_supply_drop_arrow_target();
+        if !has_target return;
+
+        to_target := target_pos - entity.world_position;
+        hide_dist_sq := SUPPLY_DROP_ARROW_HIDE_DISTANCE * SUPPLY_DROP_ARROW_HIDE_DISTANCE;
+        if length_squared(to_target) <= hide_dist_sq return;
+
+        DrawArrowToPosition(this, target_pos);
+    }
+
+    draw_island5_story_boss_arrow :: method() {
+        manager := get_game_manager();
+        if manager == null return;
+        if !manager.should_draw_island5_story_boss_arrow() return;
+        if entity == null return;
+
+        target_pos, has_target := manager.get_island5_story_boss_arrow_target();
         if !has_target return;
 
         to_target := target_pos - entity.world_position;

@@ -78,6 +78,12 @@ Mob :: class : Component {
     next_target_refresh_time_seconds: float;
     cached_separation_vector: v2;
     next_separation_refresh_time_seconds: float;
+    spawn_intro_active: bool;
+    spawn_intro_wait_started: bool;
+    spawn_intro_wait_start_time_seconds: float;
+    spawn_intro_wait_duration_seconds: float;
+    spawn_intro_animation_name: string;
+    spawn_intro_state_configured: bool;
 
     ao_start :: method() {
         if max_health <= 0.0 { max_health = 100.0; }
@@ -111,6 +117,12 @@ Mob :: class : Component {
         next_target_refresh_time_seconds = 0.0;
         cached_separation_vector = {0.0, 0.0};
         next_separation_refresh_time_seconds = 0.0;
+        spawn_intro_active = false;
+        spawn_intro_wait_started = false;
+        spawn_intro_wait_start_time_seconds = 0.0;
+        spawn_intro_wait_duration_seconds = 0.0;
+        spawn_intro_animation_name = "";
+        spawn_intro_state_configured = false;
         damage_pulse_elapsed_seconds = MOB_DAMAGE_PULSE_DURATION_SECONDS;
         base_local_scale = entity.local_scale;
         if base_local_scale.x == 0.0 { base_local_scale.x = 1.0; }
@@ -163,6 +175,13 @@ Mob :: class : Component {
         lock_to_game_navmesh();
         sync_night_stats();
         movement_agent.movement_speed = move_speed;
+
+        if update_spawn_intro_state() {
+            movement_agent.velocity = {0.0, 0.0};
+            clear_boss_path_state();
+            update_is_moving_animation_state();
+            return;
+        }
 
         ignore_beacon_safety := false;
         manager := get_game_manager();
@@ -324,6 +343,11 @@ Mob :: class : Component {
         if player_id == 0 return;
         if is_dead return;
 
+        if spawn_intro_active {
+            damage_aggro_target_player_id = player_id;
+            return;
+        }
+
         boss_is_provoked = true;
         boss_target_player_id = player_id;
         damage_aggro_target_player_id = player_id;
@@ -337,6 +361,29 @@ Mob :: class : Component {
         target_player_id = player_id;
         cached_target_player = null;
         next_target_refresh_time_seconds = 0.0;
+    }
+
+    start_spawn_intro :: method(animation_name: string, wait_seconds: float) {
+        if animation_name.count <= 0 return;
+        if is_dead return;
+        if animation_state_machine == null return;
+
+        ensure_spawn_intro_state(animation_name);
+        if !spawn_intro_state_configured return;
+
+        spawn_intro_active = true;
+        spawn_intro_wait_started = false;
+        spawn_intro_wait_start_time_seconds = 0.0;
+        spawn_intro_wait_duration_seconds = max(wait_seconds, 0.0);
+        spawn_intro_animation_name = animation_name;
+        boss_is_provoked = false;
+        boss_target_player_id = 0;
+        target_player_id = 0;
+        cached_target_player = null;
+        next_target_refresh_time_seconds = 0.0;
+        clear_boss_path_state();
+        animation_state_machine.set_bool("mob_is_moving", false);
+        animation_state_machine.set_trigger("mob_intro");
     }
 
     resolve_or_find_target_player :: method() -> Player {
@@ -580,6 +627,7 @@ Mob :: class : Component {
 
     is_boss_fully_aggro :: method() -> bool {
         if !Boss return true;
+        if spawn_intro_active return false;
         if boss_is_provoked return true;
 
         manager := get_game_manager();
@@ -722,6 +770,78 @@ Mob :: class : Component {
 
         cached_separation_vector = v2{push.x * separation_strength, push.y * separation_strength};
         return cached_separation_vector;
+    }
+
+    ensure_spawn_intro_state :: method(animation_name: string) {
+        if animation_name.count <= 0 return;
+        if animation_state_machine == null return;
+        if spawn_intro_state_configured && spawn_intro_animation_name == animation_name return;
+
+        layer := animation_state_machine.try_get_layer("main");
+        if layer == null return;
+
+        idle_state := layer.try_get_state(idle_animation_name);
+        if idle_state == null return;
+
+        if animation_state_machine.try_get_variable("mob_intro") == null {
+            animation_state_machine.create_variable("mob_intro", .TRIGGER);
+        }
+
+        intro_state := layer.try_get_state(animation_name);
+        if intro_state == null {
+            intro_state = layer.create_state(animation_name, false);
+        }
+        if intro_state == null return;
+
+        intro_var := animation_state_machine.try_get_variable("mob_intro");
+        if intro_var == null return;
+
+        to_intro := layer.create_global_transition(intro_state, false);
+        if to_intro == null return;
+        to_intro.create_trigger_condition(intro_var);
+
+        layer.create_transition(intro_state, idle_state, true);
+        spawn_intro_state_configured = true;
+        spawn_intro_animation_name = animation_name;
+    }
+
+    is_current_spawn_intro_animation_playing :: method() -> bool {
+        if animation_state_machine == null return false;
+        if spawn_intro_animation_name.count <= 0 return false;
+
+        layer := animation_state_machine.try_get_layer("main");
+        if layer == null return false;
+
+        intro_state := layer.try_get_state(spawn_intro_animation_name);
+        if intro_state == null return false;
+
+        current_state := layer.get_current_state();
+        return current_state == intro_state;
+    }
+
+    update_spawn_intro_state :: method() -> bool {
+        if !spawn_intro_active return false;
+
+        if is_current_spawn_intro_animation_playing() {
+            spawn_intro_wait_started = false;
+            return true;
+        }
+
+        if !spawn_intro_wait_started {
+            spawn_intro_wait_started = true;
+            spawn_intro_wait_start_time_seconds = get_time();
+            return true;
+        }
+
+        if get_time() < spawn_intro_wait_start_time_seconds + spawn_intro_wait_duration_seconds {
+            return true;
+        }
+
+        spawn_intro_active = false;
+        spawn_intro_wait_started = false;
+        spawn_intro_wait_start_time_seconds = 0.0;
+        boss_is_provoked = true;
+        return false;
     }
 
     setup_animation_state_machine :: method() {

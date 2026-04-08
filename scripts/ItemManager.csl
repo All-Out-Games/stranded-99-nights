@@ -28,7 +28,7 @@ ItemManager :: struct {
             medkit_icon := get_asset(Texture_Asset, "Items/Medkit.png");
             ice_shard_icon := get_asset(Texture_Asset, "prop/Crystal Shard.png");
             obsidian_shard_icon := get_asset(Texture_Asset, "PUP obsidian.png");
-            stormcore_icon := obsidian_shard_icon;
+            stormcore_icon := get_asset(Texture_Asset, "Lightning_Bolt_Icon_387959.png");
 
             // Wood
             wood := Items.register_item_definition(

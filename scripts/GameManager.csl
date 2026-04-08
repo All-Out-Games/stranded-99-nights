@@ -830,6 +830,15 @@ GameManager :: class : Component {
     run_complete_freeze_applied: bool;
     run_complete_reward_user_ids: [..]string;
     picked_up_log_page_indices: [..]int;
+    active_island5_story_boss_entity: Entity;
+    island5_story_boss_spawn_triggered: bool;
+    island5_story_boss_spawn_time_seconds: float;
+    island5_story_boss_defeat_handled: bool;
+
+    ISLAND5_BOSS_LOG_PAGE_INDEX :: 8;
+    ISLAND5_BOSS_SPAWN_DELAY_SECONDS :: 5.0;
+    ISLAND5_BOSS_INTRO_WAIT_SECONDS :: 2.0;
+    ISLAND5_BOSS_INTRO_ANIMATION :: "Roar";
 
     ao_start :: method() {
         if g_game_manager != null && g_game_manager != this {
@@ -903,6 +912,7 @@ GameManager :: class : Component {
         game_time_seconds += dt;
         phase_time_seconds += dt;
         update_reaper_boss_state();
+        update_island5_story_boss_state();
 
         switch current_phase {
             case .LOBBY: {
@@ -997,8 +1007,12 @@ GameManager :: class : Component {
         active_reaper_target_player_id = 0;
         active_reaper_island_number = 0;
         active_nightly_boss_entity = null;
+        active_island5_story_boss_entity = null;
         last_spawned_nightly_boss_night_number = 0;
         clear_reaper_boss_defeat_flags();
+        island5_story_boss_spawn_triggered = false;
+        island5_story_boss_spawn_time_seconds = 0.0;
+        island5_story_boss_defeat_handled = false;
         highest_island_reached_this_run = max(Island, 1);
         run_complete_sequence_active = false;
         run_complete_sequence_reward_done = false;
@@ -1047,6 +1061,7 @@ GameManager :: class : Component {
                 reset_day_night_cycle();
                 current_night_event = .NONE;
                 clear_nightly_boss();
+                clear_island5_story_boss();
                 last_spawned_nightly_boss_night_number = 0;
                 reset_beacons_for_round();
                 reset_voyage_preps_for_round();
@@ -1364,6 +1379,10 @@ GameManager :: class : Component {
             picked_up_log_page_indices[prev_index] = picked_up_log_page_indices[i];
             picked_up_log_page_indices[i] = swap;
             i = prev_index;
+        }
+
+        if log_index == ISLAND5_BOSS_LOG_PAGE_INDEX {
+            try_begin_island5_story_boss_spawn();
         }
         return true;
     }
@@ -2482,6 +2501,7 @@ GameManager :: class : Component {
         active_reaper_target_player_id = 0;
         active_reaper_island_number = 0;
         clear_reaper_boss_defeat_flags();
+        clear_island5_story_boss();
         sync_active_island_entity();
 
         foreach p: component_iterator(Player) {
@@ -3404,6 +3424,119 @@ GameManager :: class : Component {
         }
 
         return {0.0, 0.0}, false;
+    }
+
+    should_draw_island5_story_boss_arrow :: method() -> bool {
+        if current_phase != .IN_ROUND return false;
+        if should_show_voyage_scene() return false;
+        if get_current_player_island_number() != 5 return false;
+        if has_log_page_for_run(ISLAND5_BOSS_LOG_PAGE_INDEX) return false;
+
+        spawn_point := get_boss_spawn_point_for_island(5);
+        return spawn_point != null;
+    }
+
+    get_island5_story_boss_arrow_target :: method() -> v2, bool {
+        if !should_draw_island5_story_boss_arrow() return {0.0, 0.0}, false;
+
+        spawn_point := get_boss_spawn_point_for_island(5);
+        if spawn_point == null return {0.0, 0.0}, false;
+        return spawn_point.world_position, true;
+    }
+
+    try_begin_island5_story_boss_spawn :: method() {
+        if island5_story_boss_defeat_handled return;
+        if island5_story_boss_spawn_triggered return;
+
+        island5_story_boss_spawn_triggered = true;
+        island5_story_boss_spawn_time_seconds = get_time() + ISLAND5_BOSS_SPAWN_DELAY_SECONDS;
+        log_info("Island 5 story boss spawn queued for % seconds from now.", {ISLAND5_BOSS_SPAWN_DELAY_SECONDS});
+    }
+
+    clear_island5_story_boss :: method() {
+        if active_island5_story_boss_entity != null && #alive(active_island5_story_boss_entity) {
+            active_island5_story_boss_entity.destroy();
+        }
+
+        active_island5_story_boss_entity = null;
+        island5_story_boss_spawn_triggered = false;
+        island5_story_boss_spawn_time_seconds = 0.0;
+        island5_story_boss_defeat_handled = false;
+    }
+
+    spawn_island5_story_boss :: method() {
+        if !Game.is_server() return;
+        if active_island5_story_boss_entity != null && #alive(active_island5_story_boss_entity) return;
+
+        if Island5BossMob.count <= 0 {
+            island5_story_boss_spawn_triggered = false;
+            log_info("Island 5 story boss skipped: Island5BossMob is empty.", {});
+            return;
+        }
+
+        prefab := get_asset(Prefab_Asset, Island5BossMob);
+        if prefab == null {
+            island5_story_boss_spawn_triggered = false;
+            log_info("Island 5 story boss skipped: prefab missing at '%'.", {Island5BossMob});
+            return;
+        }
+
+        spawn_point := get_boss_spawn_point_for_island(5);
+        if spawn_point == null {
+            island5_story_boss_spawn_triggered = false;
+            log_info("Island 5 story boss skipped: island 5 boss spawn point is missing.", {});
+            return;
+        }
+
+        active_island5_story_boss_entity = Scene.instantiate(prefab);
+        if active_island5_story_boss_entity == null {
+            island5_story_boss_spawn_triggered = false;
+            log_info("Island 5 story boss failed to instantiate prefab '%'.", {Island5BossMob});
+            return;
+        }
+
+        island5_story_boss_spawn_triggered = false;
+        active_island5_story_boss_entity.set_local_position(spawn_point.world_position);
+
+        boss_mob := active_island5_story_boss_entity.get_component(Mob);
+        if boss_mob != null {
+            boss_mob.start_spawn_intro(ISLAND5_BOSS_INTRO_ANIMATION, ISLAND5_BOSS_INTRO_WAIT_SECONDS);
+        }
+
+        log_info("Island 5 story boss spawned at (%, %).", {
+            spawn_point.world_position.x,
+            spawn_point.world_position.y
+        });
+    }
+
+    update_island5_story_boss_state :: method() {
+        if current_phase != .IN_ROUND return;
+        if should_show_voyage_scene() return;
+        if get_current_player_island_number() != 5 return;
+        if island5_story_boss_defeat_handled return;
+
+        if active_island5_story_boss_entity != null {
+            if !#alive(active_island5_story_boss_entity) {
+                active_island5_story_boss_entity = null;
+                return;
+            } else {
+                boss_mob := active_island5_story_boss_entity.get_component(Mob);
+                if boss_mob != null && !boss_mob.is_alive() {
+                    island5_story_boss_defeat_handled = true;
+                    active_island5_story_boss_entity = null;
+                    start_run_complete_sequence();
+                    log_info("Island 5 story boss defeated. Triggering run complete.", {});
+                    return;
+                }
+                return;
+            }
+        }
+
+        if !has_log_page_for_run(ISLAND5_BOSS_LOG_PAGE_INDEX) return;
+        if !island5_story_boss_spawn_triggered return;
+        if get_time() < island5_story_boss_spawn_time_seconds return;
+
+        spawn_island5_story_boss();
     }
 
     is_night_warning_window_active :: method() -> bool {
