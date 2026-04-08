@@ -388,8 +388,30 @@ try_parse_positive_s64 :: proc(value: string) -> s64, bool {
         return 0, false;
     }
 
+    start := 0;
+    while start < value.count {
+        ch := value[start];
+        if ch != 32 && ch != 9 && ch != 10 && ch != 13 {
+            break;
+        }
+        start += 1;
+    }
+
+    end := value.count;
+    while end > start {
+        ch := value[end - 1];
+        if ch != 32 && ch != 9 && ch != 10 && ch != 13 {
+            break;
+        }
+        end -= 1;
+    }
+
+    if start >= end {
+        return 0, false;
+    }
+
     parsed: s64 = 0;
-    for i: 0..value.count-1 {
+    for i: start..end-1 {
         ch := value[i];
         if ch < 48 || ch > 57 {
             return 0, false;
@@ -692,12 +714,14 @@ GameManager :: class : Component {
     Island4SurvivorSpawnPositions: [..]Entity @ao_serialize;
     active_supply_drop_entity: Entity;
     active_reaper_entity: Entity;
+    active_nightly_boss_entity: Entity;
     active_moon_merchant_entity: Entity;
     active_survivor_entities: [..]Entity;
     active_moon_merchant_spawn_position: v2;
     moon_merchant_spawn_position_ready: bool;
     active_reaper_target_player_id: u64;
     active_reaper_island_number: int;
+    last_spawned_nightly_boss_night_number: s64;
     reaper_boss_defeated_for_run: [5]bool;
     next_raid_allowed_night_number: s64;
     last_notified_night_event: Night_Event_Type;
@@ -891,6 +915,7 @@ GameManager :: class : Component {
                 update_day_night_cycle(dt);
                 update_night_event_notifications();
                 update_day_night_blend(dt);
+                sync_nightly_boss_for_current_state();
             }
             case .POST_ROUND: {
                 // Post round state: cleanup, score display, and reset hooks.
@@ -971,6 +996,8 @@ GameManager :: class : Component {
         current_run_seed = 0;
         active_reaper_target_player_id = 0;
         active_reaper_island_number = 0;
+        active_nightly_boss_entity = null;
+        last_spawned_nightly_boss_night_number = 0;
         clear_reaper_boss_defeat_flags();
         highest_island_reached_this_run = max(Island, 1);
         run_complete_sequence_active = false;
@@ -1019,6 +1046,8 @@ GameManager :: class : Component {
                 next_raid_allowed_night_number = 0;
                 reset_day_night_cycle();
                 current_night_event = .NONE;
+                clear_nightly_boss();
+                last_spawned_nightly_boss_night_number = 0;
                 reset_beacons_for_round();
                 reset_voyage_preps_for_round();
                 round_start_teleport_done = false;
@@ -1074,6 +1103,7 @@ GameManager :: class : Component {
             case .IN_ROUND: {
                 // Exit round hooks go here.
                 clear_active_night_event();
+                clear_nightly_boss();
                 day_night_phase = .DAY;
                 day_night_phase_time_seconds = 0.0;
                 day_night_blend = 0.0;
@@ -1576,6 +1606,17 @@ GameManager :: class : Component {
         return null;
     }
 
+    get_nightly_boss_prefab_path_for_island :: method(island_number: int) -> string {
+        switch island_number {
+            case 1: return Island1BossMob;
+            case 2: return Island2BossMob;
+            case 3: return Island3BossMob;
+            case 4: return Island4BossMob;
+        }
+
+        return "";
+    }
+
     get_survivor_spawn_positions_for_island :: method(island_number: int) -> []Entity {
         switch island_number {
             case 1: return Island1SurvivorSpawnPositions;
@@ -2075,6 +2116,7 @@ GameManager :: class : Component {
     }
 
     force_day_start_for_voyage :: method() {
+        clear_nightly_boss();
         if day_night_phase == .DAY &&
             day_night_phase_time_seconds == 0.0 &&
             day_night_blend == 0.0 &&
@@ -2095,54 +2137,34 @@ GameManager :: class : Component {
 
     force_midnight_for_final_island :: method() {
         locked_night_time_seconds := NIGHT_DURATION_SECONDS * 0.5;
+        clear_nightly_boss();
         already_locked :=
             day_night_phase == .NIGHT &&
             abs(day_night_phase_time_seconds - locked_night_time_seconds) <= 0.001 &&
             day_night_blend == 1.0 &&
             day_night_blend_from == 1.0 &&
             day_night_blend_to == 1.0 &&
-            day_night_blend_transition_time_seconds >= DAY_NIGHT_BLEND_TRANSITION_SECONDS;
-        if !already_locked {
-            clear_active_night_event();
-            forced_next_night_event = .NONE;
-            last_notified_night_event = .NONE;
-            day_night_phase = .NIGHT;
-            day_night_phase_time_seconds = locked_night_time_seconds;
-            day_night_blend = 1.0;
-            day_night_blend_from = 1.0;
-            day_night_blend_to = 1.0;
-            day_night_blend_transition_time_seconds = DAY_NIGHT_BLEND_TRANSITION_SECONDS;
-            warned_player_user_ids_for_current_day.clear();
-            warned_player_entities_for_current_day.clear();
-            night_warning_sfx_played_for_current_day = false;
-            play_music_track(.NIGHT);
-            log_info("Day/Night locked to mid-night on island %.", {loaded_island});
-        }
-
-        forced_next_night_event = .NONE;
-        ensure_final_island_boss_night();
-    }
-
-    ensure_final_island_boss_night :: method() {
-        island_number := max(loaded_island, 1);
-        if island_number < 5 return;
-
-        if is_reaper_boss_defeated_for_run(island_number) {
-            if active_reaper_entity == null {
-                current_night_event = .NONE;
-            }
+            day_night_blend_transition_time_seconds >= DAY_NIGHT_BLEND_TRANSITION_SECONDS &&
+            current_night_event == .NONE &&
+            forced_next_night_event == .NONE;
+        if already_locked {
             return;
         }
 
-        if current_night_event != .REAPER {
-            if current_night_event != .NONE {
-                clear_active_night_event();
-            }
-            current_night_event = .REAPER;
-            last_notified_night_event = .NONE;
-        }
-
-        apply_reaper_event();
+        clear_active_night_event();
+        forced_next_night_event = .NONE;
+        last_notified_night_event = .NONE;
+        day_night_phase = .NIGHT;
+        day_night_phase_time_seconds = locked_night_time_seconds;
+        day_night_blend = 1.0;
+        day_night_blend_from = 1.0;
+        day_night_blend_to = 1.0;
+        day_night_blend_transition_time_seconds = DAY_NIGHT_BLEND_TRANSITION_SECONDS;
+        warned_player_user_ids_for_current_day.clear();
+        warned_player_entities_for_current_day.clear();
+        night_warning_sfx_played_for_current_day = false;
+        play_music_track(.NIGHT);
+        log_info("Day/Night locked to mid-night on island %.", {loaded_island});
     }
 
     get_voyage_progress_t :: method() -> float {
@@ -2519,6 +2541,7 @@ GameManager :: class : Component {
         if !Game.is_server() return;
 
         clear_reaper_event();
+        clear_nightly_boss();
         despawn_all_survivors_for_restart();
         despawn_all_pois_for_transition();
         destroy_all_mobs_for_game_over();
@@ -2885,6 +2908,85 @@ GameManager :: class : Component {
             active_supply_drop_entity.destroy();
         }
         active_supply_drop_entity = null;
+    }
+
+    clear_nightly_boss :: method() {
+        if active_nightly_boss_entity != null && #alive(active_nightly_boss_entity) {
+            active_nightly_boss_entity.destroy();
+        }
+        active_nightly_boss_entity = null;
+    }
+
+    spawn_nightly_boss_for_current_state :: method() {
+        island_number := Island;
+        if island_number <= 0 {
+            island_number = 1;
+        }
+        if island_number >= 5 {
+            return;
+        }
+
+        prefab_path := get_nightly_boss_prefab_path_for_island(island_number);
+        if prefab_path.count <= 0 {
+            log_info("Nightly boss skipped: island % has no boss prefab configured.", {island_number});
+            return;
+        }
+
+        prefab := get_asset(Prefab_Asset, prefab_path);
+        if prefab == null {
+            log_info("Nightly boss skipped: prefab missing at '%'.", {prefab_path});
+            return;
+        }
+
+        spawn_point := get_boss_spawn_point_for_island(island_number);
+        if spawn_point == null {
+            log_info("Nightly boss skipped: island % has no boss spawn point assigned.", {island_number});
+            return;
+        }
+
+        active_nightly_boss_entity = Scene.instantiate(prefab);
+        if active_nightly_boss_entity == null {
+            log_info("Nightly boss failed to instantiate prefab '%'.", {prefab_path});
+            return;
+        }
+
+        spawn_pos := spawn_point.world_position;
+        active_nightly_boss_entity.set_local_position(spawn_pos);
+        log_info("Nightly boss spawned on island % at (%, %).", {
+            island_number,
+            spawn_pos.x,
+            spawn_pos.y
+        });
+    }
+
+    sync_nightly_boss_for_current_state :: method() {
+        if current_phase != .IN_ROUND {
+            clear_nightly_boss();
+            return;
+        }
+
+        if should_pause_day_night_for_voyage() || should_lock_day_night_for_final_island() || !is_night_time() {
+            clear_nightly_boss();
+            return;
+        }
+
+        island_number := Island;
+        if island_number >= 5 {
+            clear_nightly_boss();
+            return;
+        }
+
+        if active_nightly_boss_entity != null && #alive(active_nightly_boss_entity) {
+            return;
+        }
+
+        current_night_number := get_upcoming_night_number();
+        if last_spawned_nightly_boss_night_number == current_night_number {
+            return;
+        }
+
+        last_spawned_nightly_boss_night_number = current_night_number;
+        spawn_nightly_boss_for_current_state();
     }
 
     apply_reaper_event :: method() {

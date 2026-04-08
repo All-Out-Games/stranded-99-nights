@@ -26,7 +26,7 @@
     "mob_prefab_path": "MobBaryonyx.prefab",
     "IslandIndex": 1,
     "spawn_radius": 50,
-    "max_mobs": 10,
+    "max_mobs": 15,
     "spawn_rate_seconds": 25
   }
 },
