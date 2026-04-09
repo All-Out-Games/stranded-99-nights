@@ -98,7 +98,7 @@ Beam_Visual :: class : Component {
             }
         }
         if source == null {
-            foreach p: component_iterator(Player) {
+            for p: component_iterator(Player) {
                 if p.entity.id == owner_id {
                     source = p;
                     cached_source_player = p;
@@ -126,7 +126,7 @@ Beam_Visual :: class : Component {
                 }
             }
             if target == null {
-                foreach mob: component_iterator(Mob) {
+                for mob: component_iterator(Mob) {
                     if mob.entity.id == target_id {
                         target = mob;
                         cached_target_mob = mob;
@@ -179,7 +179,7 @@ spawn_beam_entity :: proc(owner_id: u64, target_id: u64, skin_name: string, anim
 }
 
 destroy_player_beams :: proc(owner_id: u64) {
-    foreach beam: component_iterator(Beam_Visual) {
+    for beam: component_iterator(Beam_Visual) {
         if beam.owner_id == owner_id {
             beam.entity.destroy();
         }

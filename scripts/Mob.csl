@@ -12,6 +12,9 @@ MOB_BOSS_REPATH_TARGET_EPSILON_SQ :: 0.25;
 MOB_BOSS_PATH_ARRIVAL_EPSILON_SQ :: 0.01;
 MOB_TARGET_REFRESH_INTERVAL_SECONDS :: 0.15;
 MOB_SEPARATION_REFRESH_INTERVAL_SECONDS :: 0.08;
+MOB_WANDER_RADIUS :: 6.0;
+MOB_WANDER_REPATH_INTERVAL_SECONDS :: 5.0;
+MOB_WANDER_ARRIVAL_EPSILON_SQ :: 0.01;
 MOB_KILLS_SAVE_KEY :: "mobs_killed";
 
 MobTracking :: struct {
@@ -19,7 +22,7 @@ MobTracking :: struct {
         if player_entity_id == 0 return;
         if !Game.is_server() return;
 
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             if player.entity == null continue;
             if player.entity.id != player_entity_id continue;
@@ -78,6 +81,11 @@ Mob :: class : Component {
     next_target_refresh_time_seconds: float;
     cached_separation_vector: v2;
     next_separation_refresh_time_seconds: float;
+    spawn_position: v2;
+    spawn_position_initialized: bool;
+    wander_destination: v2;
+    active_wander_cycle: s64;
+    has_wander_destination: bool;
     spawn_intro_active: bool;
     spawn_intro_wait_started: bool;
     spawn_intro_wait_start_time_seconds: float;
@@ -117,6 +125,11 @@ Mob :: class : Component {
         next_target_refresh_time_seconds = 0.0;
         cached_separation_vector = {0.0, 0.0};
         next_separation_refresh_time_seconds = 0.0;
+        spawn_position = {0.0, 0.0};
+        spawn_position_initialized = false;
+        wander_destination = spawn_position;
+        active_wander_cycle = -1;
+        has_wander_destination = false;
         spawn_intro_active = false;
         spawn_intro_wait_started = false;
         spawn_intro_wait_start_time_seconds = 0.0;
@@ -172,6 +185,12 @@ Mob :: class : Component {
             }
         }
 
+        if !spawn_position_initialized {
+            spawn_position = get_navmesh_snapped_position(entity.world_position, entity.world_position);
+            spawn_position_initialized = true;
+            clear_wander_state();
+        }
+
         lock_to_game_navmesh();
         sync_night_stats();
         movement_agent.movement_speed = move_speed;
@@ -197,6 +216,7 @@ Mob :: class : Component {
         attacking_voyage_boat := false;
 
         if manager != null && manager.is_voyage_damage_redirect_active() {
+            clear_wander_state();
             voyage_boat := resolve_voyage_boat_target();
             if voyage_boat == null {
                 movement_agent.velocity = {0.0, 0.0};
@@ -218,10 +238,18 @@ Mob :: class : Component {
         } else {
             target = resolve_or_find_target_player();
             if target == null {
+                if Boss {
+                    clear_wander_state();
+                    movement_agent.velocity = {0.0, 0.0};
+                    clear_boss_path_state();
+                    return;
+                }
                 clear_boss_path_state();
+                update_wander_behavior();
                 return;
             }
 
+            clear_wander_state();
             target_pos = target.entity.world_position;
             path_target_pos = get_path_target_position(target_pos);
             attack_distance_target_pos = target_pos;
@@ -414,7 +442,7 @@ Mob :: class : Component {
             }
 
             forced_target_id := damage_aggro_target_player_id;
-            foreach p: component_iterator(Player) {
+            for p: component_iterator(Player) {
                 if p.entity.id != forced_target_id continue;
                 if !is_valid_target_player(p, ignore_beacon_safety) break;
 
@@ -442,7 +470,7 @@ Mob :: class : Component {
                 cached_target_player = null;
             }
 
-            foreach p: component_iterator(Player) {
+            for p: component_iterator(Player) {
                 if p.entity.id != target_player_id continue;
                 if !is_valid_target_player(p, ignore_beacon_safety) break;
 
@@ -465,7 +493,7 @@ Mob :: class : Component {
 
         closest: Player;
         closest_dist_sq := effective_acquire_range_sq;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if !is_valid_target_player(p, ignore_beacon_safety) continue;
             diff := p.entity.world_position - entity.world_position;
             dist_sq := length_squared(diff);
@@ -491,7 +519,7 @@ Mob :: class : Component {
         closest_dist_sq: float;
         found_closest := false;
 
-        foreach boat: component_iterator(VoyageBoat) {
+        for boat: component_iterator(VoyageBoat) {
             if boat == null continue;
             if boat.entity == null continue;
             if !#alive(boat.entity) continue;
@@ -516,6 +544,74 @@ Mob :: class : Component {
         boss_has_active_path_target = false;
         boss_last_repath_player_pos = entity.world_position;
         boss_last_path_destination = entity.world_position;
+    }
+
+    clear_wander_state :: method() {
+        has_wander_destination = false;
+        active_wander_cycle = -1;
+        wander_destination = spawn_position;
+    }
+
+    update_wander_behavior :: method() {
+        if movement_agent == null return;
+
+        wander_cycle := (get_time() / MOB_WANDER_REPATH_INTERVAL_SECONDS).(s64);
+        if !has_wander_destination || wander_cycle != active_wander_cycle {
+            active_wander_cycle = wander_cycle;
+            wander_destination = sample_wander_destination(wander_cycle);
+            has_wander_destination = true;
+        }
+
+        if length_squared(wander_destination - entity.world_position) <= MOB_WANDER_ARRIVAL_EPSILON_SQ {
+            movement_agent.velocity = {0.0, 0.0};
+            return;
+        }
+
+        path_result := movement_agent.set_path_target(wander_destination, move_speed);
+        if path_result.success {
+            face_from_movement_direction(path_result.move_direction);
+        } else {
+            fallback_dir := wander_destination - entity.world_position;
+            face_from_movement_direction(normalize_or_zero(fallback_dir));
+        }
+    }
+
+    sample_wander_destination :: method(wander_cycle: s64) -> v2 {
+        cycle_seed := entity.id + 991 + wander_cycle.(u64) * 104729;
+        sample_rng := rng_seed(cycle_seed);
+        angle := rng_range_float(ref sample_rng, 0.0, 6.2831853);
+        radius_t := sqrt(rng_range_float(ref sample_rng, 0.0, 1.0));
+        dist := radius_t * MOB_WANDER_RADIUS;
+        desired_pos := v2{
+            spawn_position.x + cos(angle) * dist,
+            spawn_position.y + sin(angle) * dist
+        };
+
+        if !should_ignore_beacon_safety() {
+            desired_pos = BeaconSystem.clamp_position_outside_safety_zones(desired_pos, entity.world_position);
+        }
+
+        return get_navmesh_snapped_position(desired_pos, spawn_position);
+    }
+
+    get_navmesh_snapped_position :: method(desired_pos: v2, fallback_pos: v2) -> v2 {
+        manager := get_game_manager();
+        if manager == null return desired_pos;
+
+        navmesh := manager.player_navmesh;
+        if navmesh == null return desired_pos;
+
+        hint_as_int: int = 0;
+        snapped_pos: v2;
+        if navmesh.try_find_closest_point_on_navmesh(desired_pos, ref snapped_pos, ref hint_as_int) {
+            return snapped_pos;
+        }
+
+        if navmesh.try_find_closest_point_on_navmesh(fallback_pos, ref snapped_pos, ref hint_as_int) {
+            return snapped_pos;
+        }
+
+        return desired_pos;
     }
 
     should_repath_boss_target :: method(now: float, target_pos: v2) -> bool {
@@ -590,7 +686,7 @@ Mob :: class : Component {
     resolve_boss_target_player :: method() -> Player {
         ignore_beacon_safety := should_ignore_beacon_safety();
         if boss_target_player_id != 0 {
-            foreach p: component_iterator(Player) {
+            for p: component_iterator(Player) {
                 if p.entity == null continue;
                 if p.entity.id != boss_target_player_id continue;
                 if !is_valid_target_player(p, ignore_beacon_safety) break;
@@ -605,7 +701,7 @@ Mob :: class : Component {
         closest_dist_sq: float;
         found_closest := false;
 
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if !is_valid_target_player(p, ignore_beacon_safety) continue;
 
             dist_sq := length_squared(p.entity.world_position - entity.world_position);
@@ -943,7 +1039,7 @@ Mob :: class : Component {
 
         local_player: Player;
         fallback_player: Player;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if fallback_player == null {
                 fallback_player = p;
             }

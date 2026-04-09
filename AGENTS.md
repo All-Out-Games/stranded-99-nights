@@ -9,21 +9,41 @@ You will be developing a multiplayer game in a custom scripting language (.csl)
 
 ### is_local_or_server() vs is_local()
 
-Both are **methods on Player_Base** — call as `is_local_or_server()` (implicit `this`) or `this.is_local_or_server()` inside a Player method. They are not standalone global functions.
+Both are **methods on Player_Base** — they are NOT standalone global functions and will produce a compile error if called that way from a non-Player class.
+
+- Inside a `Player_Base` subclass method: call as bare `is_local_or_server()` (implicit `this`)
+- From any other component that has a player reference: call `player_ref.is_local_or_server()`
 
 ```csl
+// ✅ Correct — inside a Player_Base subclass
 Player :: class : Player_Base {
     ao_late_update :: method(dt: float) {
-        // Use is_local_or_server for gameplay UI and inputs (runs on server + local client only, skips remote clients who don't need this player's UI/input)
         if is_local_or_server() {
             draw_ability_button(this, Shoot_Ability, 0);
-        }
-        
-        // Use is_local for purely cosmetic/local-only effects (runs only on local client, rarely used since gameplay code should run on both)
-        if is_local() {
             UI.text(..., "Waiting for host to start the game...");
-            // Particle effects, purely cosmetic UI, SFX only one player should hear
         }
+        if is_local() {
+            // Local only SFX
+        }
+    }
+}
+
+// ✅ Correct — from a non-Player component with a player reference
+My_Component :: class : Component {
+    player: Player;
+
+    ao_update :: method(dt: float) {
+        if player == null return;
+        if player.is_local_or_server() {
+            // gameplay logic
+        }
+    }
+}
+
+// ❌ Wrong — is_local_or_server() is not a global free function
+My_Component :: class : Component {
+    ao_update :: method(dt: float) {
+        if is_local_or_server() { } // ERROR: Unresolved identifier
     }
 }
 ```
@@ -71,7 +91,7 @@ e.destroy();
 ### Iterating Entities
 
 ```csl
-foreach entity: entity_iterator() {
+for entity: entity_iterator() {
 }
 ```
 
@@ -147,7 +167,7 @@ Orbiter :: class : Component {
 #### Iterating Components
 
 ```csl
-foreach player: component_iterator(My_Player) {
+for player: component_iterator(My_Player) {
 }
 ```
 
@@ -196,14 +216,14 @@ frame := get_frame_number();
 
 ## SFX
 ```csl
-// Most things that happen in the game should have sound! You can find sounds with the asset_local_search and asset_remote_search tools. 
+// Most things that happen in the game should have sound! Find sounds with asset_local_search and asset_remote_search. 
 desc := SFX.default_sfx_desc();
-// Always set entity_to_follow if the SFX "emits" from a specific entity. 
-desc.entity_to_follow = entity.id;
-desc.delay = 0.25;
+desc.entity_to_follow = entity.id; // Always set if the SFX "emits" from a specific entity. 
+desc.delay = 0; // For lining up with animations
 desc.loop = false;
-desc.volume = 0.5;
-// For sounds only one player should hear (UI clicks, etc...), wrap with is_local
+desc.volume = 0.4;
+desc.speed_perturb = 0.1;
+// For sounds only one player should hear (UI clicks, etc...), wrap play calls with is_local
 sound_id := SFX.play(sound_asset, desc);
 
 SFX.stop(sound_id);
@@ -228,13 +248,15 @@ if Economy.can_withdraw_currency(player, "Coins", COST) {
 - Reference the `UIK` skill if the user's request requires game UI. Do not mix UIK and UI APIs. 
 
 ## Inventory & Items
-- When players acquire items (e.g. from a shop), always use the All Out inventory system documented in the `inventory` skill.
+- When players acquire items (e.g. from a shop or interacting with the world), you MUST use the All Out inventory system documented in the `inventory` skill.
 - For placing items in the world use the `inventory-droppable-items` skill. 
 
 ## Math Functions
 `sin`, `cos`, `pow`, `sqrt`, `lerp`, `clamp`, `abs`, `min`, `max`, `length`, `length_squared`, `normalize` there are no other math functions. 
 
 ### Player_Base Reference
+- p.is_local_or_server() -> bool  // true on the local client and on the server; must be used for UI. 
+- p.is_local() -> bool            // true only on the local client; use for purely cosmetic effects
 - p.get_username()
 - p.get_user_id() -> string
 - p.avatar_color -> Color_Replace_Color 
@@ -243,7 +265,7 @@ if Economy.can_withdraw_currency(player, "Coins", COST) {
 - p.add_invisibility_reason(reason: string)
 
 ### Serialized fields
-Use `@ao_serialize` to expose a field in the editor (can be modified with the modify_scene mcp tool). Prefer using this for referencing other Entities instead of e.get_name(); 
+Use `@ao_serialize` to expose a field in the editor (can be modified with the modify_scene mcp tool). Prefer serialized fields, do not look up entities with e.get_name(); 
 
 ## Best Practices
 - CSL does not have closures, instead use `userdata: Object` passed to callbacks. Class instances can be stored in an `Object` variable and cast back to its original type.

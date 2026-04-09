@@ -21,6 +21,7 @@ Survivor :: class : Interactable {
     cry_loop_sound_id: u64;
 
     CRY_LOOP_SFX_PATH :: "cry_loop.wav";
+    RESCUE_SFX_PATH :: "cheer_succeed_586883.wav";
 
     ao_start :: method() {
         this.set_listener(this);
@@ -53,10 +54,7 @@ Survivor :: class : Interactable {
         }
 
         apply_survivor_color();
-        
-        cry_sfx := get_asset(SFX_Asset, CRY_LOOP_SFX_PATH);
-        if cry_sfx == null return;
-
+        ensure_cry_loop_playing();
     }
 
     can_use :: method(player: Player) -> bool {
@@ -73,6 +71,7 @@ Survivor :: class : Interactable {
         rescued_time = get_time();
         this.set_text("Rescued");
         stop_cry_loop();
+        play_rescue_sfx();
         play_rescue_animation();
 
         if Game.is_server() {
@@ -82,6 +81,7 @@ Survivor :: class : Interactable {
 
     ao_update :: method(dt: float) {
         apply_survivor_color();
+        ensure_cry_loop_playing();
 
         if !rescued return;
         if resolved_rescue return;
@@ -161,6 +161,16 @@ Survivor :: class : Interactable {
 
         SFX.stop(cry_loop_sound_id);
         cry_loop_sound_id = 0;
+    }
+
+    play_rescue_sfx :: method() {
+        rescue_sfx := get_asset(SFX_Asset, RESCUE_SFX_PATH);
+        if rescue_sfx == null return;
+
+        desc := SFX.default_sfx_desc();
+        desc.channel = .SFX;
+        desc.entity_to_follow = entity.id;
+        SFX.play(rescue_sfx, desc);
     }
 
     play_rescue_animation :: method() {

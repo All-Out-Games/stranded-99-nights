@@ -91,6 +91,9 @@ Component :: class {
 Component_Iterator :: struct($T: typeid) {
     component_iterator_next_raw :: method() -> bool #foreign "component_iterator_next";
     current: T #read_only #offset 16;
+    next :: method() -> bool {
+        return (&this).(*Component_Iterator(Component)).*.component_iterator_next_raw();
+    }
 } #foreign_struct "Hierarchical_Component_Iterator<Component_Base>" #size 40
 
 Sprite_Renderer :: class : Component {

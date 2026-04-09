@@ -45,6 +45,7 @@ Music_Track :: enum {
     NONE;
     DAY;
     NIGHT;
+    VOYAGE;
 }
 
 Voyage_State :: enum {
@@ -164,7 +165,7 @@ game_sfx_default_volume_for_event :: proc(event: Game_Sfx_Event) -> float {
 is_local_player_entity :: proc(target: Entity) -> bool {
     if target == null return false;
 
-    foreach player: component_iterator(Player) {
+    for player: component_iterator(Player) {
         if player == null || player.entity == null continue;
         if player.entity.id != target.id continue;
         return player.is_local();
@@ -198,9 +199,10 @@ game_sfx_play :: proc(event: Game_Sfx_Event, follow_entity: Entity = null, volum
 
 music_track_asset_path :: proc(track: Music_Track) -> string {
     switch track {
-        case .DAY:   return "Music/WoP.wav";
-        case .NIGHT: return "Music/FtI.wav";
-        case .NONE:  return "";
+        case .DAY:    return "Music/WoP.wav";
+        case .NIGHT:  return "Music/FtI.wav";
+        case .VOYAGE: return "Music/LtV.wav";
+        case .NONE:   return "";
     }
 
     return "";
@@ -294,7 +296,7 @@ GameProgressTracking :: struct {
         if island_number <= 0 return;
         if !Game.is_server() return;
 
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             increment_player_island_reached(player, island_number);
         }
@@ -308,7 +310,7 @@ GameProgressTracking :: struct {
     increment_all_players_game_wins :: proc() {
         if !Game.is_server() return;
 
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             increment_player_stat(player, GAME_WINS_SAVE_KEY);
         }
@@ -317,7 +319,7 @@ GameProgressTracking :: struct {
     increment_all_players_game_overs :: proc() {
         if !Game.is_server() return;
 
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             increment_player_stat(player, GAME_OVERS_SAVE_KEY);
         }
@@ -331,7 +333,7 @@ GameProgressTracking :: struct {
 ensure_game_manager_exists :: proc() -> GameManager {
     if g_game_manager != null return g_game_manager;
 
-    foreach manager: component_iterator(GameManager) {
+    for manager: component_iterator(GameManager) {
         g_game_manager = manager;
         break;
     }
@@ -351,25 +353,28 @@ try_force_start_game :: proc(player: Player, source: string) {
     manager := ensure_game_manager_exists();
     if manager == null {
         if player != null {
-            //Notifier.notify(player, "GameManager is unavailable.");
+            send_cheat_chat_message(player, "GameManager is unavailable.");
         }
         return;
     }
 
     if manager.is_round_active() {
         if player != null {
-            //Notifier.notify(player, "Round is already active.");
+            send_cheat_chat_message(player, "Round is already active.");
         }
         return;
     }
     if manager.run_complete_sequence_active {
+        if player != null {
+            send_cheat_chat_message(player, "Cannot force-start during the run complete sequence.");
+        }
         return;
     }
 
     manager.start_game();
 
     if player != null {
-       // Notifier.notify(player, "Forced game start.");
+        send_cheat_chat_message(player, "Forced game start.");
         log_info("% forced start_game via %", {player.get_username(), source});
     } else {
         log_info("Forced start_game via %", {source});
@@ -397,7 +402,7 @@ show_cheat_command_help :: proc(player: Player, reason: string = "") {
     send_cheat_chat_message(player, "Cheat commands:");
     send_cheat_chat_message(player, "/start - Force-start the run if it has not started yet.");
     send_cheat_chat_message(player, "/win - Trigger the win sequence immediately.");
-    send_cheat_chat_message(player, "/g <item_id> [quantity] - Give yourself an item.");
+    send_cheat_chat_message(player, "/g <item_id> [quantity] - Give yourself an item by id or name.");
     send_cheat_chat_message(player, "/island <number> - Set the current island index (1 or greater).");
     send_cheat_chat_message(player, format_string("/beacon <level 1-%> - Set every Beacon to that level.", {Beacon.MAX_LEVEL}));
     send_cheat_chat_message(player, "/raid - Force the next night event to Raid.");
@@ -448,6 +453,16 @@ try_parse_positive_s64 :: proc(value: string) -> s64, bool {
     return parsed, true;
 }
 
+find_cheat_item_definition :: proc(item_query: string) -> Item_Definition {
+    defn := ItemManager.TryFindItem(item_query);
+    if defn != null return defn;
+
+    defn = ItemManager.TryFindItemByName(item_query);
+    if defn != null return defn;
+
+    return try_find_reusable_weapon_item_def_by_id(item_query);
+}
+
 start :: proc(player: Player, extra: string = "") {
     if player == null return;
 
@@ -489,7 +504,7 @@ cheats :: proc(player: Player, extra: string = "") {
     show_cheat_command_help(player);
 } @chat_command @youtuber
 
-g :: proc(player: Player, item_id: string = "", quantity_text: string = "1") {
+g :: proc(player: Player, item_id: string = "", quantity: s64 = 1) {
     if player == null return;
 
     if item_id.count <= 0 {
@@ -497,34 +512,25 @@ g :: proc(player: Player, item_id: string = "", quantity_text: string = "1") {
         return;
     }
 
-    quantity, quantity_ok := try_parse_positive_s64(quantity_text);
-    if !quantity_ok || quantity <= 0 {
+    if quantity <= 0 {
         show_cheat_command_help(player, "Incorrect usage: /g <item_id> [quantity]");
         return;
     }
 
     if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
-       // Notifier.notify(player, "Inventory is unavailable.");
+        send_cheat_chat_message(player, "Inventory is unavailable.");
         return;
     }
 
-    defn := ItemManager.TryFindItem(item_id);
+    defn := find_cheat_item_definition(item_id);
     if defn == null {
-        defn = try_find_reusable_weapon_item_def_by_id(item_id);
-    }
-    if defn == null {
-        show_cheat_command_help(player, format_string("Unknown item id: %", {item_id}));
-        return;
-    }
-
-    if quantity <= 0 {
-        //Notifier.notify(player, "Quantity must be greater than 0.");
+        show_cheat_command_help(player, format_string("Unknown item: %", {item_id}));
         return;
     }
 
     room := Items.calculate_room_in_inventory_for_item(defn, player.default_inventory);
     if room <= 0 {
-       // Notifier.notify(player, "No room for %", {defn.get_name()});
+        send_cheat_chat_message(player, format_string("No room for %.", {defn.get_name()}));
         return;
     }
 
@@ -535,17 +541,24 @@ g :: proc(player: Player, item_id: string = "", quantity_text: string = "1") {
 
     item := ItemManager.CreateItemFromDefinition(defn, give_count);
     if item == null || item.self == null {
-       // Notifier.notify(player, "Failed to create item.");
+        send_cheat_chat_message(player, format_string("Failed to create %.", {defn.get_name()}));
         return;
     }
 
     Items.move_item_to_inventory(item, player.default_inventory);
     if give_count < quantity {
-       // Notifier.notify(player, "Given % x% (requested: %, limited by room)", {defn.get_name(), give_count, quantity});
+        send_cheat_chat_message(
+            player,
+            format_string("Given % x% (requested %, capped by stack or inventory room).", {
+                defn.get_name(),
+                give_count,
+                quantity
+            })
+        );
         return;
     }
 
-    //Notifier.notify(player, "Given % x%", {defn.get_name(), give_count});
+    send_cheat_chat_message(player, format_string("Given % x%.", {defn.get_name(), give_count}));
 } @chat_command @youtuber
 
 island :: proc(player: Player, island_index_text: string = "") {
@@ -599,7 +612,7 @@ beacon :: proc(player: Player, beacon_level_text: string = "") {
 
     updated_count: s64 = 0;
     next_level := beacon_level.(s64);
-    foreach active_beacon: component_iterator(Beacon) {
+    for active_beacon: component_iterator(Beacon) {
         if active_beacon == null continue;
 
         active_beacon.set_beacon_level(next_level);
@@ -988,7 +1001,7 @@ GameManager :: class : Component {
     }
 
     has_local_player_for_visuals :: method() -> bool {
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player != null && player.is_local() {
                 return true;
             }
@@ -998,7 +1011,7 @@ GameManager :: class : Component {
     }
 
     is_local_merchant_ui_open :: method() -> bool {
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player != null && player.is_local() && player.merchant_ui_open {
                 return true;
             }
@@ -1068,7 +1081,7 @@ GameManager :: class : Component {
         run_complete_sequence_reward_line_sfx_played = false;
         run_complete_freeze_applied = false;
         run_complete_reward_user_ids.clear();
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             player.remove_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
         }
@@ -1125,7 +1138,7 @@ GameManager :: class : Component {
                 run_complete_freeze_applied = false;
                 run_complete_reward_user_ids.clear();
                 highest_island_reached_this_run = max(Island, 1);
-                foreach player: component_iterator(Player) {
+                for player: component_iterator(Player) {
                     if player == null continue;
                     player.remove_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
                 }
@@ -1237,7 +1250,7 @@ GameManager :: class : Component {
         if message.count <= 0 return;
         if !Game.is_server() return;
 
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
 
@@ -1301,7 +1314,7 @@ GameManager :: class : Component {
 
         absorbed := min(amount, VoyageHealth);
         if absorbed > 0.0 {
-            foreach voyage_boat: component_iterator(VoyageBoat) {
+            for voyage_boat: component_iterator(VoyageBoat) {
                 voyage_boat.trigger_damage_feedback();
             }
         }
@@ -1367,7 +1380,7 @@ GameManager :: class : Component {
 
     get_player_count :: method() -> s64 {
         player_count: s64 = 0;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             player_count += 1;
         }
         return player_count;
@@ -1449,14 +1462,14 @@ GameManager :: class : Component {
     reset_log_pages_for_full_restart :: method() {
         picked_up_log_page_indices.clear();
 
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             player.codex_ui_open = false;
             player.log_page_ui_open = false;
             player.active_log_page_index = 0;
         }
 
-        foreach log_page: component_iterator(LogPage) {
+        for log_page: component_iterator(LogPage) {
             if log_page == null continue;
             log_page.reset_for_run_restart();
         }
@@ -1514,7 +1527,7 @@ GameManager :: class : Component {
     teleport_all_players_to_island1_spawn :: method() {
         if island1_spawn == null return;
 
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             teleport_player_to_island1_spawn(player);
         }
     }
@@ -1525,7 +1538,7 @@ GameManager :: class : Component {
             return;
         }
 
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             teleport_player_near_beacon_for_round(player);
         }
     }
@@ -1551,7 +1564,7 @@ GameManager :: class : Component {
     reset_beacons_for_round :: method() {
         if !Game.is_server() return;
 
-        foreach beacon: component_iterator(Beacon) {
+        for beacon: component_iterator(Beacon) {
             if beacon == null continue;
             beacon.set_fuel_for_round(Beacon.DEFAULT_STARTING_FUEL);
         }
@@ -1574,7 +1587,7 @@ GameManager :: class : Component {
         if !should_apply return;
 
         updated_count: s64 = 0;
-        foreach beacon: component_iterator(Beacon) {
+        for beacon: component_iterator(Beacon) {
             if beacon == null continue;
             if beacon.level >= target_level continue;
 
@@ -1588,7 +1601,7 @@ GameManager :: class : Component {
     }
 
     reset_voyage_preps_for_round :: method() {
-        foreach prep: component_iterator(VoyagePrep) {
+        for prep: component_iterator(VoyagePrep) {
             if prep == null continue;
             prep.reset_for_round();
         }
@@ -1598,7 +1611,7 @@ GameManager :: class : Component {
         poi_rng := get_run_rng(RUN_RNG_STREAM_POI);
         spawned_count: s64 = 0;
         total_count: s64 = 0;
-        foreach poi: component_iterator(POI) {
+        for poi: component_iterator(POI) {
             if poi == null continue;
             total_count += 1;
             if poi.spawn_for_round(ref poi_rng) {
@@ -1649,7 +1662,7 @@ GameManager :: class : Component {
     }
 
     apply_navmesh_lock_to_all_players :: method() {
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             lock_player_to_navmesh(player);
         }
     }
@@ -1815,7 +1828,7 @@ GameManager :: class : Component {
         closest_dist_sq: float = 0.0;
         found_spawn := false;
 
-        foreach beacon_spawn: component_iterator(BeaconSpawn) {
+        for beacon_spawn: component_iterator(BeaconSpawn) {
             if beacon_spawn == null continue;
             if beacon_spawn.entity == null continue;
 
@@ -2045,7 +2058,7 @@ GameManager :: class : Component {
         if island_transition_freeze_applied == island_transition_active return;
 
         island_transition_freeze_applied = island_transition_active;
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             if island_transition_active {
                 player.add_freeze_reason(ISLAND_TRANSITION_FREEZE_REASON);
@@ -2056,7 +2069,7 @@ GameManager :: class : Component {
     }
 
     get_current_beacon_position :: method() -> v2 {
-        foreach beacon: component_iterator(Beacon) {
+        for beacon: component_iterator(Beacon) {
             if beacon == null continue;
             if beacon.entity == null continue;
             return beacon.entity.world_position;
@@ -2182,7 +2195,7 @@ GameManager :: class : Component {
     }
 
     teleport_all_players_near_beacon_for_island_transition :: method() {
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             if player.entity == null continue;
             player.entity.set_local_position(sample_island_transition_player_position(player));
@@ -2190,7 +2203,7 @@ GameManager :: class : Component {
     }
 
     teleport_all_players_to_voyage_scene :: method() {
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             if player.entity == null continue;
             teleport_player_to_voyage_scene(player);
@@ -2259,7 +2272,6 @@ GameManager :: class : Component {
         day_night_blend_from = 0.0;
         day_night_blend_to = 0.0;
         day_night_blend_transition_time_seconds = 0.0;
-        play_music_track(.DAY);
     }
 
     force_midnight_for_final_island :: method() {
@@ -2379,7 +2391,9 @@ GameManager :: class : Component {
 
     sync_music_track_for_game_state :: method() {
         desired_track: Music_Track = .DAY;
-        if current_phase == .IN_ROUND && day_night_phase == .NIGHT {
+        if voyage_state != .NONE {
+            desired_track = .VOYAGE;
+        } else if current_phase == .IN_ROUND && day_night_phase == .NIGHT {
             desired_track = .NIGHT;
         }
 
@@ -2394,7 +2408,7 @@ GameManager :: class : Component {
         if reward_amount <= 0 return;
 
         rewarded_count: s64 = 0;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
             if p.is_dead_for_night_state() continue;
@@ -2416,7 +2430,7 @@ GameManager :: class : Component {
     }
 
     revive_dead_players_for_day_start :: method() {
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             if !p.is_dead_for_night_state() continue;
             p.revive_for_day_start();
@@ -2426,7 +2440,7 @@ GameManager :: class : Component {
     are_all_players_dead_for_night :: method() -> bool {
         player_count: s64 = 0;
         dead_count: s64 = 0;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             player_count += 1;
             if p.is_dead_for_night_state() {
@@ -2482,7 +2496,7 @@ GameManager :: class : Component {
         run_complete_sequence_rex_line_sfx_played = false;
         run_complete_sequence_reward_line_sfx_played = false;
         run_complete_reward_user_ids.clear();
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             user_id := p.get_user_id();
             if user_id.count <= 0 continue;
@@ -2528,7 +2542,7 @@ GameManager :: class : Component {
         if run_complete_sequence_moon_reward <= 0 return;
 
         rewarded_count: s64 = 0;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             if !should_reward_player_for_run_complete(p) continue;
             Economy.deposit_currency(p, MOON_CURRENCY, run_complete_sequence_moon_reward);
@@ -2554,7 +2568,7 @@ GameManager :: class : Component {
         run_complete_reward_user_ids.clear();
         reset_local_run_complete_sfx_state();
         run_complete_freeze_applied = false;
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             player.remove_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
         }
@@ -2586,7 +2600,7 @@ GameManager :: class : Component {
 
         cleanup_world_for_game_restart();
 
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             p.reset_for_game_restart();
         }
@@ -2621,7 +2635,7 @@ GameManager :: class : Component {
         clear_island5_story_boss();
         sync_active_island_entity();
 
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             p.remove_freeze_reason(ISLAND_TRANSITION_FREEZE_REASON);
             teleport_player_to_lobby_spawn(p);
@@ -2658,7 +2672,7 @@ GameManager :: class : Component {
 
         cleanup_world_for_game_restart();
 
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             p.reset_for_game_restart();
         }
@@ -2668,7 +2682,7 @@ GameManager :: class : Component {
         reset_voyage_preps_for_full_restart();
         reset_game_state();
 
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             teleport_player_to_lobby_spawn(p);
         }
@@ -2688,7 +2702,7 @@ GameManager :: class : Component {
     despawn_all_pois_for_transition :: method() {
         removed_count: s64 = 0;
 
-        foreach poi: component_iterator(POI) {
+        for poi: component_iterator(POI) {
             if poi == null continue;
             if poi.spawned_entity == null continue;
 
@@ -2704,14 +2718,14 @@ GameManager :: class : Component {
     destroy_all_mobs_for_game_over :: method() {
         removed_count: s64 = 0;
 
-        foreach spawner: component_iterator(MobSpawner) {
+        for spawner: component_iterator(MobSpawner) {
             if spawner == null continue;
             removed_count += spawner.spawned_mobs.count;
             spawner.destroy_all_spawned_mobs();
             spawner.clear_temporary_spawn_cap_bonus();
         }
 
-        foreach mob: component_iterator(Mob) {
+        for mob: component_iterator(Mob) {
             if mob == null continue;
             if mob.entity == null continue;
             if !#alive(mob.entity) continue;
@@ -2727,7 +2741,7 @@ GameManager :: class : Component {
     despawn_all_dropped_items_for_game_over :: method() {
         removed_count: s64 = 0;
 
-        foreach dropped: component_iterator(Dropped_Item) {
+        for dropped: component_iterator(Dropped_Item) {
             if dropped == null continue;
             if dropped.item != null {
                 Items.destroy_item_instance(dropped.item);
@@ -2739,7 +2753,7 @@ GameManager :: class : Component {
             }
         }
 
-        foreach dropped: component_iterator(Item_Drop_Magnet) {
+        for dropped: component_iterator(Item_Drop_Magnet) {
             if dropped == null continue;
             if dropped.entity != null && #alive(dropped.entity) {
                 dropped.entity.destroy();
@@ -2753,7 +2767,7 @@ GameManager :: class : Component {
     }
 
     reset_beacons_for_full_restart :: method() {
-        foreach beacon: component_iterator(Beacon) {
+        for beacon: component_iterator(Beacon) {
             if beacon == null continue;
             beacon.level = 1;
             beacon.clear_stockpile();
@@ -2764,7 +2778,7 @@ GameManager :: class : Component {
     }
 
     reset_voyage_preps_for_full_restart :: method() {
-        foreach prep: component_iterator(VoyagePrep) {
+        for prep: component_iterator(VoyagePrep) {
             if prep == null continue;
             prep.reset_for_round();
         }
@@ -2777,7 +2791,7 @@ GameManager :: class : Component {
 
     notify_all_players_night_warning :: method() {
         sent_to_any_player := false;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
             if was_player_warned_this_day(p.get_user_id()) continue;
@@ -2824,7 +2838,7 @@ GameManager :: class : Component {
             if run_complete_freeze_applied return;
 
             run_complete_freeze_applied = true;
-            foreach player: component_iterator(Player) {
+            for player: component_iterator(Player) {
                 if player == null continue;
                 player.add_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
             }
@@ -2834,7 +2848,7 @@ GameManager :: class : Component {
         if !run_complete_freeze_applied return;
 
         run_complete_freeze_applied = false;
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             player.remove_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
         }
@@ -2965,7 +2979,7 @@ GameManager :: class : Component {
         this.mark_raid_night_triggered(raid_night_number);
 
         raid_target_players: [..]Player;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
             if p.is_dead_for_night_state() continue;
@@ -2979,7 +2993,7 @@ GameManager :: class : Component {
 
         raid_rng := get_run_rng(RUN_RNG_STREAM_RAID_TARGET, raid_night_number);
         retargeted_mob_count: s64 = 0;
-        foreach mob: component_iterator(Mob) {
+        for mob: component_iterator(Mob) {
             if mob == null continue;
             if !mob.is_alive() continue;
 
@@ -3399,7 +3413,7 @@ GameManager :: class : Component {
 
     choose_reaper_boss_target_player :: method() -> Player {
         valid_players: [..]Player;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if !is_valid_reaper_boss_target_player(p) continue;
             valid_players.append(p);
         }
@@ -3451,7 +3465,7 @@ GameManager :: class : Component {
         }
 
         if active_reaper_target_player_id != 0 {
-            foreach p: component_iterator(Player) {
+            for p: component_iterator(Player) {
                 if !is_valid_reaper_boss_target_player(p) continue;
                 if p.entity.id != active_reaper_target_player_id continue;
                 boss_mob.set_boss_target_player(active_reaper_target_player_id);
@@ -3495,7 +3509,7 @@ GameManager :: class : Component {
         message := format_string(PLAYER_DOWNED_NOTIFICATION_TEXT, {name});
         if Game.is_server() {
             sent_to_any_player := false;
-            foreach p: component_iterator(Player) {
+            for p: component_iterator(Player) {
                 if p == null continue;
                 if p.entity == null continue;
 

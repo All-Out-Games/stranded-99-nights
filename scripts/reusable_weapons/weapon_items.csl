@@ -366,6 +366,54 @@ get_ammo_def_for_weapon :: proc(wt: Weapon_Type) -> Item_Definition {
     return g_ammo_item_defs[config.ammo_type_index];
 }
 
+weapon_item_query_ascii_fold_char :: proc(ch: int) -> int {
+    if ch >= 65 && ch <= 90 {
+        return ch + 32;
+    }
+    return ch;
+}
+
+weapon_item_query_trim_ascii_bounds :: proc(value: string) -> int, int {
+    start := 0;
+    while start < value.count {
+        ch := value[start];
+        if ch != 32 && ch != 9 && ch != 10 && ch != 13 {
+            break;
+        }
+        start += 1;
+    }
+
+    finish := value.count;
+    while finish > start {
+        ch := value[finish - 1];
+        if ch != 32 && ch != 9 && ch != 10 && ch != 13 {
+            break;
+        }
+        finish -= 1;
+    }
+
+    return start, finish;
+}
+
+weapon_item_query_matches :: proc(value: string, query: string) -> bool {
+    value_start, value_finish := weapon_item_query_trim_ascii_bounds(value);
+    query_start, query_finish := weapon_item_query_trim_ascii_bounds(query);
+    if query_finish <= query_start return false;
+
+    length := value_finish - value_start;
+    if length != query_finish - query_start return false;
+
+    i := 0;
+    while i < length {
+        if weapon_item_query_ascii_fold_char((value[value_start + i]).(int)) != weapon_item_query_ascii_fold_char((query[query_start + i]).(int)) {
+            return false;
+        }
+        i += 1;
+    }
+
+    return true;
+}
+
 try_find_reusable_weapon_item_def_by_id :: proc(item_id: string) -> Item_Definition {
     if item_id.count <= 0 return null;
 
@@ -374,7 +422,10 @@ try_find_reusable_weapon_item_def_by_id :: proc(item_id: string) -> Item_Definit
     i := 0;
     while i < WEAPON_COUNT {
         defn := g_weapon_item_defs[i];
-        if defn != null && defn.get_id() == item_id {
+        if defn != null && (
+            weapon_item_query_matches(defn.get_id(), item_id) ||
+            weapon_item_query_matches(defn.get_name(), item_id)
+        ) {
             return defn;
         }
         i += 1;
@@ -383,7 +434,10 @@ try_find_reusable_weapon_item_def_by_id :: proc(item_id: string) -> Item_Definit
     i = 0;
     while i < AMMO_TYPE_COUNT {
         defn := g_ammo_item_defs[i];
-        if defn != null && defn.get_id() == item_id {
+        if defn != null && (
+            weapon_item_query_matches(defn.get_id(), item_id) ||
+            weapon_item_query_matches(defn.get_name(), item_id)
+        ) {
             return defn;
         }
         i += 1;

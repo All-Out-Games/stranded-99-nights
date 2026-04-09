@@ -219,7 +219,7 @@ VoyagePrep :: class : Interactable {
     has_current_player_user_id :: method(user_id: string) -> bool {
         if user_id.count <= 0 return false;
 
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             if player.get_user_id() == user_id {
                 return true;
@@ -243,7 +243,7 @@ VoyagePrep :: class : Interactable {
 
     get_current_player_count :: method() -> s64 {
         count: s64 = 0;
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             count += 1;
         }
@@ -252,7 +252,7 @@ VoyagePrep :: class : Interactable {
 
     get_ready_player_count :: method() -> s64 {
         ready_count: s64 = 0;
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             if is_player_ready(player) {
                 ready_count += 1;
@@ -351,7 +351,7 @@ VoyagePrepSystem :: struct {
     }
 
     close_modal_for_component :: proc(prep: VoyagePrep) {
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             if player.active_voyage_prep != prep continue;
             VoyagePrepSystem.close_modal(player);

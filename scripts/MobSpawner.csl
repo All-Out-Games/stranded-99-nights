@@ -259,7 +259,7 @@ MobSpawner :: class : Component {
 
     is_spawn_position_clear_of_players :: method(spawn_pos: v2) -> bool {
         clearance_sq := SPAWN_PLAYER_CLEARANCE_RADIUS * SPAWN_PLAYER_CLEARANCE_RADIUS;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p.health <= 0.0 continue;
 
             dist_sq := length_squared(p.entity.world_position - spawn_pos);

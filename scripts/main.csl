@@ -7,6 +7,13 @@ MOON_CURRENCY_DISPLAY :: "Fossils";
 MOON_CURRENCY_ICON_PATH :: "UI_Fossil_c91a72.png";
 MOON_MERCHANT_DISPLAY_NAME :: "Fossil Merchant";
 
+get_moon_currency_icon_asset :: proc() -> Texture_Asset {
+    #static moon_icon := get_asset(Texture_Asset, MOON_CURRENCY_ICON_PATH);
+    #static fallback_moon_icon := get_asset(Texture_Asset, "Items/Moon.png");
+    if moon_icon != null return moon_icon;
+    return fallback_moon_icon;
+}
+
 ao_before_scene_load :: proc() {
     // Called before the scene is loaded
     ItemManager.AllItemDefinitions();
@@ -15,11 +22,7 @@ ao_before_scene_load :: proc() {
     #static moon_currency_registered: bool;
     if !moon_currency_registered {
         moon_currency_registered = true;
-        moon_icon := get_asset(Texture_Asset, MOON_CURRENCY_ICON_PATH);
-        if moon_icon == null {
-            moon_icon = get_asset(Texture_Asset, "Items/Moon.png");
-        }
-        Economy.register_currency(MOON_CURRENCY, moon_icon);
+        Economy.register_currency(MOON_CURRENCY, get_moon_currency_icon_asset());
     }
 }
 
@@ -349,6 +352,12 @@ Player :: class : Player_Base {
     tutorial_defeat_mob_complete: bool;
     tutorial_upgrade_beacon_complete: bool;
     tutorial_survive_5_nights_complete: bool;
+    tutorial_target_cached_step: Tutorial_Step;
+    tutorial_target_cached_position: v2;
+    tutorial_target_cached_found: bool;
+    tutorial_target_next_refresh_time_seconds: float;
+    tutorial_target_last_sample_position: v2;
+    tutorial_target_cache_initialized: bool;
     death_drop_pickup_blocks: [..]Death_Drop_Pickup_Block;
     is_ghost_mode: bool;
     ghost_current_animation_name: string;
@@ -389,6 +398,12 @@ Player :: class : Player_Base {
         log_page_ui_open = false;
         active_log_page_index = 0;
         TutorialSystem.load_player_progress(this);
+        tutorial_target_cached_step = .NONE;
+        tutorial_target_cached_position = entity.world_position;
+        tutorial_target_cached_found = false;
+        tutorial_target_next_refresh_time_seconds = 0.0;
+        tutorial_target_last_sample_position = entity.world_position;
+        tutorial_target_cache_initialized = false;
         is_ghost_mode = false;
         ghost_current_animation_name = "";
         ghost_last_world_position = entity.world_position;
@@ -496,7 +511,7 @@ Player :: class : Player_Base {
         if entity == null return 0.0;
 
         max_beacon_level: s64 = 0;
-        foreach beacon: component_iterator(Beacon) {
+        for beacon: component_iterator(Beacon) {
             if beacon == null continue;
             if beacon.entity == null continue;
             if !beacon.has_active_fuel() continue;
@@ -754,10 +769,7 @@ Player :: class : Player_Base {
     icon_rect := inner.cut_left_unscaled(54);
     _ := inner.cut_left_unscaled(12);
 
-    coin_icon := get_asset(Texture_Asset, MOON_CURRENCY_ICON_PATH);
-    if coin_icon == null {
-        coin_icon = get_asset(Texture_Asset, "Items/Moon.png");
-    }
+    coin_icon := get_moon_currency_icon_asset();
     if coin_icon != null {
         UI.quad(icon_rect.fit_aspect(coin_icon.get_aspect()), coin_icon);
     }
@@ -1253,10 +1265,14 @@ Player :: class : Player_Base {
         clock_cur_alpha = lerp_towards(clock_cur_alpha, target_alpha, CLOCK_ALPHA_LERP_STEP);
 
         if !hide_day_night_ui_for_voyage {
-            night := get_asset(Texture_Asset, "UI/Clock_Night.png");
-            day := get_asset(Texture_Asset, "UI/Clock_Day.png");
-            overlay := get_asset(Texture_Asset, "UI/Clock_OL.png");
-            moon := get_asset(Texture_Asset, "UI/Moon.png");
+            #static night := get_asset(Texture_Asset, "UI/Clock_Night.png");
+            #static day := get_asset(Texture_Asset, "UI/Clock_Day.png");
+            #static overlay := get_asset(Texture_Asset, "UI/Clock_OL.png");
+            #static moon := get_asset(Texture_Asset, "UI/Moon.png");
+            #static raid_event_icon := get_asset(Texture_Asset, "UI/Skull.png");
+            #static supply_drop_event_icon := get_asset(Texture_Asset, "UI/Star.png");
+            #static reaper_event_icon := get_asset(Texture_Asset, "Items/scp_682.png");
+            #static reaper_event_icon_fallback := get_asset(Texture_Asset, "Items/Scythe.png");
 
             // Fallback baseline in case clock textures are not imported yet.
             if night == null || day == null || overlay == null {
@@ -1292,22 +1308,19 @@ Player :: class : Player_Base {
             event_icon: Texture_Asset;
             event_label := "";
             if manager.is_raid_event_active() {
-                event_icon = get_asset(Texture_Asset, "UI/Skull.png");
+                event_icon = raid_event_icon;
                 event_label = "Raid";
             } else if manager.is_supply_drop_event_active() {
-                event_icon = get_asset(Texture_Asset, "UI/Star.png");
+                event_icon = supply_drop_event_icon;
                 event_label = "Supply Drop";
             } else if manager.is_reaper_event_active() {
-                event_icon = get_asset(Texture_Asset, "Items/scp_682.png");
+                event_icon = reaper_event_icon;
                 if event_icon == null {
-                    event_icon = get_asset(Texture_Asset, "Items/Scythe.png");
+                    event_icon = reaper_event_icon_fallback;
                 }
                 event_label = "Monster";
             } else if manager.is_moon_merchant_event_active() {
-                event_icon = get_asset(Texture_Asset, MOON_CURRENCY_ICON_PATH);
-                if event_icon == null {
-                    event_icon = get_asset(Texture_Asset, "Items/Moon.png");
-                }
+                event_icon = get_moon_currency_icon_asset();
                 event_label = MOON_MERCHANT_DISPLAY_NAME;
             }
 
@@ -1359,7 +1372,7 @@ Player :: class : Player_Base {
             voyage_bar_rect := clock_rect.bottom_center_rect().grow(15, 218, 15, 218).offset(0, voyage_bar_offset_y);
             voyage_fill_t := manager.get_voyage_progress_t();
             voyage_fill_rect := voyage_bar_rect.inset(3).subrect(0.0, 0.0, voyage_fill_t, 1.0);
-            voyage_tracker := get_asset(Texture_Asset, "UI/VoyageTracker.png");
+            #static voyage_tracker := get_asset(Texture_Asset, "UI/VoyageTracker.png");
 
             UI.quad(voyage_bar_rect, core_globals.white_sprite, {0.05, 0.07, 0.10, 0.85});
             UI.quad(voyage_bar_rect.inset(1), core_globals.white_sprite, {0.16, 0.20, 0.28, 0.95});

@@ -25,6 +25,8 @@ TutorialSystem :: struct {
     LEGACY_DOTTED_SAVE_KEY_DEFEAT_MOB :: "tutorial.defeat_mob_complete";
     LEGACY_DOTTED_SAVE_KEY_UPGRADE_BEACON :: "tutorial.upgrade_beacon_complete";
     LEGACY_DOTTED_SAVE_KEY_SURVIVE_5_NIGHTS :: "tutorial.survive_5_nights_complete";
+    TARGET_REFRESH_INTERVAL_SECONDS :: 0.15;
+    TARGET_RESAMPLE_DISTANCE_SQ :: 1.0;
 
     cleanup_legacy_progress_keys :: proc(player: Player) {
         if player == null return;
@@ -140,7 +142,7 @@ TutorialSystem :: struct {
     notify_mob_defeated_by_player_id :: proc(player_entity_id: u64) {
         if player_entity_id == 0 return;
 
-        foreach player: component_iterator(Player) {
+        for player: component_iterator(Player) {
             if player == null continue;
             if player.entity == null continue;
             if player.entity.id != player_entity_id continue;
@@ -187,27 +189,37 @@ TutorialSystem :: struct {
         return "";
     }
 
+    compute_step_target_position :: proc(player: Player, step: Tutorial_Step) -> v2, bool {
+        switch step {
+            case .HARVEST_WOOD: {
+                target_pos, found := TutorialSystem.get_closest_wood_node_position(player);
+                return target_pos, found;
+            }
+            case .FEED_FIRE: {
+                target_pos, found := TutorialSystem.get_closest_beacon_position(player);
+                return target_pos, found;
+            }
+            case .CRAFT_SPEAR: {
+                target_pos, found := TutorialSystem.get_closest_crafting_station_position(player);
+                return target_pos, found;
+            }
+            case .DEFEAT_MOB: {
+                target_pos, found := TutorialSystem.get_closest_mob_position(player);
+                return target_pos, found;
+            }
+            case .UPGRADE_BEACON: {
+                target_pos, found := TutorialSystem.get_closest_beacon_position(player);
+                return target_pos, found;
+            }
+            case .SURVIVE_5_NIGHTS, .NONE: return v2.{0.0, 0.0}, false;
+        }
+
+        return v2.{0.0, 0.0}, false;
+    }
+
     get_step_target_position :: proc(player: Player, step: Tutorial_Step) -> v2, bool {
-        if step == .HARVEST_WOOD {
-            target_pos, found := TutorialSystem.get_closest_wood_node_position(player);
-            return target_pos, found;
-        }
-        if step == .FEED_FIRE {
-            target_pos, found := TutorialSystem.get_closest_beacon_position(player);
-            return target_pos, found;
-        }
-        if step == .CRAFT_SPEAR {
-            target_pos, found := TutorialSystem.get_closest_crafting_station_position(player);
-            return target_pos, found;
-        }
-        if step == .DEFEAT_MOB {
-            target_pos, found := TutorialSystem.get_closest_mob_position(player);
-            return target_pos, found;
-        }
-        if step == .UPGRADE_BEACON {
-            target_pos, found := TutorialSystem.get_closest_beacon_position(player);
-            return target_pos, found;
-        }
+        if player == null return v2.{0.0, 0.0}, false;
+        if player.entity == null return v2.{0.0, 0.0}, false;
         if step == .SURVIVE_5_NIGHTS {
             return v2.{0.0, 0.0}, false;
         }
@@ -215,7 +227,31 @@ TutorialSystem :: struct {
             return v2.{0.0, 0.0}, false;
         }
 
-        return v2.{0.0, 0.0}, false;
+        player_pos := player.entity.world_position;
+        now := get_time();
+        should_refresh := !player.tutorial_target_cache_initialized || player.tutorial_target_cached_step != step;
+        if !should_refresh {
+            move_delta := player_pos - player.tutorial_target_last_sample_position;
+            if length_squared(move_delta) >= TARGET_RESAMPLE_DISTANCE_SQ {
+                should_refresh = true;
+            }
+        }
+        if !should_refresh && now >= player.tutorial_target_next_refresh_time_seconds {
+            should_refresh = true;
+        }
+
+        if should_refresh {
+            target_pos, found := TutorialSystem.compute_step_target_position(player, step);
+
+            player.tutorial_target_cached_step = step;
+            player.tutorial_target_cached_position = target_pos;
+            player.tutorial_target_cached_found = found;
+            player.tutorial_target_next_refresh_time_seconds = now + TARGET_REFRESH_INTERVAL_SECONDS;
+            player.tutorial_target_last_sample_position = player_pos;
+            player.tutorial_target_cache_initialized = true;
+        }
+
+        return player.tutorial_target_cached_position, player.tutorial_target_cached_found;
     }
 
     get_closest_wood_node_position :: proc(player: Player) -> v2, bool {
@@ -227,7 +263,7 @@ TutorialSystem :: struct {
         best_dist_sq := 0.0;
         found := false;
 
-        foreach node: component_iterator(ResourceNode) {
+        for node: component_iterator(ResourceNode) {
             if node == null continue;
             if node.entity == null continue;
             if node.resource_type != .WOOD continue;
@@ -254,7 +290,7 @@ TutorialSystem :: struct {
         best_dist_sq := 0.0;
         found := false;
 
-        foreach beacon: component_iterator(Beacon) {
+        for beacon: component_iterator(Beacon) {
             if beacon == null continue;
             if beacon.entity == null continue;
 
@@ -279,7 +315,7 @@ TutorialSystem :: struct {
         best_dist_sq := 0.0;
         found := false;
 
-        foreach station: component_iterator(CraftingStationInteractable) {
+        for station: component_iterator(CraftingStationInteractable) {
             if station == null continue;
             if station.entity == null continue;
 
@@ -304,7 +340,7 @@ TutorialSystem :: struct {
         best_dist_sq := 0.0;
         found := false;
 
-        foreach mob: component_iterator(Mob) {
+        for mob: component_iterator(Mob) {
             if mob == null continue;
             if mob.entity == null continue;
             if !mob.is_alive() continue;

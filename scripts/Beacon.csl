@@ -114,7 +114,7 @@ Beacon :: class : Interactable {
             }
         }
 
-        foreach beacon_spawn: component_iterator(BeaconSpawn) {
+        for beacon_spawn: component_iterator(BeaconSpawn) {
             if beacon_spawn == null continue;
             if beacon_spawn.entity == null continue;
 
@@ -402,7 +402,7 @@ Beacon :: class : Interactable {
         }
 
         sent_to_any_player := false;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             if p.entity == null continue;
 
@@ -502,7 +502,7 @@ BeaconSystem :: struct {
 
     clamp_position_outside_safety_zones :: proc(position: v2, fallback_reference: v2) -> v2 {
         adjusted := position;
-        foreach beacon: component_iterator(Beacon) {
+        for beacon: component_iterator(Beacon) {
             if beacon == null continue;
             if beacon.entity == null continue;
             if !beacon.has_active_fuel() continue;
@@ -531,7 +531,7 @@ BeaconSystem :: struct {
     }
 
     is_position_inside_active_safety_zone :: proc(position: v2) -> bool {
-        foreach beacon: component_iterator(Beacon) {
+        for beacon: component_iterator(Beacon) {
             if beacon == null continue;
             if beacon.entity == null continue;
             if !beacon.has_active_fuel() continue;
@@ -593,7 +593,7 @@ BeaconSystem :: struct {
         beacon.refresh_prompt_text();
         beacon.rebuild_game_navmesh();
         beacon.upgrade_feedback_sequence += 1;
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             TutorialSystem.mark_upgrade_beacon_complete_if_active(p);
         }

@@ -1,3 +1,10 @@
+get_health_bar_textures :: proc() -> Texture_Asset, Texture_Asset, Texture_Asset {
+    #static back := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_back.png");
+    #static fill := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_fill.png");
+    #static pip := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_pip.png");
+    return back, fill, pip;
+}
+
 draw_health_bar :: proc(player: Player) {
     UI.push_world_draw_context();
     defer UI.pop_draw_context();
@@ -15,9 +22,7 @@ draw_health_bar :: proc(player: Player) {
     health_rect = health_rect.grow(13, 70, 0, 70);
     border_rect := health_rect.grow(5.5, 4, 5.5, 4).offset(0, -2);
 
-    back := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_back.png");
-    fill := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_fill.png");
-    pip := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_pip.png");
+    back, fill, pip := get_health_bar_textures();
 
     // Background
     UI.quad(border_rect, back, {1, 1, 1, 1});
@@ -78,9 +83,7 @@ draw_mob_health_bar :: proc(mob: Mob, material_player: Player = null) {
     health_rect := Rect{pos, pos}.grow(13, 70, 0, 70);
     border_rect := health_rect.grow(5.5, 4, 5.5, 4).offset(0, -2);
 
-    back := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_back.png");
-    fill := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_fill.png");
-    pip := get_asset(Texture_Asset, "reusable_weapons/sprites/reusable-weapons/hud_elements/health_bar_green/healthbar_pip.png");
+    back, fill, pip := get_health_bar_textures();
 
     UI.quad(border_rect, back, {1, 1, 1, 1});
 

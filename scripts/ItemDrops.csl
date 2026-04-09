@@ -48,6 +48,8 @@ Item_Drop_Magnet :: class : Component {
     target_player_user_id: string;
     cached_target_player: Player;
     next_target_refresh_time_seconds: float;
+    client_fallback_target_player: Player;
+    client_fallback_next_refresh_time_seconds: float;
 
     // Client-side smoothing state (cosmetic).
     smoothed_world_position: v2;
@@ -70,6 +72,8 @@ Item_Drop_Magnet :: class : Component {
         smoothed_initialized = true;
         cached_target_player = null;
         next_target_refresh_time_seconds = 0.0;
+        client_fallback_target_player = null;
+        client_fallback_next_refresh_time_seconds = 0.0;
 
         if attract_radius <= 0 {
             attract_radius = 1.8;
@@ -87,7 +91,7 @@ Item_Drop_Magnet :: class : Component {
             return null;
         }
 
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if p == null continue;
             if p.self == null continue;
             if p.get_user_id() == user_id {
@@ -133,7 +137,7 @@ Item_Drop_Magnet :: class : Component {
         best: Player;
         best_d2 := attract_radius * attract_radius;
 
-        foreach p: component_iterator(Player) {
+        for p: component_iterator(Player) {
             if !is_valid_target_player(p) continue;
 
             delta := p.entity.world_position - origin;
@@ -408,8 +412,23 @@ Item_Drop_Magnet :: class : Component {
         } else {
             target = find_player_by_user_id(target_player_user_id);
             if target == null {
-                // Fallback: purely cosmetic, in case replication is behind.
-                target = find_target_player();
+                if client_fallback_target_player != null {
+                    if !#alive(client_fallback_target_player) || !is_valid_target_player(client_fallback_target_player) {
+                        client_fallback_target_player = null;
+                    }
+                }
+
+                now := get_time();
+                if now >= client_fallback_next_refresh_time_seconds {
+                    client_fallback_next_refresh_time_seconds = now + ITEM_DROP_TARGET_REFRESH_INTERVAL_SECONDS;
+                    // Keep the cosmetic fallback scan throttled so large numbers of drops
+                    // do not rescan every player every frame while replication catches up.
+                    client_fallback_target_player = find_target_player();
+                }
+                target = client_fallback_target_player;
+            } else {
+                client_fallback_target_player = target;
+                client_fallback_next_refresh_time_seconds = get_time() + ITEM_DROP_TARGET_REFRESH_INTERVAL_SECONDS;
             }
         }
 

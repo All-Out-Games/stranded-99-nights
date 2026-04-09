@@ -262,6 +262,54 @@ ItemManager :: struct {
         return scale;
     }
 
+    _ascii_fold_char :: proc(ch: int) -> int {
+        if ch >= 65 && ch <= 90 {
+            return ch + 32;
+        }
+        return ch;
+    }
+
+    _trim_ascii_bounds :: proc(value: string) -> int, int {
+        start := 0;
+        while start < value.count {
+            ch := value[start];
+            if ch != 32 && ch != 9 && ch != 10 && ch != 13 {
+                break;
+            }
+            start += 1;
+        }
+
+        finish := value.count;
+        while finish > start {
+            ch := value[finish - 1];
+            if ch != 32 && ch != 9 && ch != 10 && ch != 13 {
+                break;
+            }
+            finish -= 1;
+        }
+
+        return start, finish;
+    }
+
+    _matches_query :: proc(value: string, query: string) -> bool {
+        value_start, value_finish := ItemManager._trim_ascii_bounds(value);
+        query_start, query_finish := ItemManager._trim_ascii_bounds(query);
+        if query_finish <= query_start return false;
+
+        length := value_finish - value_start;
+        if length != query_finish - query_start return false;
+
+        i := 0;
+        while i < length {
+            if ItemManager._ascii_fold_char((value[value_start + i]).(int)) != ItemManager._ascii_fold_char((query[query_start + i]).(int)) {
+                return false;
+            }
+            i += 1;
+        }
+
+        return true;
+    }
+
     FindItem :: proc(item_id: string) -> Item_Definition {
         defn := ItemManager.TryFindItem(item_id);
         assert(defn != null, "Unknown item %", {item_id});
@@ -271,7 +319,7 @@ ItemManager :: struct {
     TryFindItem :: proc(item_id: string) -> Item_Definition {
         defs := ItemManager._definitions();
         for defn: defs {
-            if defn != null && defn.get_id() == item_id {
+            if defn != null && ItemManager._matches_query(defn.get_id(), item_id) {
                 return defn;
             }
         }
@@ -281,7 +329,7 @@ ItemManager :: struct {
     TryFindItemByName :: proc(item_name: string) -> Item_Definition {
         defs := ItemManager._definitions();
         for defn: defs {
-            if defn != null && defn.get_name() == item_name {
+            if defn != null && ItemManager._matches_query(defn.get_name(), item_name) {
                 return defn;
             }
         }
