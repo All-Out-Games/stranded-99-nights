@@ -54,6 +54,7 @@ VoyageBoat :: class : Component {
 
     trigger_damage_feedback :: method() {
         damage_pulse_elapsed_seconds = 0.0;
+        game_sfx_play(.VOYAGE_DAMAGE, entity);
     }
 
     update_damage_pulse :: method(dt: float) {

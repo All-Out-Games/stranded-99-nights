@@ -474,11 +474,19 @@ CraftingSystem :: struct {
             recipe_desc.width = UIK.flex(1);
             recipe_desc.height = UIK.flex(1);
             recipe_desc.padding = v4{10, 16, 10, 16};
-            recipe_desc.gap = 12;
-            recipe_desc.cross_align = .CENTER;
+            recipe_desc.gap = 0;
+            recipe_desc.cross_align = .STRETCH;
 
             recipe_handle := UIK.panel_begin_interactive(format_string("craft_recipe_%", {i}), recipe_desc);
             recipe_buttons.append(Crafting_Recipe_Button{i, recipe_handle});
+
+            recipe_content := UIK.layout_row();
+            recipe_content.width = UIK.flex(1);
+            recipe_content.height = UIK.flex(1);
+            recipe_content.gap = 12;
+            recipe_content.cross_align = .CENTER;
+            recipe_content.show_background = false;
+            UIK.panel_begin(recipe_content);
 
             icon := CraftingSystem.get_primary_recipe_icon(recipe);
             if icon != null {
@@ -495,13 +503,17 @@ CraftingSystem :: struct {
 
             label_panel := UIK.layout_column();
             label_panel.width = UIK.flex(1);
-            label_panel.height = UIK.fit();
+            label_panel.height = UIK.flex(1);
             label_panel.main_align = .CENTER;
+            label_panel.cross_align = .START;
             label_panel.show_background = false;
             UIK.panel_begin(label_panel);
-            recipe_name := UIK.text_button();
+            recipe_name := UIK.text_body();
             UIK.text_set_halign(&recipe_name, .LEFT);
+            UIK.text_set_size_mult(&recipe_name, 1.05);
             UIK.text(recipe.name, recipe_name);
+            UIK.panel_end();
+
             UIK.panel_end();
 
             UIK.panel_end();

@@ -49,14 +49,17 @@ Melee_Ability :: class : Ability_Base {
 
     on_update :: proc(ability: Ability_Base, params: ref Ability_Update_Params) {
         p := ability.player.(Player);
+        should_play_melee_swing_sfx := p.equipped_weapon_type == .NONE;
         if p.equipped_weapon_type == .NONE {
             ability.icon = get_asset(Texture_Asset, "Items/PunchIcon.png");
         } else if p.equipped_weapon_type == .SPEAR {
             ability.icon = get_asset(Texture_Asset, "Items/Spear.png");
+            should_play_melee_swing_sfx = true;
         } else {
             config := get_weapon_config(p.equipped_weapon_type);
             if config.fire_mode == .MELEE {
                 ability.icon = get_asset(Texture_Asset, config.weapon_icon_path);
+                should_play_melee_swing_sfx = true;
             }
         }
 
@@ -81,9 +84,11 @@ Melee_Ability :: class : Ability_Base {
                 }
                 p.animator.instance.state_machine.set_trigger(melee_trigger);
             }
-
             // Damage nearby mobs only (co-op friendly fire disabled)
             if Game.is_server() {
+                if should_play_melee_swing_sfx {
+                    game_sfx_play(.MELEE_SWING, p.entity);
+                }
                 melee_damage := get_melee_damage(p);
 
                 nearby_mobs: [..]Mob;

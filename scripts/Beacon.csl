@@ -676,6 +676,9 @@ BeaconSystem :: struct {
         }
 
         beacon.add_fuel(1);
+        if player.is_local() {
+            game_sfx_play(.BEACON_FUEL, beacon.entity);
+        }
         TutorialSystem.mark_feed_fire_complete(player);
         //Notifier.notify(player, "Added 1 Wood to Beacon fuel. Fuel: %", {beacon.fuel});
         return true;

@@ -112,6 +112,9 @@ TutorialSystem :: struct {
         if Game.is_server() && save_key.count > 0 {
             Save.set_int(player, save_key, 1);
         }
+        if player.is_local() {
+            game_sfx_play(.RUN_COMPLETE_STEP, player.entity);
+        }
     }
 
     mark_feed_fire_complete :: proc(player: Player) {

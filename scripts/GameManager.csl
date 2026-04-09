@@ -81,6 +81,14 @@ Game_Sfx_Event :: enum {
     MOB_ATTACK;
     DAMAGE_HIT;
     DODGE_ROLL;
+    VOYAGE_DAMAGE;
+    VOYAGE_TRANSITION;
+    VOYAGE_FAIL;
+    NIGHT_EVENT_NOTIFICATION;
+    SPECIAL_SPAWN;
+    BEACON_FUEL;
+    MELEE_SWING;
+    ISLAND5_BOSS_ROAR;
 }
 
 game_sfx_path_for_event :: proc(event: Game_Sfx_Event) -> string {
@@ -105,6 +113,14 @@ game_sfx_path_for_event :: proc(event: Game_Sfx_Event) -> string {
         case .MOB_ATTACK:      return "slime_attack.wav";
         case .DAMAGE_HIT:      return "bullet_bodyimpact.wav";
         case .DODGE_ROLL:      return "SFX/dodge_roll.wav";
+        case .VOYAGE_DAMAGE:   return "wood_hit_3e851e.wav";
+        case .VOYAGE_TRANSITION:return "teleport_036159.wav";
+        case .VOYAGE_FAIL:     return "decline_fight.wav";
+        case .NIGHT_EVENT_NOTIFICATION:return "ui_notification_e5d08e.wav";
+        case .SPECIAL_SPAWN:   return "boss_spawn_786202.wav";
+        case .BEACON_FUEL:     return "wood_chop.wav";
+        case .MELEE_SWING:     return "sword_swing_6766ce.wav";
+        case .ISLAND5_BOSS_ROAR:return "trex_roar_320dfe.wav";
         case .NONE:            return "";
     }
     return "";
@@ -132,6 +148,14 @@ game_sfx_default_volume_for_event :: proc(event: Game_Sfx_Event) -> float {
         case .MOB_ATTACK:      return 0.40;
         case .DAMAGE_HIT:      return 0.35;
         case .DODGE_ROLL:      return 0.40;
+        case .VOYAGE_DAMAGE:   return 0.30;
+        case .VOYAGE_TRANSITION:return 0.34;
+        case .VOYAGE_FAIL:     return 0.42;
+        case .NIGHT_EVENT_NOTIFICATION:return 0.38;
+        case .SPECIAL_SPAWN:   return 0.42;
+        case .BEACON_FUEL:     return 0.32;
+        case .MELEE_SWING:     return 0.34;
+        case .ISLAND5_BOSS_ROAR:return 0.48;
         case .NONE:            return 0.35;
     }
     return 0.35;
@@ -541,8 +565,22 @@ island :: proc(player: Player, island_index_text: string = "") {
         return;
     }
 
-    manager.Island = island_index;
-    //Notifier.notify(player, "Set island to %.", {island_index});
+    if manager.run_complete_sequence_active {
+        send_cheat_chat_message(player, "/island is unavailable during the run complete sequence.");
+        return;
+    }
+
+    if manager.get_island_entity(island_index) == null {
+        show_cheat_command_help(player, format_string("Island % is not configured.", {island_index}));
+        return;
+    }
+
+    if !manager.force_set_island(island_index) {
+        Notifier.notify(player, "Failed to set island to %.", {island_index});
+        return;
+    }
+
+    send_cheat_chat_message(player, format_string("Set island to %.", {island_index}));
     log_info("% set island to % via /island", {player.get_username(), island_index});
 } @chat_command @youtuber
 
@@ -824,6 +862,7 @@ GameManager :: class : Component {
     run_complete_sequence_start_time: float;
     run_complete_sequence_highest_island: int;
     run_complete_sequence_moon_reward: s64;
+    run_complete_sequence_defeated_rex: bool;
     run_complete_sequence_island_line_sfx_played: bool;
     run_complete_sequence_rex_line_sfx_played: bool;
     run_complete_sequence_reward_line_sfx_played: bool;
@@ -834,10 +873,13 @@ GameManager :: class : Component {
     island5_story_boss_spawn_triggered: bool;
     island5_story_boss_spawn_time_seconds: float;
     island5_story_boss_defeat_handled: bool;
+    island5_story_boss_win_time_seconds: float;
 
     ISLAND5_BOSS_LOG_PAGE_INDEX :: 8;
     ISLAND5_BOSS_SPAWN_DELAY_SECONDS :: 5.0;
     ISLAND5_BOSS_INTRO_WAIT_SECONDS :: 2.0;
+    ISLAND5_BOSS_WIN_DELAY_SECONDS :: 3.0;
+    ISLAND5_BOSS_WIN_BONUS_MOONS :: 200;
     ISLAND5_BOSS_INTRO_ANIMATION :: "Roar";
 
     ao_start :: method() {
@@ -1013,12 +1055,14 @@ GameManager :: class : Component {
         island5_story_boss_spawn_triggered = false;
         island5_story_boss_spawn_time_seconds = 0.0;
         island5_story_boss_defeat_handled = false;
+        island5_story_boss_win_time_seconds = 0.0;
         highest_island_reached_this_run = max(Island, 1);
         run_complete_sequence_active = false;
         run_complete_sequence_reward_done = false;
         run_complete_sequence_start_time = 0.0;
         run_complete_sequence_highest_island = 0;
         run_complete_sequence_moon_reward = 0;
+        run_complete_sequence_defeated_rex = false;
         run_complete_sequence_island_line_sfx_played = false;
         run_complete_sequence_rex_line_sfx_played = false;
         run_complete_sequence_reward_line_sfx_played = false;
@@ -1074,6 +1118,7 @@ GameManager :: class : Component {
                 run_complete_sequence_start_time = 0.0;
                 run_complete_sequence_highest_island = 0;
                 run_complete_sequence_moon_reward = 0;
+                run_complete_sequence_defeated_rex = false;
                 run_complete_sequence_island_line_sfx_played = false;
                 run_complete_sequence_rex_line_sfx_played = false;
                 run_complete_sequence_reward_line_sfx_played = false;
@@ -1262,6 +1307,9 @@ GameManager :: class : Component {
         }
         VoyageHealth = max(VoyageHealth - amount, 0.0);
         if VoyageHealth <= 0.0 {
+            if !Game.is_server() {
+                game_sfx_play(.VOYAGE_FAIL);
+            }
             if Game.is_server() {
                 show_broadcast_notification(VOYAGE_FAILED_NOTIFICATION_TEXT);
             }
@@ -1338,6 +1386,7 @@ GameManager :: class : Component {
         if player == null return false;
         if current_phase != .LOBBY return false;
         if game_over_sequence_active return false;
+        if run_complete_sequence_active return false;
         return true;
     }
 
@@ -1400,6 +1449,13 @@ GameManager :: class : Component {
     reset_log_pages_for_full_restart :: method() {
         picked_up_log_page_indices.clear();
 
+        foreach player: component_iterator(Player) {
+            if player == null continue;
+            player.codex_ui_open = false;
+            player.log_page_ui_open = false;
+            player.active_log_page_index = 0;
+        }
+
         foreach log_page: component_iterator(LogPage) {
             if log_page == null continue;
             log_page.reset_for_run_restart();
@@ -1460,6 +1516,17 @@ GameManager :: class : Component {
 
         foreach player: component_iterator(Player) {
             teleport_player_to_island1_spawn(player);
+        }
+    }
+
+    teleport_all_players_to_round_start_spawn :: method() {
+        if Island <= 1 {
+            teleport_all_players_to_island1_spawn();
+            return;
+        }
+
+        foreach player: component_iterator(Player) {
+            teleport_player_near_beacon_for_round(player);
         }
     }
 
@@ -1794,6 +1861,41 @@ GameManager :: class : Component {
         return true;
     }
 
+    force_set_island :: method(target_island: int) -> bool {
+        if target_island <= 0 return false;
+        if get_island_entity(target_island) == null return false;
+
+        Island = target_island;
+        loaded_island = target_island;
+        island_transition_target_island = target_island;
+        island_transition_active = false;
+        island_transition_disable_done = false;
+        island_transition_applied = false;
+        island_transition_start_time = 0.0;
+        voyage_state = .NONE;
+        voyage_timer_start_time = 0.0;
+        voyage_returning_after_destruction = false;
+        VoyageHealth = VOYAGE_STARTING_HEALTH;
+        record_island_reached_for_run(Island);
+
+        sync_active_island_entity();
+        sync_island_transition_freeze_state();
+        apply_auto_beacon_level_for_island(Island);
+
+        if current_phase != .IN_ROUND return true;
+
+        clear_active_night_event();
+        forced_next_night_event = .NONE;
+        clear_nightly_boss();
+        clear_island5_story_boss();
+        destroy_all_mobs_for_game_over();
+        despawn_all_dropped_items_for_game_over();
+        reset_voyage_preps_for_round();
+        rebuild_player_navmesh_for_scene_transition();
+        teleport_all_players_near_beacon_for_island_transition();
+        return true;
+    }
+
     sync_active_island_entity :: method() {
         if last_enabled_island_number == Island return;
 
@@ -1882,6 +1984,9 @@ GameManager :: class : Component {
             switch voyage_state {
                 case .TO_VOYAGE: {
                     island_transition_applied = true;
+                    if !Game.is_server() {
+                        game_sfx_play(.VOYAGE_TRANSITION);
+                    }
                     rebuild_player_navmesh_for_scene_transition();
                     teleport_all_players_to_voyage_scene();
                 }
@@ -1889,6 +1994,9 @@ GameManager :: class : Component {
                     reached_next_island := !voyage_returning_after_destruction && island_transition_target_island > loaded_island;
                     loaded_island = island_transition_target_island;
                     island_transition_applied = true;
+                    if !Game.is_server() {
+                        game_sfx_play(.VOYAGE_TRANSITION);
+                    }
                     rebuild_player_navmesh_for_scene_transition();
                     teleport_all_players_near_beacon_for_island_transition();
                     if reached_next_island {
@@ -2332,6 +2440,9 @@ GameManager :: class : Component {
     start_game_over_sequence :: method() {
         if game_over_sequence_active return;
         if run_complete_sequence_active return;
+        if Game.is_server() {
+            reset_log_pages_for_full_restart();
+        }
         GameProgressTracking.increment_all_players_game_overs();
         game_over_sequence_active = true;
         game_over_sequence_restart_done = false;
@@ -2354,6 +2465,7 @@ GameManager :: class : Component {
         GameProgressTracking.increment_all_players_game_wins();
 
         if Game.is_server() {
+            reset_log_pages_for_full_restart();
             prepare_lobby_for_run_complete_sequence();
             game_sfx_play(.RUN_COMPLETE);
         }
@@ -2362,6 +2474,10 @@ GameManager :: class : Component {
         run_complete_sequence_start_time = get_time();
         run_complete_sequence_highest_island = max(highest_island_reached_this_run, max(Island, 1));
         run_complete_sequence_moon_reward = max((run_complete_sequence_highest_island * RUN_COMPLETE_MOON_REWARD_MULTIPLIER).(s64), 0);
+        run_complete_sequence_defeated_rex = island5_story_boss_defeat_handled;
+        if run_complete_sequence_defeated_rex {
+            run_complete_sequence_moon_reward += ISLAND5_BOSS_WIN_BONUS_MOONS;
+        }
         run_complete_sequence_island_line_sfx_played = false;
         run_complete_sequence_rex_line_sfx_played = false;
         run_complete_sequence_reward_line_sfx_played = false;
@@ -2431,6 +2547,7 @@ GameManager :: class : Component {
         run_complete_sequence_start_time = 0.0;
         run_complete_sequence_highest_island = 0;
         run_complete_sequence_moon_reward = 0;
+        run_complete_sequence_defeated_rex = false;
         run_complete_sequence_island_line_sfx_played = false;
         run_complete_sequence_rex_line_sfx_played = false;
         run_complete_sequence_reward_line_sfx_played = false;
@@ -2696,6 +2813,9 @@ GameManager :: class : Component {
         remaining_nights := max(MAX_TRACKED_SURVIVAL_NIGHT - nights, 0);
         message := format_string(SURVIVED_NIGHT_NOTIFICATION_TEXT, {remaining_nights});
         show_broadcast_notification(message);
+        if !Game.is_server() {
+            game_sfx_play(.NIGHT_EVENT_NOTIFICATION);
+        }
         log_info("Broadcasted survived-night notification (remaining: %).", {remaining_nights});
     }
 
@@ -2920,6 +3040,7 @@ GameManager :: class : Component {
         }
 
         active_supply_drop_entity.set_local_position(spawn_pos);
+        game_sfx_play(.SPECIAL_SPAWN, active_supply_drop_entity);
         log_info("Night event started: SUPPLY DROP at (%, %).", {spawn_pos.x, spawn_pos.y});
     }
 
@@ -2972,6 +3093,7 @@ GameManager :: class : Component {
 
         spawn_pos := spawn_point.world_position;
         active_nightly_boss_entity.set_local_position(spawn_pos);
+        game_sfx_play(.SPECIAL_SPAWN, active_nightly_boss_entity);
         log_info("Nightly boss spawned on island % at (%, %).", {
             island_number,
             spawn_pos.x,
@@ -3167,12 +3289,17 @@ GameManager :: class : Component {
         if !moon_merchant_spawn_position_ready return;
 
         spawn_pos := active_moon_merchant_spawn_position;
+        spawned_new_merchant := false;
 
         if active_moon_merchant_entity == null || !#alive(active_moon_merchant_entity) {
             active_moon_merchant_entity = Scene.instantiate(prefab);
+            spawned_new_merchant = active_moon_merchant_entity != null;
         }
 
         active_moon_merchant_entity.set_local_position(spawn_pos);
+        if spawned_new_merchant {
+            game_sfx_play(.SPECIAL_SPAWN, active_moon_merchant_entity);
+        }
     }
 
     clear_moon_merchant_event :: method() {
@@ -3351,6 +3478,9 @@ GameManager :: class : Component {
             message = MOON_MERCHANT_NOTIFICATION_TEXT;
         }
         show_broadcast_notification(message);
+        if !Game.is_server() {
+            game_sfx_play(.NIGHT_EVENT_NOTIFICATION);
+        }
         last_notified_night_event = current_night_event;
         log_info("Broadcasted night event notification: %.", {event_name});
     }
@@ -3462,6 +3592,7 @@ GameManager :: class : Component {
         island5_story_boss_spawn_triggered = false;
         island5_story_boss_spawn_time_seconds = 0.0;
         island5_story_boss_defeat_handled = false;
+        island5_story_boss_win_time_seconds = 0.0;
     }
 
     spawn_island5_story_boss :: method() {
@@ -3497,10 +3628,12 @@ GameManager :: class : Component {
 
         island5_story_boss_spawn_triggered = false;
         active_island5_story_boss_entity.set_local_position(spawn_point.world_position);
+        game_sfx_play(.SPECIAL_SPAWN, active_island5_story_boss_entity);
 
         boss_mob := active_island5_story_boss_entity.get_component(Mob);
         if boss_mob != null {
             boss_mob.start_spawn_intro(ISLAND5_BOSS_INTRO_ANIMATION, ISLAND5_BOSS_INTRO_WAIT_SECONDS);
+            game_sfx_play(.ISLAND5_BOSS_ROAR, active_island5_story_boss_entity);
         }
 
         log_info("Island 5 story boss spawned at (%, %).", {
@@ -3510,10 +3643,18 @@ GameManager :: class : Component {
     }
 
     update_island5_story_boss_state :: method() {
+        if island5_story_boss_defeat_handled {
+            if !run_complete_sequence_active && get_time() >= island5_story_boss_win_time_seconds {
+                island5_story_boss_win_time_seconds = 0.0;
+                start_run_complete_sequence();
+                log_info("Island 5 story boss defeat delay complete. Triggering run complete.", {});
+            }
+            return;
+        }
+
         if current_phase != .IN_ROUND return;
         if should_show_voyage_scene() return;
         if get_current_player_island_number() != 5 return;
-        if island5_story_boss_defeat_handled return;
 
         if active_island5_story_boss_entity != null {
             if !#alive(active_island5_story_boss_entity) {
@@ -3523,9 +3664,9 @@ GameManager :: class : Component {
                 boss_mob := active_island5_story_boss_entity.get_component(Mob);
                 if boss_mob != null && !boss_mob.is_alive() {
                     island5_story_boss_defeat_handled = true;
+                    island5_story_boss_win_time_seconds = get_time() + ISLAND5_BOSS_WIN_DELAY_SECONDS;
                     active_island5_story_boss_entity = null;
-                    start_run_complete_sequence();
-                    log_info("Island 5 story boss defeated. Triggering run complete.", {});
+                    log_info("Island 5 story boss defeated. Run complete queued in % seconds.", {ISLAND5_BOSS_WIN_DELAY_SECONDS});
                     return;
                 }
                 return;
@@ -3682,7 +3823,7 @@ GameManager :: class : Component {
         if phase_time_seconds < ROUND_START_FADE_OUT_SECONDS return;
 
         round_start_teleport_done = true;
-        teleport_all_players_to_island1_spawn();
+        teleport_all_players_to_round_start_spawn();
     }
 
     get_round_start_overlay_alpha :: method() -> float {
@@ -3798,6 +3939,10 @@ GameManager :: class : Component {
 
     get_run_complete_moon_reward_amount :: method() -> s64 {
         return run_complete_sequence_moon_reward;
+    }
+
+    did_run_complete_sequence_defeat_rex :: method() -> bool {
+        return run_complete_sequence_defeated_rex;
     }
 
     get_game_over_nights_lasted :: method() -> s64 {
