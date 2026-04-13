@@ -6,12 +6,28 @@ MOON_CURRENCY :: "Moons";
 MOON_CURRENCY_DISPLAY :: "Fossils";
 MOON_CURRENCY_ICON_PATH :: "UI_Fossil_c91a72.png";
 MOON_MERCHANT_DISPLAY_NAME :: "Fossil Merchant";
+DOWNED_REVIVE_PRODUCT_ID :: "69dd342fb92415897780a4fb";
+DOWNED_REVIVE_PRODUCT_NAME :: "Emergency Revive";
+DOWNED_REVIVE_PRODUCT_ICON_PATH :: "Items/Medkit.png";
+ROUND_REVIVE_PRODUCT_ID :: "69dd3d1029b6804cf46d4ff6";
+ROUND_REVIVE_PRODUCT_NAME :: "Round Revive";
+ROUND_REVIVE_PRODUCT_ICON_PATH :: "Items/Medkit.png";
 
 get_moon_currency_icon_asset :: proc() -> Texture_Asset {
     #static moon_icon := get_asset(Texture_Asset, MOON_CURRENCY_ICON_PATH);
     #static fallback_moon_icon := get_asset(Texture_Asset, "Items/Moon.png");
     if moon_icon != null return moon_icon;
     return fallback_moon_icon;
+}
+
+get_downed_revive_product_icon_asset :: proc() -> Texture_Asset {
+    #static revive_icon := get_asset(Texture_Asset, DOWNED_REVIVE_PRODUCT_ICON_PATH);
+    return revive_icon;
+}
+
+get_round_revive_product_icon_asset :: proc() -> Texture_Asset {
+    #static revive_icon := get_asset(Texture_Asset, ROUND_REVIVE_PRODUCT_ICON_PATH);
+    return revive_icon;
 }
 
 ao_before_scene_load :: proc() {
@@ -72,7 +88,7 @@ MELEE_ATTACK_AIM_LOCK_SECONDS :: 0.45;
 PLAYER_DEATH_FADE_SECONDS :: 2.0;
 PLAYER_DEATH_BLACK_HOLD_SECONDS :: 2.0;
 PLAYER_DEATH_FADE_IN_SECONDS :: 2.0;
-PLAYER_DOWNED_DURATION_SECONDS :: 45.0;
+PLAYER_DOWNED_DURATION_SECONDS :: 15.0;
 PLAYER_DOWNED_REVIVE_HEALTH :: 25.0;
 PLAYER_DOWNED_REVIVE_HOLD_SECONDS :: 1.25;
 PLAYER_DEATH_DROP_SELF_PICKUP_BLOCK_SECONDS :: 5.0;
@@ -111,6 +127,54 @@ get_respawn_position :: proc(player: Player) -> v2 {
     }
 
     return DEFAULT_RESPAWN_POSITION;
+}
+
+ao_purchase_handler :: proc(player: Player, id: string) -> bool {
+    if id == ROUND_REVIVE_PRODUCT_ID {
+        if player == null return true;
+
+        manager := get_game_manager();
+        if manager == null {
+            Notifier.notify(player, "% is unavailable.", {ROUND_REVIVE_PRODUCT_NAME});
+            return true;
+        }
+
+        if !manager.is_round_revive_offer_active() {
+            Notifier.notify(player, "% arrived too late.", {ROUND_REVIVE_PRODUCT_NAME});
+            return true;
+        }
+
+        if !player.is_dead_for_night_state() {
+            Notifier.notify(player, "% is only available while defeated.", {ROUND_REVIVE_PRODUCT_NAME});
+            return true;
+        }
+
+        if manager.revive_all_players_for_round_revive(player) {
+            Notifier.notify(player, "% activated.", {ROUND_REVIVE_PRODUCT_NAME});
+        } else {
+            Notifier.notify(player, "% arrived too late.", {ROUND_REVIVE_PRODUCT_NAME});
+        }
+        return true;
+    }
+
+    if id != DOWNED_REVIVE_PRODUCT_ID return false;
+    if player == null return true;
+
+    if player.is_downed_for_night() {
+        if player.revive_from_downed(player.max_health) {
+            game_sfx_play(.REVIVE, player.entity);
+            Notifier.notify(player, "% activated.", {DOWNED_REVIVE_PRODUCT_NAME});
+        }
+        return true;
+    }
+
+    if player.is_dead_for_night_state() {
+        Notifier.notify(player, "% arrived too late.", {DOWNED_REVIVE_PRODUCT_NAME});
+        return true;
+    }
+
+    Notifier.notify(player, "% can only be used while downed.", {DOWNED_REVIVE_PRODUCT_NAME});
+    return true;
 }
 
 Player_Death_Effect :: class : Effect_Base {
@@ -326,6 +390,49 @@ Player_Downed_Effect :: class : Effect_Base {
     }
 }
 
+Downed_Sparks_Revive_Ability :: class : Ability_Base {
+    on_init :: method() {
+        name = DOWNED_REVIVE_PRODUCT_NAME;
+        icon = get_downed_revive_product_icon_asset();
+    }
+
+    can_use :: method() -> bool {
+        return player != null && player.is_downed_for_night();
+    }
+
+    on_update :: method(params: ref Ability_Update_Params) {
+        if !params.clicked || !params.can_use return;
+        if player == null return;
+        if !player.is_local() return;
+
+        Purchasing.prompt_purchase(player, DOWNED_REVIVE_PRODUCT_ID);
+        current_cooldown = 0.5;
+    }
+}
+
+Round_Revive_Ability :: class : Ability_Base {
+    on_init :: method() {
+        name = ROUND_REVIVE_PRODUCT_NAME;
+        icon = get_round_revive_product_icon_asset();
+    }
+
+    can_use :: method() -> bool {
+        if player == null return false;
+        manager := get_game_manager();
+        if manager == null return false;
+        return player.is_dead_for_night_state() && manager.is_round_revive_offer_active();
+    }
+
+    on_update :: method(params: ref Ability_Update_Params) {
+        if !params.clicked || !params.can_use return;
+        if player == null return;
+        if !player.is_local() return;
+
+        Purchasing.prompt_purchase(player, ROUND_REVIVE_PRODUCT_ID);
+        current_cooldown = 0.5;
+    }
+}
+
 Player :: class : Player_Base {
     health: float;
     max_health: float;
@@ -447,6 +554,15 @@ Player :: class : Player_Base {
         codex_ui_open = false;
         log_page_ui_open = false;
         active_log_page_index = 0;
+    }
+
+    has_ui_modal_open :: method() -> bool {
+        return crafting_ui_open
+            || beacon_ui_open
+            || merchant_ui_open
+            || voyage_prep_ui_open
+            || codex_ui_open
+            || log_page_ui_open;
     }
 
     ao_update :: method(dt: float) {
@@ -615,9 +731,22 @@ Player :: class : Player_Base {
     } else {
         draw_coin_currency_hud(this);
 
-        if is_local_or_server() && !dead_for_night {
+        manager := get_game_manager();
+        if is_local_or_server() && dead_for_night {
+            if manager != null && manager.is_round_revive_offer_active() {
+                if this.is_downed_for_night() {
+                    draw_ability_button(this, Downed_Sparks_Revive_Ability, 0);
+                    draw_ability_button(this, Round_Revive_Ability, 1);
+                } else {
+                    draw_ability_button(this, Round_Revive_Ability, 0);
+                }
+            } else if this.is_downed_for_night() {
+                draw_ability_button(this, Downed_Sparks_Revive_Ability, 0);
+            }
+        } else if is_local_or_server() && !dead_for_night {
             // Draw hotbar first so held-item abilities react immediately on selection change.
             options := Inventory_Draw_Options.default();
+            options.scroll_item_selection = !this.has_ui_modal_open();
             hotbar := Items.draw_hotbar(this, default_inventory, options);
             handle_equipped_item_changing(hotbar.selected_item_index);
 
@@ -644,7 +773,6 @@ Player :: class : Player_Base {
             // Always-available secondary movement ability.
             draw_ability_button(this, Dodge_Roll_Ability, 1);
 
-            manager := get_game_manager();
             if manager != null && manager.can_player_force_start_from_lobby(this) {
                 draw_ability_button(this, Private_Server_Start_Ability, 5);
             }
@@ -718,6 +846,13 @@ Player :: class : Player_Base {
         // Called to determine if the player is allowed to use the given ability
         active_effect := entity.get_active_effect();
         if active_effect != null && active_effect.#type == Player_Death_Effect return false;
+        if ability != null && ability.#type == Round_Revive_Ability {
+            manager := get_game_manager();
+            return this.is_dead_for_night_state() && manager != null && manager.is_round_revive_offer_active();
+        }
+        if ability != null && ability.#type == Downed_Sparks_Revive_Ability {
+            return this.is_downed_for_night();
+        }
         if this.is_dead_for_night_state() return false;
         return true;
     }
@@ -1032,6 +1167,25 @@ Player :: class : Player_Base {
         health = max_health;
         entity.set_local_position(get_respawn_position(this));
         this.reset_death_animation();
+    }
+
+    revive_for_round_revive :: method() {
+        if this.is_downed_for_night() {
+            this.revive_from_downed(max_health);
+            return;
+        }
+
+        if is_ghost_mode {
+            this.set_ghost_mode_enabled(false);
+            health = max_health;
+            if entity != null {
+                entity.set_local_position(get_respawn_position(this));
+            }
+            this.reset_death_animation();
+            return;
+        }
+
+        health = max_health;
     }
 
     set_ghost_mode_enabled :: method(ghost_enabled: bool) {
@@ -1578,8 +1732,9 @@ Player :: class : Player_Base {
         );
         should_draw_text := manager.should_draw_round_start_text();
         should_draw_game_over_text := manager.should_draw_game_over_text();
+        should_draw_round_revive_text := manager.is_round_revive_offer_active();
         should_draw_run_complete_text := manager.should_draw_run_complete_text();
-        if overlay_alpha <= 0.0 && !should_draw_text && !should_draw_game_over_text && !should_draw_run_complete_text return;
+        if overlay_alpha <= 0.0 && !should_draw_text && !should_draw_game_over_text && !should_draw_round_revive_text && !should_draw_run_complete_text return;
 
         UI.push_screen_draw_context();
         defer UI.pop_draw_context();
@@ -1630,6 +1785,34 @@ Player :: class : Player_Base {
             detail_ts.outline_thickness = 2;
             detail_ts.outline_color = {0, 0, 0, 1};
             UI.text(nights_rect, detail_ts, "Nights Survived: %", {manager.get_game_over_nights_lasted()});
+        }
+
+        if should_draw_round_revive_text {
+            remaining_seconds := manager.get_round_revive_offer_remaining_seconds();
+            title_rect := UI.get_safe_screen_rect().center_rect().grow(150, 700, 150, 700).offset(0, 110);
+            detail_rect := title_rect.offset(0, -106).grow(0, -170, 0, -170);
+            countdown_rect := detail_rect.offset(0, -84);
+
+            title_ts := UI.default_text_settings();
+            title_ts.size = 104;
+            title_ts.halign = .CENTER;
+            title_ts.valign = .CENTER;
+            title_ts.color = {0.96, 0.88, 0.35, 1.0};
+            title_ts.do_outline = true;
+            title_ts.outline_thickness = 3;
+            title_ts.outline_color = {0, 0, 0, 1};
+            UI.text(title_rect, title_ts, "ROUND REVIVE");
+
+            detail_ts := UI.default_text_settings();
+            detail_ts.size = 44;
+            detail_ts.halign = .CENTER;
+            detail_ts.valign = .CENTER;
+            detail_ts.color = {1, 1, 1, 1};
+            detail_ts.do_outline = true;
+            detail_ts.outline_thickness = 2;
+            detail_ts.outline_color = {0, 0, 0, 1};
+            UI.text(detail_rect, detail_ts, "The whole team is down. Buy Round Revive to continue.");
+            UI.text(countdown_rect, detail_ts, "% seconds left", {format_float(remaining_seconds, decimals=1)});
         }
 
         if should_draw_run_complete_text {

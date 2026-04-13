@@ -827,6 +827,10 @@ GameManager :: class : Component {
     GAME_OVER_BLACK_HOLD_SECONDS :: 1.25;
     GAME_OVER_FADE_IN_SECONDS :: 1.0;
     GAME_OVER_TEXT_DURATION_SECONDS :: 10.0;
+    ROUND_REVIVE_OFFER_DURATION_SECONDS :: 10.0;
+    ROUND_REVIVE_AVAILABLE_NOTIFICATION_TEXT :: "All players are down! Buy Round Revive to continue.";
+    ROUND_REVIVE_PURCHASED_NOTIFICATION_TEXT :: "% purchased Round Revive!";
+    ROUND_REVIVE_JOIN_WAIT_FREEZE_REASON :: "round_revive_join_wait";
     RUN_COMPLETE_ISLAND_TEXT_DELAY_SECONDS :: 2.0;
     RUN_COMPLETE_REX_TEXT_DELAY_SECONDS :: 4.0;
     RUN_COMPLETE_REWARD_TEXT_DELAY_SECONDS :: 6.0;
@@ -869,6 +873,10 @@ GameManager :: class : Component {
     game_over_sequence_restart_done: bool;
     game_over_sequence_start_time: float;
     game_over_nights_lasted: s64;
+    round_revive_offer_active: bool;
+    round_revive_offer_start_time: float;
+    round_revive_offer_players: [..]Player;
+    round_revive_offer_waiting_joiners: [..]Player;
     highest_island_reached_this_run: int;
     run_complete_sequence_active: bool;
     run_complete_sequence_reward_done: bool;
@@ -1069,6 +1077,8 @@ GameManager :: class : Component {
         island5_story_boss_spawn_time_seconds = 0.0;
         island5_story_boss_defeat_handled = false;
         island5_story_boss_win_time_seconds = 0.0;
+        round_revive_offer_active = false;
+        round_revive_offer_start_time = 0.0;
         highest_island_reached_this_run = max(Island, 1);
         run_complete_sequence_active = false;
         run_complete_sequence_reward_done = false;
@@ -1126,6 +1136,8 @@ GameManager :: class : Component {
                 game_over_sequence_active = false;
                 game_over_sequence_restart_done = false;
                 game_over_sequence_start_time = 0.0;
+                round_revive_offer_active = false;
+                round_revive_offer_start_time = 0.0;
                 run_complete_sequence_active = false;
                 run_complete_sequence_reward_done = false;
                 run_complete_sequence_start_time = 0.0;
@@ -1256,6 +1268,128 @@ GameManager :: class : Component {
 
             Notifier.notify(p, message);
         }
+    }
+
+    is_round_revive_offer_active :: method() -> bool {
+        if !round_revive_offer_active return false;
+        if current_phase != .IN_ROUND return false;
+        if day_night_phase != .NIGHT return false;
+        return this.get_round_revive_offer_remaining_seconds() > 0.0;
+    }
+
+    get_round_revive_offer_remaining_seconds :: method() -> float {
+        if !round_revive_offer_active return 0.0;
+        elapsed := get_time() - round_revive_offer_start_time;
+        return max(ROUND_REVIVE_OFFER_DURATION_SECONDS - elapsed, 0.0);
+    }
+
+    is_round_revive_waiting_joiner :: method(player: Player) -> bool {
+        if player == null return false;
+        for waiting_player: round_revive_offer_waiting_joiners {
+            if waiting_player == player {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    start_round_revive_offer :: method() {
+        if round_revive_offer_active return;
+        if current_phase != .IN_ROUND return;
+        if day_night_phase != .NIGHT return;
+        if game_over_sequence_active return;
+        if run_complete_sequence_active return;
+
+        round_revive_offer_active = true;
+        round_revive_offer_start_time = get_time();
+        round_revive_offer_players.clear();
+        for p: component_iterator(Player) {
+            if p == null continue;
+            if this.is_round_revive_waiting_joiner(p) continue;
+            round_revive_offer_players.append(p);
+        }
+        show_broadcast_notification(ROUND_REVIVE_AVAILABLE_NOTIFICATION_TEXT);
+        log_info("Round Revive offer started.", {});
+    }
+
+    release_round_revive_waiting_joiners :: method(teleport_to_round: bool) {
+        for p: round_revive_offer_waiting_joiners {
+            if p == null continue;
+            if !#alive(p) continue;
+            p.remove_freeze_reason(ROUND_REVIVE_JOIN_WAIT_FREEZE_REASON);
+            if teleport_to_round {
+                teleport_player_to_phase_spawn(p);
+            }
+        }
+        round_revive_offer_waiting_joiners.clear();
+    }
+
+    stop_round_revive_offer :: method() {
+        should_return_waiting_joiners_to_round := current_phase == .IN_ROUND &&
+            day_night_phase == .NIGHT &&
+            !game_over_sequence_active &&
+            !run_complete_sequence_active &&
+            !this.are_all_round_revive_offer_players_dead();
+        this.release_round_revive_waiting_joiners(should_return_waiting_joiners_to_round);
+        round_revive_offer_active = false;
+        round_revive_offer_start_time = 0.0;
+        round_revive_offer_players.clear();
+    }
+
+    are_all_round_revive_offer_players_dead :: method() -> bool {
+        tracked_player_count: s64 = 0;
+        for p: round_revive_offer_players {
+            if p == null continue;
+            if !#alive(p) continue;
+            tracked_player_count += 1;
+            if !p.is_dead_for_night_state() {
+                return false;
+            }
+        }
+        return tracked_player_count > 0;
+    }
+
+    are_all_other_players_dead_for_night :: method(excluded_player: Player) -> bool {
+        player_count: s64 = 0;
+        dead_count: s64 = 0;
+        for p: component_iterator(Player) {
+            if p == null continue;
+            if p == excluded_player continue;
+            player_count += 1;
+            if p.is_dead_for_night_state() {
+                dead_count += 1;
+            }
+        }
+        if player_count <= 0 return false;
+        return dead_count >= player_count;
+    }
+
+    revive_all_players_for_round_revive :: method(triggering_player: Player) -> bool {
+        if !this.is_round_revive_offer_active() return false;
+        if !this.are_all_round_revive_offer_players_dead() return false;
+
+        revived_any_player := false;
+        for p: component_iterator(Player) {
+            if p == null continue;
+            p.revive_for_round_revive();
+            game_sfx_play(.REVIVE, p.entity);
+            revived_any_player = true;
+        }
+
+        this.release_round_revive_waiting_joiners(true);
+        this.stop_round_revive_offer();
+
+        buyer_name := "A player";
+        if triggering_player != null {
+            name := triggering_player.get_username();
+            if name.count > 0 {
+                buyer_name = name;
+            }
+        }
+
+        show_broadcast_notification(format_string(ROUND_REVIVE_PURCHASED_NOTIFICATION_TEXT, {buyer_name}));
+        log_info("Round Revive purchased by %.", {buyer_name});
+        return revived_any_player;
     }
 
     get_game_time_seconds :: method() -> float {
@@ -1410,6 +1544,15 @@ GameManager :: class : Component {
         }
         if run_complete_sequence_active && run_complete_freeze_applied && player != null {
             player.add_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
+        }
+        if player != null &&
+            current_phase == .IN_ROUND &&
+            day_night_phase == .NIGHT &&
+            (this.is_round_revive_offer_active() || this.are_all_other_players_dead_for_night(player)) {
+            player.add_freeze_reason(ROUND_REVIVE_JOIN_WAIT_FREEZE_REASON);
+            round_revive_offer_waiting_joiners.append(player);
+            teleport_player_to_lobby_spawn(player);
+            return;
         }
         teleport_player_to_phase_spawn(player);
     }
@@ -2336,6 +2479,14 @@ GameManager :: class : Component {
             force_midnight_for_final_island();
             return;
         }
+        if day_night_phase == .NIGHT &&
+            are_all_players_dead_for_night() {
+            this.start_round_revive_offer();
+            return;
+        }
+        if round_revive_offer_active {
+            return;
+        }
 
         day_night_phase_time_seconds += dt;
 
@@ -2454,6 +2605,7 @@ GameManager :: class : Component {
     start_game_over_sequence :: method() {
         if game_over_sequence_active return;
         if run_complete_sequence_active return;
+        this.stop_round_revive_offer();
         if Game.is_server() {
             reset_log_pages_for_full_restart();
         }
@@ -2645,9 +2797,18 @@ GameManager :: class : Component {
     update_game_over_sequence :: method() {
         if !game_over_sequence_active {
             if current_phase == .IN_ROUND && day_night_phase == .NIGHT {
-                if are_all_players_dead_for_night() {
-                    start_game_over_sequence();
+                if round_revive_offer_active {
+                    if !this.are_all_round_revive_offer_players_dead() {
+                        this.stop_round_revive_offer();
+                    } else if this.get_round_revive_offer_remaining_seconds() <= 0.0 {
+                        this.stop_round_revive_offer();
+                        start_game_over_sequence();
+                    }
+                } else if are_all_players_dead_for_night() {
+                    this.start_round_revive_offer();
                 }
+            } else if round_revive_offer_active {
+                this.stop_round_revive_offer();
             }
             return;
         }
@@ -2664,6 +2825,7 @@ GameManager :: class : Component {
             game_over_sequence_active = false;
             game_over_sequence_restart_done = false;
             game_over_sequence_start_time = 0.0;
+            this.stop_round_revive_offer();
         }
     }
 
