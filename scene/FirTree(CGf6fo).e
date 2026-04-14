@@ -1,0 +1,38 @@
+14
+1846835937284
+2256513000
+{
+  "name": "FirTree",
+  "local_enabled": true,
+  "local_position": {
+    "X": 345.9402770996093750,
+    "Y": -16.6817226409912109
+  },
+  "local_rotation": 0,
+  "local_scale": {
+    "X": 1,
+    "Y": 1
+  },
+  "previous_sibling": 819944699,
+  "next_sibling": 2754760488,
+  "parent": 3883261901
+},
+{
+  "cid": 1,
+  "aoid": 3157826724,
+  "component_type": "Internal_Component",
+  "internal_component_type": "ResourceNode",
+  "data": {
+    "radius": 2,
+    "offset": {
+      "Y": -1.5000000000000000
+    },
+    "required_hold_time": 1,
+    "resource_type": 1,
+    "respawn_time_seconds": 15,
+    "drop_count": 2,
+    "drop_spawn_radius": 1,
+    "visual_target": 2513584545,
+    "animation_target": 2513584545
+  }
+}
