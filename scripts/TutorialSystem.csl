@@ -166,8 +166,7 @@ TutorialSystem :: struct {
 
     player_has_wood :: proc(player: Player) -> bool {
         if player == null return false;
-        if player.default_inventory == null return false;
-        if player.default_inventory.self == null return false;
+        if !#alive(player.default_inventory) return false;
 
         wood := ItemManager.TryFindItem("wood");
         if wood == null return false;

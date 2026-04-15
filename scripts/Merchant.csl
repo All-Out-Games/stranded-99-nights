@@ -76,8 +76,7 @@ MerchantSystem :: struct {
 
     has_inventory_room_for_offer :: proc(player: Player, offer: Merchant_Shop_Offer) -> bool {
         if player == null return false;
-        if player.default_inventory == null return false;
-        if player.default_inventory.self == null return false;
+        if !#alive(player.default_inventory) return false;
         if player.default_inventory.capacity <= 0 return false;
         if offer.stack_count <= 0 return false;
 

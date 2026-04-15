@@ -257,8 +257,7 @@ CraftingSystem :: struct {
     can_craft_recipe :: proc(player: Player, recipe: Crafting_Recipe) -> bool {
         if player == null return false;
         if recipe == null return false;
-        if player.default_inventory == null return false;
-        if player.default_inventory.self == null return false;
+        if !#alive(player.default_inventory) return false;
         if player.default_inventory.capacity <= 0 return false;
 
         inv := player.default_inventory;
@@ -290,8 +289,7 @@ CraftingSystem :: struct {
     try_craft_recipe :: proc(player: Player, recipe: Crafting_Recipe) -> bool {
         if player == null return false;
         if recipe == null return false;
-        if player.default_inventory == null return false;
-        if player.default_inventory.self == null return false;
+        if !#alive(player.default_inventory) return false;
         if player.default_inventory.capacity <= 0 return false;
 
         inv := player.default_inventory;

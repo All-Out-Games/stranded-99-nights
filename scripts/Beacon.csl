@@ -609,7 +609,7 @@ BeaconSystem :: struct {
             //Notifier.notify(player, "Beacon is already max level.");
             return false;
         }
-        if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
+        if !#alive(player.default_inventory) || player.default_inventory.capacity <= 0 {
             //Notifier.notify(player, "Inventory is unavailable.");
             return false;
         }
@@ -658,7 +658,7 @@ BeaconSystem :: struct {
     try_add_fuel :: proc(player: Player, beacon: Beacon) -> bool {
         if player == null return false;
         if beacon == null return false;
-        if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
+        if !#alive(player.default_inventory) || player.default_inventory.capacity <= 0 {
             //Notifier.notify(player, "Inventory is unavailable.");
             return false;
         }

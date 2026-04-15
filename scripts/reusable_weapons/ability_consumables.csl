@@ -22,8 +22,7 @@ Fish_Heal_Effect_Lifetime :: class : Component {
 
 player_get_selected_hotbar_item :: proc(player: Player) -> Item_Instance {
     if player == null return null;
-    if player.default_inventory == null return null;
-    if player.default_inventory.self == null return null;
+    if !#alive(player.default_inventory) return null;
     if player.default_inventory.capacity <= 0 return null;
     if player.last_selected_index < 0 return null;
     if player.last_selected_index >= player.default_inventory.capacity return null;

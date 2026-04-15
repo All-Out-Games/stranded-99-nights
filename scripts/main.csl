@@ -1034,8 +1034,7 @@ Player :: class : Player_Base {
 
     drop_all_inventory_items_on_death :: method() {
         if !Game.is_server() return;
-        if default_inventory == null return;
-        if default_inventory.self == null return;
+        if !#alive(default_inventory) return;
         if default_inventory.capacity <= 0 return;
 
         manager := get_game_manager();
@@ -1253,7 +1252,7 @@ Player :: class : Player_Base {
 
     clear_inventory_for_restart :: method() {
         if !Game.is_server() return;
-        if default_inventory == null || default_inventory.self == null return;
+        if !#alive(default_inventory) return;
         if default_inventory.capacity <= 0 return;
 
         for i: 0..default_inventory.capacity-1 {
@@ -1568,7 +1567,7 @@ Player :: class : Player_Base {
     // Draws a screen-space arrow pointing toward a world-space `position`.
     DrawArrowToPosition :: proc(using this: Player, position: v2) {
         if this == null return;
-        if entity == null || entity.self == null return;
+        if !#alive(entity) return;
         if this.is_local() {
 
         // Screen-space overlay so it can't be occluded by world sprites.

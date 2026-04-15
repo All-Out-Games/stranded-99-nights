@@ -517,7 +517,7 @@ g :: proc(player: Player, item_id: string = "", quantity: s64 = 1) {
         return;
     }
 
-    if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
+    if !#alive(player.default_inventory) || player.default_inventory.capacity <= 0 {
         send_cheat_chat_message(player, "Inventory is unavailable.");
         return;
     }
@@ -540,7 +540,7 @@ g :: proc(player: Player, item_id: string = "", quantity: s64 = 1) {
     }
 
     item := ItemManager.CreateItemFromDefinition(defn, give_count);
-    if item == null || item.self == null {
+    if !#alive(item) {
         send_cheat_chat_message(player, format_string("Failed to create %.", {defn.get_name()}));
         return;
     }

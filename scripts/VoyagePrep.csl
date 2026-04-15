@@ -276,7 +276,7 @@ VoyagePrepSystem :: struct {
         if player == null return false;
         if prep == null return false;
         if prep.is_complete() return false;
-        if player.default_inventory == null || player.default_inventory.self == null || player.default_inventory.capacity <= 0 {
+        if !#alive(player.default_inventory) || player.default_inventory.capacity <= 0 {
             return false;
         }
 
