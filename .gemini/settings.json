@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "allout": {
-      "httpUrl": "http://localhost:3334/mcp"
+      "httpUrl": "http://localhost:3333/mcp"
     }
   }
 }
