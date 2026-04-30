@@ -142,11 +142,20 @@ MerchantSystem :: struct {
         if !player.merchant_ui_open return;
 
         merchant := player.active_merchant;
-        if merchant == null || merchant.entity == null {
+        if merchant == null {
             MerchantSystem.close_modal(player);
             return;
         }
-        if !#alive(merchant.entity) {
+        if !#alive(merchant) {
+            MerchantSystem.close_modal(player);
+            return;
+        }
+        merchant_entity := merchant.entity;
+        if merchant_entity == null {
+            MerchantSystem.close_modal(player);
+            return;
+        }
+        if !#alive(merchant_entity) {
             MerchantSystem.close_modal(player);
             return;
         }
