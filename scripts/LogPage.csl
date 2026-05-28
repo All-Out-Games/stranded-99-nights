@@ -16,7 +16,7 @@ LogPageTracking :: struct {
 
 Codex_Entry_Button :: struct {
     log_index: int;
-    handle: UIK.Interact_Handle;
+    handle: Interact_Result;
 }
 
 LogPageSystem :: struct {
@@ -88,7 +88,7 @@ LogPageSystem :: struct {
         }
     }
 
-    draw_codex_entry_button :: proc(log_index: int) -> UIK.Interact_Handle {
+    draw_codex_entry_button :: proc(log_index: int) -> Interact_Result {
         button_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_BLUE);
         button_desc.panel.width = UIK.flex(1);
         button_desc.panel.height = UIK.flex(1);
@@ -118,8 +118,8 @@ LogPageSystem :: struct {
 
         modal_rect := UI.get_safe_screen_rect().center_rect().grow(414, 690, 414, 690);
         scroll_id := format_string("codex_modal_scroll_%", {player.get_user_id()});
-        close_header_handle: UIK.Interact_Handle;
-        close_button_handle: UIK.Interact_Handle;
+        close_header_handle: Interact_Result;
+        close_button_handle: Interact_Result;
         entry_buttons: [..]Codex_Entry_Button;
         entry_buttons.reserve(page_count);
 

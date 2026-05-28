@@ -6,7 +6,7 @@ Merchant_Shop_Offer :: struct {
 
 Merchant_Shop_Button :: struct {
     offer_index: s64;
-    handle: UIK.Interact_Handle;
+    handle: Interact_Result;
     can_buy: bool;
 }
 
@@ -163,8 +163,8 @@ MerchantSystem :: struct {
         offers := MerchantSystem.get_shop_offers();
         balance := Economy.get_balance(player, MOON_CURRENCY);
         modal_rect := UI.get_safe_screen_rect().center_rect().grow(430, 730, 430, 730);
-        close_header_handle: UIK.Interact_Handle;
-        close_button_handle: UIK.Interact_Handle;
+        close_header_handle: Interact_Result;
+        close_button_handle: Interact_Result;
         buy_buttons: [..]Merchant_Shop_Button;
         buy_buttons.reserve(offers.count);
 

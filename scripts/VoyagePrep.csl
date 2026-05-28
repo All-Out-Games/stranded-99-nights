@@ -14,7 +14,7 @@ VoyagePrep_Stockpile_Entry :: struct {
 
 VoyagePrep_Deposit_Button :: struct {
     item_id: string;
-    handle: UIK.Interact_Handle;
+    handle: Interact_Result;
     can_deposit: bool;
 }
 
@@ -381,9 +381,9 @@ VoyagePrepSystem :: struct {
         }
 
         modal_rect := UI.get_safe_screen_rect().center_rect().grow(414, 690, 414, 690);
-        close_header_handle: UIK.Interact_Handle;
-        close_button_handle: UIK.Interact_Handle;
-        ready_button_handle: UIK.Interact_Handle;
+        close_header_handle: Interact_Result;
+        close_button_handle: Interact_Result;
+        ready_button_handle: Interact_Result;
         deposit_buttons: [..]VoyagePrep_Deposit_Button;
         deposit_buttons.reserve(requirements.count);
 

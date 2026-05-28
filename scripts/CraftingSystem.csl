@@ -13,7 +13,7 @@ Crafting_Recipe :: class {
 
 Crafting_Recipe_Button :: struct {
     recipe_index: s64;
-    handle: UIK.Interact_Handle;
+    handle: Interact_Result;
 }
 
 CraftingSystem :: struct {
@@ -358,9 +358,9 @@ CraftingSystem :: struct {
 
         recipes := CraftingSystem.get_recipes();
         modal_rect := UI.get_safe_screen_rect().center_rect().grow(420, 720, 420, 720);
-        close_header_handle: UIK.Interact_Handle;
-        close_button_handle: UIK.Interact_Handle;
-        craft_button_handle: UIK.Interact_Handle;
+        close_header_handle: Interact_Result;
+        close_button_handle: Interact_Result;
+        craft_button_handle: Interact_Result;
         recipe_buttons: [..]Crafting_Recipe_Button;
         recipe_buttons.reserve(recipes.count);
 

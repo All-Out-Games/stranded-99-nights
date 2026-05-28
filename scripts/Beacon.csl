@@ -12,7 +12,7 @@ Beacon_Stockpile_Entry :: struct {
 
 Beacon_Deposit_Button :: struct {
     item_id: string;
-    handle: UIK.Interact_Handle;
+    handle: Interact_Result;
 }
 
 Beacon :: class : Interactable {
@@ -735,8 +735,8 @@ BeaconSystem :: struct {
         modal_rect := UI.get_safe_screen_rect().center_rect().grow(414, 690, 414, 690);
         scroll_id := format_string("beacon_modal_scroll_%", {player.get_user_id()});
 
-        close_header_handle: UIK.Interact_Handle;
-        add_fuel_handle: UIK.Interact_Handle;
+        close_header_handle: Interact_Result;
+        add_fuel_handle: Interact_Result;
         deposit_buttons: [..]Beacon_Deposit_Button;
         deposit_buttons.reserve(costs.count);
 
