@@ -1,4 +1,5 @@
 g_game_manager: GameManager;
+CHEAT_MAX_ITEM_PICKUP_MULTIPLIER :: 1000;
 
 DamageNumbers :: class {
     Text: string;
@@ -402,7 +403,12 @@ show_cheat_command_help :: proc(player: Player, reason: string = "") {
     send_cheat_chat_message(player, "Cheat commands:");
     send_cheat_chat_message(player, "/start - Force-start the run if it has not started yet.");
     send_cheat_chat_message(player, "/win - Trigger the win sequence immediately.");
-    send_cheat_chat_message(player, "/g <item_id> [quantity] - Give yourself an item by id or name.");
+    if player.is_admin() {
+        send_cheat_chat_message(player, "/skiptutorial - Mark your tutorial complete.");
+        send_cheat_chat_message(player, "/give <item_id> [quantity] - Give yourself an item by id or name.");
+        send_cheat_chat_message(player, "/g <item_id> [quantity] - Alias for /give.");
+        send_cheat_chat_message(player, "/pickupmultiplier <n> - World pickups give n[x] their normal count.");
+    }
     send_cheat_chat_message(player, "/island <number> - Set the current island index (1 or greater).");
     send_cheat_chat_message(player, format_string("/beacon <level 1-%> - Set every Beacon to that level.", {Beacon.MAX_LEVEL}));
     send_cheat_chat_message(player, "/raid - Force the next night event to Raid.");
@@ -504,34 +510,34 @@ cheats :: proc(player: Player, extra: string = "") {
     show_cheat_command_help(player);
 } @chat_command @youtuber
 
-g :: proc(player: Player, item_id: string = "", quantity: s64 = 1) {
-    if player == null return;
+give_cheat_item_to_player :: proc(player: Player, item_id: string, quantity: s64) -> bool {
+    if player == null return false;
 
     if item_id.count <= 0 {
-        show_cheat_command_help(player, "Incorrect usage: /g <item_id> [quantity]");
-        return;
+        show_cheat_command_help(player, "Incorrect usage: /give <item_id> [quantity]");
+        return false;
     }
 
     if quantity <= 0 {
-        show_cheat_command_help(player, "Incorrect usage: /g <item_id> [quantity]");
-        return;
+        show_cheat_command_help(player, "Incorrect usage: /give <item_id> [quantity]");
+        return false;
     }
 
     if !#alive(player.default_inventory) || player.default_inventory.capacity <= 0 {
         send_cheat_chat_message(player, "Inventory is unavailable.");
-        return;
+        return false;
     }
 
     defn := find_cheat_item_definition(item_id);
     if defn == null {
         show_cheat_command_help(player, format_string("Unknown item: %", {item_id}));
-        return;
+        return false;
     }
 
     room := Items.calculate_room_in_inventory_for_item(defn, player.default_inventory);
     if room <= 0 {
         send_cheat_chat_message(player, format_string("No room for %.", {defn.get_name()}));
-        return;
+        return false;
     }
 
     give_count := ItemManager.ClampSpawnCountToMaxStack(defn, quantity);
@@ -542,7 +548,7 @@ g :: proc(player: Player, item_id: string = "", quantity: s64 = 1) {
     item := ItemManager.CreateItemFromDefinition(defn, give_count);
     if !#alive(item) {
         send_cheat_chat_message(player, format_string("Failed to create %.", {defn.get_name()}));
-        return;
+        return false;
     }
 
     Items.move_item_to_inventory(item, player.default_inventory);
@@ -555,11 +561,52 @@ g :: proc(player: Player, item_id: string = "", quantity: s64 = 1) {
                 quantity
             })
         );
-        return;
+        return true;
     }
 
     send_cheat_chat_message(player, format_string("Given % x%.", {defn.get_name(), give_count}));
-} @chat_command @youtuber
+    return true;
+}
+
+give :: proc(player: Player, item_id: string = "", quantity: s64 = 1) {
+    give_cheat_item_to_player(player, item_id, quantity);
+} @chat_command
+
+g :: proc(player: Player, item_id: string = "", quantity: s64 = 1) {
+    give_cheat_item_to_player(player, item_id, quantity);
+} @chat_command
+
+skiptutorial :: proc(player: Player, extra: string = "") {
+    if player == null return;
+
+    if extra.count > 0 {
+        send_cheat_chat_message(player, "Incorrect usage: /skiptutorial");
+        return;
+    }
+
+    TutorialSystem.skip_all_for_player(player);
+    send_cheat_chat_message(player, "Tutorial skipped.");
+} @chat_command
+
+pickupmultiplier :: proc(player: Player, multiplier: s64 = 1) {
+    if player == null return;
+
+    if multiplier < 1 {
+        send_cheat_chat_message(player, "Incorrect usage: /pickupmultiplier <n> where n >= 1.");
+        return;
+    }
+
+    if multiplier > CHEAT_MAX_ITEM_PICKUP_MULTIPLIER {
+        multiplier = CHEAT_MAX_ITEM_PICKUP_MULTIPLIER;
+    }
+
+    player.item_pickup_multiplier = multiplier;
+    send_cheat_chat_message(player, format_string("Pickup multiplier set to %x.", {multiplier}));
+} @chat_command
+
+itemmultiplier :: proc(player: Player, multiplier: s64 = 1) {
+    pickupmultiplier(player, multiplier);
+} @chat_command
 
 island :: proc(player: Player, island_index_text: string = "") {
     if !Game.is_server() return;
@@ -778,6 +825,7 @@ GameManager :: class : Component {
     last_notified_night_event: Night_Event_Type;
     current_run_seed: u64;
     run_seed_generation_count: s64;
+    start_run_vote_user_ids: [..]string;
 
     DAY_DURATION_SECONDS :: 60.0;
     NIGHT_DURATION_SECONDS :: 45.0;
@@ -785,7 +833,6 @@ GameManager :: class : Component {
     NIGHT_WARNING_LEAD_TIME_SECONDS :: 10.0;
     POST_PROCESSING_SUNSET_BLEND :: 0.42;
     POST_PROCESSING_SUNRISE_BLEND :: 0.32;
-    PLAYERS_REQUIRED_TO_START :: 6;
     NIGHT_WARNING_NOTIFICATION_TEXT :: "The Sun is Setting soon!";
     SURVIVED_NIGHT_NOTIFICATION_TEXT :: "You Survived the Night! % more to go!";
     SURVIVED_NIGHT_REWARD_NOTIFICATION_TEXT :: "+% % for surviving the night!";
@@ -1091,6 +1138,7 @@ GameManager :: class : Component {
         run_complete_sequence_reward_line_sfx_played = false;
         run_complete_freeze_applied = false;
         run_complete_reward_user_ids.clear();
+        clear_start_run_votes();
         for player: component_iterator(Player) {
             if player == null continue;
             player.remove_freeze_reason(RUN_COMPLETE_FREEZE_REASON);
@@ -1113,10 +1161,12 @@ GameManager :: class : Component {
         switch phase {
             case .LOBBY: {
                 log_info("GameManager phase -> LOBBY", {});
+                clear_start_run_votes();
                 update_matchmaking_priority();
             }
             case .IN_ROUND: {
                 log_info("GameManager phase -> IN_ROUND", {});
+                clear_start_run_votes();
                 update_matchmaking_priority();
                 if !Game.is_server() {
                     game_sfx_play(.ROUND_START);
@@ -1521,7 +1571,88 @@ GameManager :: class : Component {
     }
 
     get_required_players_to_start :: method() -> s64 {
-        return PLAYERS_REQUIRED_TO_START;
+        return get_required_start_run_votes();
+    }
+
+    has_start_run_vote_user_id :: method(user_id: string) -> bool {
+        if user_id.count <= 0 return false;
+
+        for voted_user_id: start_run_vote_user_ids {
+            if voted_user_id == user_id {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    has_player_voted_to_start_run :: method(player: Player) -> bool {
+        if player == null return false;
+        return has_start_run_vote_user_id(player.get_user_id());
+    }
+
+    has_current_player_user_id :: method(user_id: string) -> bool {
+        if user_id.count <= 0 return false;
+
+        for player: component_iterator(Player) {
+            if player == null continue;
+            if player.get_user_id() == user_id {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    trim_start_run_votes :: method() {
+        i: s64 = 0;
+        while i < start_run_vote_user_ids.count {
+            user_id := start_run_vote_user_ids[i];
+            if has_current_player_user_id(user_id) {
+                i += 1;
+                continue;
+            }
+
+            start_run_vote_user_ids.ordered_remove_by_index(i);
+        }
+    }
+
+    clear_start_run_votes :: method() {
+        start_run_vote_user_ids.clear();
+    }
+
+    get_start_run_vote_count :: method() -> s64 {
+        vote_count: s64 = 0;
+        for player: component_iterator(Player) {
+            if player == null continue;
+            if has_player_voted_to_start_run(player) {
+                vote_count += 1;
+            }
+        }
+        return vote_count;
+    }
+
+    get_required_start_run_votes :: method() -> s64 {
+        player_count := get_player_count();
+        if player_count <= 0 return 1;
+        return (player_count / 2) + 1;
+    }
+
+    has_start_run_vote_majority :: method() -> bool {
+        required_votes := get_required_start_run_votes();
+        if required_votes <= 0 return false;
+        return get_start_run_vote_count() >= required_votes;
+    }
+
+    can_show_start_run_button_from_lobby :: method(player: Player) -> bool {
+        if player == null return false;
+        if current_phase != .LOBBY return false;
+        if game_over_sequence_active return false;
+        if run_complete_sequence_active return false;
+        return true;
+    }
+
+    can_player_vote_start_from_lobby :: method(player: Player) -> bool {
+        if !can_show_start_run_button_from_lobby(player) return false;
+        return !has_player_voted_to_start_run(player);
     }
 
     is_private_server :: method() -> bool {
@@ -1530,10 +1661,25 @@ GameManager :: class : Component {
     }
 
     can_player_force_start_from_lobby :: method(player: Player) -> bool {
-        if player == null return false;
-        if current_phase != .LOBBY return false;
-        if game_over_sequence_active return false;
-        if run_complete_sequence_active return false;
+        return can_player_vote_start_from_lobby(player);
+    }
+
+    try_vote_to_start_run :: method(player: Player) -> bool {
+        if !can_player_vote_start_from_lobby(player) return false;
+
+        user_id := player.get_user_id();
+        if user_id.count <= 0 return false;
+
+        start_run_vote_user_ids.append(user_id);
+        trim_start_run_votes();
+
+        if has_start_run_vote_majority() {
+            vote_count := get_start_run_vote_count();
+            required_votes := get_required_start_run_votes();
+            log_info("Starting game after start-run vote reached %/% votes.", {vote_count, required_votes});
+            start_game();
+        }
+
         return true;
     }
 
@@ -4138,10 +4284,12 @@ GameManager :: class : Component {
         if game_over_sequence_active return;
         if run_complete_sequence_active return;
 
-        player_count := get_player_count();
-        if player_count < PLAYERS_REQUIRED_TO_START return;
+        trim_start_run_votes();
+        if !has_start_run_vote_majority() return;
 
-        log_info("Auto-starting game at %/% players.", {player_count, PLAYERS_REQUIRED_TO_START});
+        vote_count := get_start_run_vote_count();
+        required_votes := get_required_start_run_votes();
+        log_info("Starting game after lobby start vote reached %/% votes.", {vote_count, required_votes});
         start_game();
     }
 

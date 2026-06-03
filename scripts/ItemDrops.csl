@@ -215,6 +215,8 @@ Item_Drop_Magnet :: class : Component {
             if safe_count <= 0 {
                 safe_count = 1;
             }
+            pickup_multiplier := max(player.item_pickup_multiplier, 1).(s64);
+            safe_count *= pickup_multiplier;
 
             Economy.deposit_currency(player, ITEMDROPS_COIN_CURRENCY, safe_count);
 
@@ -273,6 +275,9 @@ Item_Drop_Magnet :: class : Component {
         }
 
         give_count := safe_count;
+        pickup_multiplier := max(player.item_pickup_multiplier, 1).(s64);
+        give_count *= pickup_multiplier;
+        give_count = ItemManager.ClampSpawnCountToMaxStack(defn, give_count);
         if give_count > room {
             give_count = room;
         }
@@ -298,7 +303,11 @@ Item_Drop_Magnet :: class : Component {
         gm := get_game_manager();
         if gm != null {
             dn := new(DamageNumbers);
-            dn.Text = format_string("+%", {item_name});
+            if actual_give_count > 1 {
+                dn.Text = format_string("+% x%", {item_name, actual_give_count});
+            } else {
+                dn.Text = format_string("+%", {item_name});
+            }
             dn.Position = player.entity.world_position + v2{0, 1.75};
             dn.LastPosition = dn.Position;
             dn.Color = {1, 1, 1, 1};
@@ -320,7 +329,14 @@ Item_Drop_Magnet :: class : Component {
         }
 
         // Reduce remaining count for this world drop (supports partial pickup if inventory has limited room).
-        count -= actual_give_count;
+        normal_count_consumed := (actual_give_count + pickup_multiplier - 1) / pickup_multiplier;
+        if normal_count_consumed < 1 {
+            normal_count_consumed = 1;
+        }
+        if normal_count_consumed > count {
+            normal_count_consumed = count;
+        }
+        count -= normal_count_consumed;
         if count <= 0 {
             claimed = true;
             time_claimed = get_time();
@@ -590,4 +606,3 @@ ItemDrops :: struct {
         return dropped;
     }
 }
-

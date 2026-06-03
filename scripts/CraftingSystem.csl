@@ -550,94 +550,81 @@ CraftingSystem :: struct {
         UIK.panel_end();
 
         section_title := UIK.text_button();
-        UIK.text_set_halign(&section_title, .LEFT);
-        UIK.text("Required", section_title);
+        section_title.set_halign(.LEFT);
+        UIK.text(section_title, "Required");
 
-        for input: selected_recipe.inputs {
-            input_def := CraftingSystem.resolve_item_def(input.item_id);
-            have: s64 = 0;
-            display_name := input.item_id;
-            input_icon: Texture_Asset;
-            if input_def != null {
-                display_name = input_def.get_name();
-                have = CraftingSystem.get_item_count_in_inventory(player.default_inventory, input_def);
-                input_icon = input_def.get_icon();
-            }
-
-            line := UIK.panel_styled(.MODAL_TRANSP_BLACK);
-            line.width = UIK.flex(1);
-            line.height = UIK.fit();
-            line.gap = 10;
-            line.padding = v4{8, 10, 8, 10};
-            line.cross_align = .CENTER;
-            UIK.panel_begin(line);
-
-            if input_icon != null {
-                icon_box := UIK.layout_column();
-                icon_box.width = UIK.pixels(42);
-                icon_box.height = UIK.pixels(42);
-                icon_box.cross_align = .CENTER;
-                icon_box.main_align = .CENTER;
-                icon_box.show_background = false;
-                UIK.panel_begin(icon_box);
-                UIK.image_fitted(input_icon, UIK.image_desc(.CONTAIN));
-                UIK.panel_end();
-            }
-
-            line_text := UIK.text_body();
-            UIK.text_set_halign(&line_text, .LEFT);
-            if have >= input.count {
-                UIK.text_set_color(&line_text, v4{0.65, 1.0, 0.65, 1.0});
-            } else {
-                UIK.text_set_color(&line_text, v4{1.0, 0.5, 0.5, 1.0});
-            }
-            UIK.text(format_string("%: %/%", {display_name, have, input.count}), line_text);
-            UIK.panel_end();
+        requirement_columns: s64 = selected_recipe.inputs.count;
+        if requirement_columns > 3 {
+            requirement_columns = 3;
         }
 
-        UIK.spacer(UIK.pixels(1), UIK.pixels(8));
-        UIK.text("Result", section_title);
+        if requirement_columns > 0 {
+            UIK.grid_begin(requirement_columns, 142);
 
-        for output: selected_recipe.outputs {
-            output_def := CraftingSystem.resolve_item_def(output.item_id);
-            output_name := output.item_id;
-            output_icon: Texture_Asset;
-            if output_def != null {
-                output_name = output_def.get_name();
-                output_icon = output_def.get_icon();
-            }
+            for input: selected_recipe.inputs {
+                input_def := CraftingSystem.resolve_item_def(input.item_id);
+                have: s64 = 0;
+                display_name := input.item_id;
+                input_icon: Texture_Asset;
+                if input_def != null {
+                    display_name = input_def.name;
+                    have = CraftingSystem.get_item_count_in_inventory(player.default_inventory, input_def);
+                    input_icon = input_def.get_icon();
+                }
 
-            line := UIK.panel_styled(.MODAL_TRANSP_BLACK);
-            line.width = UIK.flex(1);
-            line.height = UIK.fit();
-            line.gap = 10;
-            line.padding = v4{8, 10, 8, 10};
-            line.cross_align = .CENTER;
-            UIK.panel_begin(line);
+                card := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+                card.width = UIK.flex(1);
+                card.height = UIK.flex(1);
+                card.gap = 6;
+                card.padding = v4{10, 12, 10, 12};
+                card.main_align = .CENTER;
+                card.cross_align = .CENTER;
+                UIK.panel_begin(card);
 
-            if output_icon != null {
-                icon_box := UIK.layout_column();
-                icon_box.width = UIK.pixels(42);
-                icon_box.height = UIK.pixels(42);
-                icon_box.cross_align = .CENTER;
-                icon_box.main_align = .CENTER;
-                icon_box.show_background = false;
-                UIK.panel_begin(icon_box);
-                UIK.image_fitted(output_icon, UIK.image_desc(.CONTAIN));
+                if input_icon != null {
+                    icon_box := UIK.layout_centered(UIK.pixels(74), UIK.pixels(74));
+                    UIK.panel_begin(icon_box);
+                    UIK.image_fitted(input_icon, UIK.image_desc(.CONTAIN));
+                    UIK.panel_end();
+                }
+
+                name_text := UIK.text_body();
+                name_text.set_halign(.CENTER);
+                name_text.set_size_mult(0.82);
+                name_text.set_word_wrap(true);
+                UIK.text(name_text, "%", {display_name});
+
+                count_text := UIK.text_body();
+                count_text.set_halign(.CENTER);
+                count_text.set_size_mult(0.95);
+                if have >= input.count {
+                    count_text.set_color(v4{0.65, 1.0, 0.65, 1.0});
+                } else {
+                    count_text.set_color(v4{1.0, 0.5, 0.5, 1.0});
+                }
+                UIK.text(count_text, "%/%", {have, input.count});
+
                 UIK.panel_end();
             }
 
-            line_text := UIK.text_body();
-            UIK.text_set_halign(&line_text, .LEFT);
-            UIK.text_set_color(&line_text, v4{0.9, 0.95, 1.0, 1.0});
-            output_count := ItemManager.ClampSpawnCountToMaxStack(output_def, output.count);
-            UIK.text(format_string("% x%", {output_name, output_count}), line_text);
-            UIK.panel_end();
+            UIK.grid_end();
         }
 
         UIK.list_end();
 
         can_craft := CraftingSystem.can_craft_recipe(player, selected_recipe);
+        craft_output_icon: Texture_Asset;
+        craft_output_count: s64 = 0;
+        if selected_recipe.outputs.count > 0 {
+            primary_output := selected_recipe.outputs[0];
+            primary_output_def := CraftingSystem.resolve_item_def(primary_output.item_id);
+            craft_output_count = primary_output.count;
+            if primary_output_def != null {
+                craft_output_icon = primary_output_def.get_icon();
+                craft_output_count = ItemManager.ClampSpawnCountToMaxStack(primary_output_def, primary_output.count);
+            }
+        }
+
         action_row := UIK.layout_row(UIK.flex(1), UIK.fit(), 10);
         action_row.show_background = false;
         UIK.panel_begin(action_row);
@@ -650,14 +637,24 @@ CraftingSystem :: struct {
         craft_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN);
         craft_desc.panel.width = UIK.flex(1);
         craft_desc.panel.height = UIK.pixels(84);
+        craft_desc.panel.gap = 10;
         craft_desc.disabled = !can_craft;
         if !can_craft {
             craft_desc = UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY);
             craft_desc.panel.width = UIK.flex(1);
             craft_desc.panel.height = UIK.pixels(84);
+            craft_desc.panel.gap = 10;
             craft_desc.disabled = true;
         }
-        craft_button_handle = UIK.button("crafting_craft", "Craft", craft_desc);
+        craft_label := "Craft";
+        if craft_output_count > 0 {
+            craft_label = format_string("Craft x%", {craft_output_count});
+        }
+        if craft_output_icon != null {
+            craft_button_handle = UIK.icon_button_label("crafting_craft", craft_output_icon, craft_label, craft_desc);
+        } else {
+            craft_button_handle = UIK.button("crafting_craft", craft_label, craft_desc);
+        }
 
         UIK.panel_end();
         UIK.panel_end();

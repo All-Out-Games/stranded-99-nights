@@ -119,6 +119,27 @@ TutorialSystem :: struct {
         }
     }
 
+    skip_all_for_player :: proc(player: Player) {
+        if player == null return;
+
+        player.tutorial_harvest_wood_complete = true;
+        player.tutorial_feed_fire_complete = true;
+        player.tutorial_craft_spear_complete = true;
+        player.tutorial_defeat_mob_complete = true;
+        player.tutorial_upgrade_beacon_complete = true;
+        player.tutorial_survive_5_nights_complete = true;
+        player.tutorial_target_cached_step = .NONE;
+        player.tutorial_target_cached_found = false;
+        player.tutorial_target_cache_initialized = false;
+
+        Save.set_int(player, SAVE_KEY_HARVEST_WOOD, 1);
+        Save.set_int(player, SAVE_KEY_FEED_FIRE, 1);
+        Save.set_int(player, SAVE_KEY_CRAFT_SPEAR, 1);
+        Save.set_int(player, SAVE_KEY_DEFEAT_MOB, 1);
+        Save.set_int(player, SAVE_KEY_UPGRADE_BEACON, 1);
+        Save.set_int(player, SAVE_KEY_SURVIVE_5_NIGHTS, 1);
+    }
+
     mark_feed_fire_complete :: proc(player: Player) {
         TutorialSystem.mark_step_complete(player, .FEED_FIRE);
     }

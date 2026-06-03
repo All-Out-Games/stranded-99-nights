@@ -470,6 +470,7 @@ Player :: class : Player_Base {
     ghost_current_animation_name: string;
     ghost_last_world_position: v2;
     ghost_last_world_position_initialized: bool;
+    item_pickup_multiplier: s64;
 
     // Local-only LOS light (viewer-specific).
 	local_light_entity: Entity;
@@ -515,6 +516,7 @@ Player :: class : Player_Base {
         ghost_current_animation_name = "";
         ghost_last_world_position = entity.world_position;
         ghost_last_world_position_initialized = true;
+        item_pickup_multiplier = 1;
         damage_pulse_elapsed_seconds = PLAYER_DAMAGE_PULSE_DURATION_SECONDS;
         beacon_heal_elapsed_seconds = 0.0;
         cached_beacon_heal_amount = 0.0;
@@ -773,7 +775,7 @@ Player :: class : Player_Base {
             // Always-available secondary movement ability.
             draw_ability_button(this, Dodge_Roll_Ability, 1);
 
-            if manager != null && manager.can_player_force_start_from_lobby(this) {
+            if manager != null && manager.can_show_start_run_button_from_lobby(this) {
                 draw_ability_button(this, Private_Server_Start_Ability, 5);
             }
 
@@ -1688,8 +1690,8 @@ Player :: class : Player_Base {
         if manager == null return;
         if manager.get_phase() != .LOBBY return;
 
-        player_count := manager.get_player_count();
-        required_players := manager.get_required_players_to_start();
+        vote_count := manager.get_start_run_vote_count();
+        required_votes := manager.get_required_start_run_votes();
 
         storm_rect := UI.get_safe_screen_rect().bottom_center_rect().grow(30, 450, 30, 450).offset(0, 235);
         text_rect := UI.get_safe_screen_rect().bottom_center_rect().grow(35, 450, 35, 450).offset(0, 180);
@@ -1704,7 +1706,7 @@ Player :: class : Player_Base {
 
         UI.text(storm_rect, ts, "There's a storm coming...");
         ts.size = 36;
-        UI.text(text_rect, ts, "Waiting for Players to Start: %/%", {player_count, required_players});
+        UI.text(text_rect, ts, "Start Run Votes: %/%", {vote_count, required_votes});
     }
 
     draw_end_sequence_line :: method(text: string, text_rect: Rect, ts: Text_Settings, elapsed: float, reveal_delay: float) {

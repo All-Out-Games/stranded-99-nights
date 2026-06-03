@@ -30,7 +30,7 @@ Private_Server_Start_Ability :: class : Ability_Base {
         p := ability.player.(Player);
         manager := get_game_manager();
         if manager == null return false;
-        return manager.can_player_force_start_from_lobby(p);
+        return manager.can_player_vote_start_from_lobby(p);
     }
 
     on_update :: proc(ability: Ability_Base, params: ref Ability_Update_Params) {
@@ -39,13 +39,29 @@ Private_Server_Start_Ability :: class : Ability_Base {
         p := ability.player.(Player);
         ability.current_cooldown = 0.5;
 
-        if Game.is_server() {
-            try_force_start_game(p, "private lobby ability");
+        manager := get_game_manager();
+        if manager != null && manager.try_vote_to_start_run(p) {
+            game_sfx_play(.UI_CLICK, p.entity);
+        } else {
+            game_sfx_play(.UI_ERROR, p.entity);
         }
     }
 
     on_draw_button :: proc(instance: Private_Server_Start_Ability, rect: Rect) {
-		draw_ability_name_label(rect, "Start Run");
+        manager := get_game_manager();
+        if manager == null {
+		    draw_ability_name_label(rect, "Start Run");
+            return;
+        }
+
+        p := instance.player.(Player);
+        vote_count := manager.get_start_run_vote_count();
+        required_votes := manager.get_required_start_run_votes();
+        label := format_string("Start %/%", {vote_count, required_votes});
+        if manager.has_player_voted_to_start_run(p) {
+            label = format_string("Ready %/%", {vote_count, required_votes});
+        }
+		draw_ability_name_label(rect, label);
 	}
 
 }
