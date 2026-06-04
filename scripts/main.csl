@@ -62,10 +62,10 @@ ao_late_update :: proc(dt: float) {
 }
 
 
-PLAYER_LIGHT_BASE_INNER_RADIUS :: 12;
-PLAYER_LIGHT_BASE_OUTER_RADIUS :: 14;
-PLAYER_LIGHT_MIN_INNER_RADIUS :: 5;
-PLAYER_LIGHT_MIN_OUTER_RADIUS :: 7;
+PLAYER_LIGHT_DAY_INNER_RADIUS :: 90;
+PLAYER_LIGHT_DAY_OUTER_RADIUS :: 105;
+PLAYER_LIGHT_NIGHT_INNER_RADIUS :: 22;
+PLAYER_LIGHT_NIGHT_OUTER_RADIUS :: 34;
 PLAYER_LIGHT_RADIUS_Y_PADDING :: 2.0;
 PLAYER_VOYAGE_LOS_RADIUS_BONUS :: 3.0;
 PLAYER_LIGHT_FIXED_RADIUS :: 40.0;
@@ -471,6 +471,8 @@ Player :: class : Player_Base {
     ghost_last_world_position: v2;
     ghost_last_world_position_initialized: bool;
     item_pickup_multiplier: s64;
+    death_drop_body_position: v2;
+    death_drop_body_position_valid: bool;
 
     // Local-only LOS light (viewer-specific).
 	local_light_entity: Entity;
@@ -517,6 +519,8 @@ Player :: class : Player_Base {
         ghost_last_world_position = entity.world_position;
         ghost_last_world_position_initialized = true;
         item_pickup_multiplier = 1;
+        death_drop_body_position = entity.world_position;
+        death_drop_body_position_valid = false;
         damage_pulse_elapsed_seconds = PLAYER_DAMAGE_PULSE_DURATION_SECONDS;
         beacon_heal_elapsed_seconds = 0.0;
         cached_beacon_heal_amount = 0.0;
@@ -811,6 +815,11 @@ Player :: class : Player_Base {
             this.draw_supply_drop_arrow();
         }
 
+        if this.is_local_or_server() && !merchant_ui_open {
+            this.draw_downed_player_revive_arrows();
+            this.draw_death_drop_body_arrow();
+        }
+
         if this.is_local_or_server() && !crafting_ui_open && !beacon_ui_open && !merchant_ui_open && !voyage_prep_ui_open {
             this.draw_island5_story_boss_arrow();
         }
@@ -939,7 +948,12 @@ Player :: class : Player_Base {
 
         node.trigger_harvest_visual_pulse();
         next_resource_gather_swing_time = now + RESOURCE_GATHER_SWING_INTERVAL;
-        game_sfx_play(.RESOURCE_GATHER, entity);
+        if node.resource_type == .WOOD {
+            game_sfx_play(.RESOURCE_TREE_SHAKE, node.entity);
+            game_sfx_play(.RESOURCE_TREE_CHOP, node.entity);
+        } else {
+            game_sfx_play(.RESOURCE_GATHER, entity);
+        }
 
         if animator == null return;
         if animator.instance == null return;
@@ -1070,6 +1084,8 @@ Player :: class : Player_Base {
         }
 
         drop_origin := entity.world_position;
+        death_drop_body_position = drop_origin;
+        death_drop_body_position_valid = true;
         drop_rng := rng_root_seed();
         for i: 0..default_inventory.capacity-1 {
             item := default_inventory.get_item(i);
@@ -1289,6 +1305,7 @@ Player :: class : Player_Base {
         this.set_mouse_ik_enabled(false);
         this.close_all_ui_modals();
         death_drop_pickup_blocks.clear();
+        death_drop_body_position_valid = false;
         this.clear_inventory_for_restart();
     }
 
@@ -1342,15 +1359,13 @@ Player :: class : Player_Base {
 			night_blend = clamp(manager.get_night_blend(), 0.0, 1.0);
 		}
 
-		base_inner := PLAYER_LIGHT_BASE_INNER_RADIUS.(float);
-		min_inner := PLAYER_LIGHT_MIN_INNER_RADIUS.(float);
-		min_outer := PLAYER_LIGHT_MIN_OUTER_RADIUS.(float);
+		day_inner := PLAYER_LIGHT_DAY_INNER_RADIUS.(float);
+		day_outer := PLAYER_LIGHT_DAY_OUTER_RADIUS.(float);
+		night_inner := PLAYER_LIGHT_NIGHT_INNER_RADIUS.(float);
+		night_outer := PLAYER_LIGHT_NIGHT_OUTER_RADIUS.(float);
 
-		inner_radius := lerp(base_inner, min_inner, night_blend);
-		inner_radius = max(inner_radius, min_inner);
-
-		outer_radius := inner_radius + PLAYER_LIGHT_RADIUS_Y_PADDING;
-		outer_radius = max(outer_radius, min_outer);
+		inner_radius := lerp(day_inner, night_inner, night_blend);
+		outer_radius := lerp(day_outer, night_outer, night_blend);
 
 		return v2.{inner_radius, outer_radius};
 	}
@@ -1683,6 +1698,68 @@ Player :: class : Player_Base {
         if length_squared(to_target) <= hide_dist_sq return;
 
         DrawArrowToPosition(this, target_pos);
+    }
+
+    draw_world_arrow_label :: method(position: v2, label: string, color: v4) {
+        if label.count <= 0 return;
+        if !this.is_local_or_server() return;
+
+        UI.push_world_draw_context();
+        defer UI.pop_draw_context();
+        UI.push_z(position.y - 0.0003);
+        defer UI.pop_z();
+
+        label_pos := position + v2{0.0, 2.15};
+        text_rect := Rect{label_pos, label_pos}.grow(0.22, 2.8, 0.22, 2.8);
+
+        ts := UI.default_text_settings();
+        ts.size = 0.30;
+        ts.halign = .CENTER;
+        ts.valign = .CENTER;
+        ts.color = color;
+        ts.do_outline = true;
+        ts.outline_thickness = 2;
+        ts.outline_color = {0, 0, 0, 1};
+
+        UI.text(text_rect, ts, label);
+    }
+
+    draw_downed_player_revive_arrows :: method() {
+        if !this.is_local_or_server() return;
+        if this.is_dead_for_night_state() return;
+        if entity == null return;
+
+        manager := get_game_manager();
+        if manager == null return;
+        if manager.get_phase() != .IN_ROUND return;
+
+        for downed_player: component_iterator(Player) {
+            if downed_player == null continue;
+            if downed_player == this continue;
+            if downed_player.entity == null continue;
+            if !downed_player.is_downed_for_night() continue;
+
+            target_pos := downed_player.entity.world_position;
+            DrawArrowToPosition(this, target_pos);
+            this.draw_world_arrow_label(
+                target_pos,
+                format_string("Revive %", {downed_player.get_username()}),
+                {1.0, 0.25, 0.25, 1.0}
+            );
+        }
+    }
+
+    draw_death_drop_body_arrow :: method() {
+        if !this.is_local_or_server() return;
+        if !death_drop_body_position_valid return;
+        if entity == null return;
+
+        to_body := death_drop_body_position - entity.world_position;
+        hide_dist_sq := 1.8 * 1.8;
+        if length_squared(to_body) <= hide_dist_sq return;
+
+        DrawArrowToPosition(this, death_drop_body_position);
+        this.draw_world_arrow_label(death_drop_body_position, "Your Body", {1.0, 0.92, 0.35, 1.0});
     }
 
     draw_lobby_waiting_text :: method() {

@@ -553,61 +553,68 @@ CraftingSystem :: struct {
         section_title.set_halign(.LEFT);
         UIK.text(section_title, "Required");
 
-        requirement_columns: s64 = selected_recipe.inputs.count;
-        if requirement_columns > 3 {
-            requirement_columns = 3;
-        }
+        input_index: s64 = 0;
+        while input_index < selected_recipe.inputs.count {
+            row := UIK.layout_row(UIK.flex(1), UIK.pixels(176), 8);
+            row.show_background = false;
+            UIK.panel_begin(row);
 
-        if requirement_columns > 0 {
-            UIK.grid_begin(requirement_columns, 142);
+            column: s64 = 0;
+            while column < 3 {
+                if input_index < selected_recipe.inputs.count {
+                    input := selected_recipe.inputs[input_index];
+                    input_def := CraftingSystem.resolve_item_def(input.item_id);
+                    have: s64 = 0;
+                    display_name := input.item_id;
+                    input_icon: Texture_Asset;
+                    if input_def != null {
+                        display_name = input_def.name;
+                        have = CraftingSystem.get_item_count_in_inventory(player.default_inventory, input_def);
+                        input_icon = input_def.get_icon();
+                    }
 
-            for input: selected_recipe.inputs {
-                input_def := CraftingSystem.resolve_item_def(input.item_id);
-                have: s64 = 0;
-                display_name := input.item_id;
-                input_icon: Texture_Asset;
-                if input_def != null {
-                    display_name = input_def.name;
-                    have = CraftingSystem.get_item_count_in_inventory(player.default_inventory, input_def);
-                    input_icon = input_def.get_icon();
-                }
+                    card := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+                    card.width = UIK.flex(1);
+                    card.height = UIK.flex(1);
+                    card.gap = 4;
+                    card.padding = v4{8, 12, 8, 12};
+                    card.main_align = .CENTER;
+                    card.cross_align = .CENTER;
+                    UIK.panel_begin(card);
 
-                card := UIK.panel_styled(.MODAL_TRANSP_BLACK);
-                card.width = UIK.flex(1);
-                card.height = UIK.flex(1);
-                card.gap = 6;
-                card.padding = v4{10, 12, 10, 12};
-                card.main_align = .CENTER;
-                card.cross_align = .CENTER;
-                UIK.panel_begin(card);
+                    if input_icon != null {
+                        icon_box := UIK.layout_centered(UIK.pixels(72), UIK.pixels(72));
+                        UIK.panel_begin(icon_box);
+                        UIK.image_fitted(input_icon, UIK.image_desc(.CONTAIN));
+                        UIK.panel_end();
+                    }
 
-                if input_icon != null {
-                    icon_box := UIK.layout_centered(UIK.pixels(74), UIK.pixels(74));
-                    UIK.panel_begin(icon_box);
-                    UIK.image_fitted(input_icon, UIK.image_desc(.CONTAIN));
+                    name_text := UIK.text_body();
+                    name_text.set_halign(.CENTER);
+                    name_text.set_size_mult(0.82);
+                    name_text.set_word_wrap(true);
+                    UIK.text(name_text, "%", {display_name});
+
+                    count_text := UIK.text_body();
+                    count_text.set_halign(.CENTER);
+                    count_text.set_size_mult(0.9);
+                    if have >= input.count {
+                        count_text.set_color(v4{0.65, 1.0, 0.65, 1.0});
+                    } else {
+                        count_text.set_color(v4{1.0, 0.5, 0.5, 1.0});
+                    }
+                    UIK.text(count_text, "%/%", {have, input.count});
+
                     UIK.panel_end();
-                }
-
-                name_text := UIK.text_body();
-                name_text.set_halign(.CENTER);
-                name_text.set_size_mult(0.82);
-                name_text.set_word_wrap(true);
-                UIK.text(name_text, "%", {display_name});
-
-                count_text := UIK.text_body();
-                count_text.set_halign(.CENTER);
-                count_text.set_size_mult(0.95);
-                if have >= input.count {
-                    count_text.set_color(v4{0.65, 1.0, 0.65, 1.0});
+                    input_index += 1;
                 } else {
-                    count_text.set_color(v4{1.0, 0.5, 0.5, 1.0});
+                    UIK.spacer(UIK.flex(1), UIK.flex(1));
                 }
-                UIK.text(count_text, "%/%", {have, input.count});
 
-                UIK.panel_end();
+                column += 1;
             }
 
-            UIK.grid_end();
+            UIK.panel_end();
         }
 
         UIK.list_end();
