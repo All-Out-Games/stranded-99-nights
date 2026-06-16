@@ -10,6 +10,9 @@ BoatSway :: class : Component {
     base_local_position: v2;
     base_local_rotation: float;
     time_offset: float;
+    last_applied_position: v2;
+    last_applied_rotation: float;
+    applied_transform_initialized: bool;
 
     ao_start :: method() {
         if horizontal_amplitude == 0.0 { horizontal_amplitude = 0.08; }
@@ -20,6 +23,9 @@ BoatSway :: class : Component {
 
         base_local_position = entity.local_position;
         base_local_rotation = entity.local_rotation;
+        last_applied_position = base_local_position;
+        last_applied_rotation = base_local_rotation;
+        applied_transform_initialized = true;
 
         // De-sync multiple boats so they do not sway in perfect unison.
         rng: u64 = rng_seed(entity.id);
@@ -35,8 +41,20 @@ BoatSway :: class : Component {
         y_offset := sin((t * position_frequency * 1.31) + position_phase_offset + 1.57) * vertical_amplitude;
         rotation_offset := sin((t * rotation_frequency) + rotation_phase_offset) * rotation_amplitude_degrees;
 
-        entity.set_local_position(base_local_position + v2.{x_offset, y_offset});
-        entity.set_local_rotation(base_local_rotation + rotation_offset);
+        next_position := base_local_position + v2.{x_offset, y_offset};
+        next_rotation := base_local_rotation + rotation_offset;
+
+        if !applied_transform_initialized || length_squared(next_position - last_applied_position) >= 0.000025 {
+            entity.set_local_position(next_position);
+            last_applied_position = next_position;
+        }
+
+        if !applied_transform_initialized || abs(next_rotation - last_applied_rotation) >= 0.05 {
+            entity.set_local_rotation(next_rotation);
+            last_applied_rotation = next_rotation;
+        }
+
+        applied_transform_initialized = true;
     }
 
     ao_end :: method() {

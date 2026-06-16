@@ -3,6 +3,8 @@ ScrollEntity :: class : Component {
     travel_time_seconds: float @ao_serialize;
 
     elapsed_time_seconds: float;
+    last_applied_position: v2;
+    applied_position_initialized: bool;
 
     ao_start :: method() {
         if travel_time_seconds <= 0.0 {
@@ -10,6 +12,8 @@ ScrollEntity :: class : Component {
         }
 
         entity.set_local_position(v2.{0.0, 0.0});
+        last_applied_position = v2.{0.0, 0.0};
+        applied_position_initialized = true;
         elapsed_time_seconds = 0.0;
     }
 
@@ -17,10 +21,16 @@ ScrollEntity :: class : Component {
         elapsed_time_seconds += dt;
 
         progress := clamp(elapsed_time_seconds / travel_time_seconds, 0.0, 1.0);
-        entity.set_local_position(lerp(v2.{0.0, 0.0}, destination, progress));
+        next_position := lerp(v2.{0.0, 0.0}, destination, progress);
+        if !applied_position_initialized || length_squared(next_position - last_applied_position) >= 0.0001 {
+            entity.set_local_position(next_position);
+            last_applied_position = next_position;
+            applied_position_initialized = true;
+        }
 
         if progress >= 1.0 {
             entity.set_local_position(v2.{0.0, 0.0});
+            last_applied_position = v2.{0.0, 0.0};
             elapsed_time_seconds = 0.0;
         }
     }

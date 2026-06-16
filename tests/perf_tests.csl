@@ -1,0 +1,32 @@
+test_perf_lobby_idle :: proc() {
+    Test.wait_frames(30);
+    Test.profile_start("perf_lobby_idle");
+    Test.wait_frames(240);
+    Test.profile_stop();
+    Test.assert_entity_count_gt("game manager present", "GameManager", 0);
+}
+
+test_perf_night_combat_load :: proc() {
+    Test.run_admin_command("start");
+    Test.wait_seconds(2.0);
+    Test.run_admin_command("island 5");
+    Test.wait_seconds(1.0);
+    Test.run_admin_command("raid");
+    Test.wait_seconds(1.0);
+    Test.profile_start("perf_night_combat_load");
+    Test.wait_frames(360);
+    Test.profile_stop();
+    Test.assert_entity_count_gt("game manager present", "GameManager", 0);
+}
+
+test_perf_pickup_world_load :: proc() {
+    Test.run_admin_command("start");
+    Test.wait_seconds(1.0);
+    Test.run_admin_command("pickupmultiplier 1000");
+    Test.run_admin_command("giveitem wood 100");
+    Test.wait_seconds(1.0);
+    Test.profile_start("perf_pickup_world_load");
+    Test.wait_frames(300);
+    Test.profile_stop();
+    Test.assert_entity_count_gt("game manager present", "GameManager", 0);
+}

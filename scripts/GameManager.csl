@@ -873,6 +873,7 @@ GameManager :: class : Component {
     current_run_seed: u64;
     run_seed_generation_count: s64;
     start_run_vote_user_ids: [..]string;
+    next_auto_start_vote_check_time_seconds: float;
 
     DAY_DURATION_SECONDS :: 60.0;
     NIGHT_DURATION_SECONDS :: 45.0;
@@ -1031,6 +1032,7 @@ GameManager :: class : Component {
         island_transition_freeze_applied = false;
         active_moon_merchant_spawn_position = {0.0, 0.0};
         moon_merchant_spawn_position_ready = false;
+        next_auto_start_vote_check_time_seconds = 0.0;
         island_transition_start_time = 0.0;
         voyage_state = .NONE;
         voyage_timer_start_time = 0.0;
@@ -4330,6 +4332,10 @@ GameManager :: class : Component {
         if current_phase != .LOBBY return;
         if game_over_sequence_active return;
         if run_complete_sequence_active return;
+
+        now := get_time();
+        if now < next_auto_start_vote_check_time_seconds return;
+        next_auto_start_vote_check_time_seconds = now + 0.25;
 
         trim_start_run_votes();
         if !has_start_run_vote_majority() return;

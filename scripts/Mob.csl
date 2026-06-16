@@ -92,6 +92,11 @@ Mob :: class : Component {
     spawn_intro_wait_duration_seconds: float;
     spawn_intro_animation_name: string;
     spawn_intro_state_configured: bool;
+    moving_animation_state_initialized: bool;
+    last_moving_animation_state: bool;
+    damage_pulse_color_reset_applied: bool;
+    cached_health_bar_visible: bool;
+    next_health_bar_visibility_check_time_seconds: float;
 
     ao_start :: method() {
         if max_health <= 0.0 { max_health = 100.0; }
@@ -136,7 +141,12 @@ Mob :: class : Component {
         spawn_intro_wait_duration_seconds = 0.0;
         spawn_intro_animation_name = "";
         spawn_intro_state_configured = false;
+        moving_animation_state_initialized = false;
+        last_moving_animation_state = false;
         damage_pulse_elapsed_seconds = MOB_DAMAGE_PULSE_DURATION_SECONDS;
+        damage_pulse_color_reset_applied = true;
+        cached_health_bar_visible = true;
+        next_health_bar_visibility_check_time_seconds = 0.0;
         base_local_scale = entity.local_scale;
         if base_local_scale.x == 0.0 { base_local_scale.x = 1.0; }
         if base_local_scale.y == 0.0 { base_local_scale.y = 1.0; }
@@ -329,6 +339,19 @@ Mob :: class : Component {
     ao_late_update :: method(dt: float) {
         if Game.is_server() return;
         if !is_alive() return;
+
+        now := get_time();
+        if now >= next_health_bar_visibility_check_time_seconds {
+            next_health_bar_visibility_check_time_seconds = now + 0.12;
+            if spine_animator != null {
+                cached_health_bar_visible = Camera.is_visible(spine_animator, 0.5);
+            } else {
+                cached_health_bar_visible = Camera.is_visible(entity.world_position, 3.0);
+            }
+        }
+        if !cached_health_bar_visible {
+            return;
+        }
 
         material_player := resolve_material_player_for_ui();
         draw_mob_health_bar(this, material_player);
@@ -982,18 +1005,18 @@ Mob :: class : Component {
 
     update_is_moving_animation_state :: method() {
         if animation_state_machine == null return;
+        moving := false;
         if is_dead {
-            animation_state_machine.set_bool("mob_is_moving", false);
-            return;
+            moving = false;
+        } else if movement_agent != null {
+            moving = length_squared(movement_agent.velocity) > 0.01;
         }
 
-        if movement_agent == null {
-            animation_state_machine.set_bool("mob_is_moving", false);
-            return;
-        }
+        if moving_animation_state_initialized && moving == last_moving_animation_state return;
 
-        moving := length_squared(movement_agent.velocity) > 0.01;
         animation_state_machine.set_bool("mob_is_moving", moving);
+        last_moving_animation_state = moving;
+        moving_animation_state_initialized = true;
     }
 
     trigger_attack_animation :: method() {
@@ -1071,6 +1094,7 @@ Mob :: class : Component {
 
     trigger_damage_feedback :: method(amount: float) {
         damage_pulse_elapsed_seconds = 0.0;
+        damage_pulse_color_reset_applied = false;
 
         if !Game.is_server() return;
 
@@ -1113,13 +1137,17 @@ Mob :: class : Component {
         if spine_animator.instance == null return;
 
         if damage_pulse_elapsed_seconds >= MOB_DAMAGE_PULSE_DURATION_SECONDS {
-            spine_animator.instance.color_multiplier = {1, 1, 1, 1};
+            if !damage_pulse_color_reset_applied {
+                spine_animator.instance.color_multiplier = {1, 1, 1, 1};
+                damage_pulse_color_reset_applied = true;
+            }
             return;
         }
 
         damage_pulse_elapsed_seconds += dt;
         if damage_pulse_elapsed_seconds >= MOB_DAMAGE_PULSE_DURATION_SECONDS {
             spine_animator.instance.color_multiplier = {1, 1, 1, 1};
+            damage_pulse_color_reset_applied = true;
             return;
         }
 

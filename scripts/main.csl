@@ -1393,25 +1393,65 @@ Player :: class : Player_Base {
 		if !this.is_local() return;
 		if !#alive(this.entity) return;
 
-		this.ensure_local_vision_light();
+        // Keep local-only objects in #static state instead of Player fields. Player fields
+        // are reconciled from the server every few frames, which caused this light entity to
+        // be recreated repeatedly on clients.
+        #static cached_light_entity: Entity;
+        #static cached_light: Light;
+        #static cached_light_caster: LOS_Caster;
+        #static cached_owner_entity_id: u64;
 
-		if local_light == null && local_light_entity != null {
-			local_light = local_light_entity.get_component(Light);
+        if cached_owner_entity_id != 0 && cached_owner_entity_id != this.entity.id {
+            if cached_light_entity != null && #alive(cached_light_entity) {
+                cached_light_entity.destroy();
+            }
+            cached_light_entity = null;
+            cached_light = null;
+            cached_light_caster = null;
+            cached_owner_entity_id = 0;
+        }
+
+        if cached_light_entity == null || !#alive(cached_light_entity) {
+            cached_light_entity = Scene.create_entity();
+            cached_light_entity.set_parent(this.entity, false);
+            cached_light_entity.set_local_enabled(true);
+            cached_light_entity.set_local_position(v2.{0.0, 0.0});
+            cached_light_entity.set_local_rotation(0.0);
+            cached_light_entity.set_local_scale(v2.{1.0, 1.0});
+
+            cached_light = cached_light_entity.add_component(Light);
+            cached_light.color = PLAYER_LIGHT_COLOR;
+            cached_light.intensity = PLAYER_LIGHT_INTENSITY;
+            cached_light.radii = v2.{PLAYER_LIGHT_FIXED_RADIUS, PLAYER_LIGHT_FIXED_RADIUS + PLAYER_LIGHT_RADIUS_Y_PADDING};
+
+            cached_light_caster = cached_light_entity.add_component(LOS_Caster);
+            cached_light_caster.radii = cached_light.radii;
+            cached_owner_entity_id = this.entity.id;
+
+            // Keep legacy fields populated for cleanup paths and debugging, but don't rely on
+            // them for persistence across reconciliation.
+            local_light_entity = cached_light_entity;
+            local_light = cached_light;
+            local_light_caster = cached_light_caster;
+        }
+
+		if cached_light == null && cached_light_entity != null {
+			cached_light = cached_light_entity.get_component(Light);
 		}
-		if local_light_caster == null && local_light_entity != null {
-			local_light_caster = local_light_entity.get_component(LOS_Caster);
+		if cached_light_caster == null && cached_light_entity != null {
+			cached_light_caster = cached_light_entity.get_component(LOS_Caster);
 		}
-		if local_light == null || local_light_caster == null return;
+		if cached_light == null || cached_light_caster == null return;
 
 		radii := this.get_local_light_radii();
-		local_light.radii = v2.{PLAYER_LIGHT_FIXED_RADIUS, PLAYER_LIGHT_FIXED_RADIUS + PLAYER_LIGHT_RADIUS_Y_PADDING};
+		cached_light.radii = v2.{PLAYER_LIGHT_FIXED_RADIUS, PLAYER_LIGHT_FIXED_RADIUS + PLAYER_LIGHT_RADIUS_Y_PADDING};
 	caster_radii := radii;
 	manager := get_game_manager();
 	if manager != null && manager.should_use_voyage_camera_zoom() {
 		caster_radii.x += PLAYER_VOYAGE_LOS_RADIUS_BONUS;
 		caster_radii.y += PLAYER_VOYAGE_LOS_RADIUS_BONUS;
 	}
-	local_light_caster.radii = caster_radii;
+	cached_light_caster.radii = caster_radii;
 	}
 
     draw_day_night_clock :: method() {

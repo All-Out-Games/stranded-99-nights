@@ -57,6 +57,7 @@ ResourceNode :: class : Interactable {
 
     anim_base_scale: v2;
     anim_base_scale_initialized: bool;
+    harvest_anim_active: bool;
 
     HARVEST_ANIM_DURATION :: 0.22;
 
@@ -80,6 +81,7 @@ ResourceNode :: class : Interactable {
 
         this.set_text("Gather");
         this.set_hold_text("Gathering...");
+        harvest_anim_active = false;
     }
 
     can_use :: method(player: Player) -> bool {
@@ -104,6 +106,7 @@ ResourceNode :: class : Interactable {
     trigger_harvest_visual_pulse :: method() {
         if is_depleted return;
         last_harvest_time = get_time();
+        harvest_anim_active = true;
     }
 
     ao_update :: method(dt: float) {
@@ -141,6 +144,8 @@ ResourceNode :: class : Interactable {
     }
 
     update_harvest_animation :: method() {
+        if !harvest_anim_active return;
+
         ensure_anim_base_scale();
         if !anim_base_scale_initialized return;
 
@@ -150,6 +155,7 @@ ResourceNode :: class : Interactable {
         elapsed := get_time() - last_harvest_time;
         if elapsed < 0.0 || elapsed > HARVEST_ANIM_DURATION {
             target.set_local_scale(anim_base_scale);
+            harvest_anim_active = false;
             return;
         }
 
