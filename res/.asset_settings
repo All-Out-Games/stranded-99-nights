@@ -13,5 +13,29 @@
   },
   {
     "id": "palm_tree_a9dcc5b27d6c0f09.png"
+  },
+  {
+    "id": "terrain/ice-boulder.png",
+    "should_mip": true
+  },
+  {
+    "id": "BoatShadow.png",
+    "should_mip": true
+  },
+  {
+    "id": "Sea_Big_Drakkar.png",
+    "should_mip": true
+  },
+  {
+    "id": "vegetation/Tree2.png",
+    "should_mip": true
+  },
+  {
+    "id": "terrain/burned_area.png",
+    "should_mip": true
+  },
+  {
+    "id": "terrain/iceberg_chunk.png",
+    "should_mip": true
   }
 ]
