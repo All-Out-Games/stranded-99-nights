@@ -11,7 +11,7 @@ Tutorial_Step :: enum {
 }
 
 TutorialSystem :: struct {
-    // Keep save keys flat. Dots can be treated as nested JSON paths by the backend.
+    // Save keys must be flat: the engine rejects dots in key names.
     SAVE_KEY_HARVEST_WOOD :: "tutorial_harvest_wood_complete";
     SAVE_KEY_FEED_FIRE :: "tutorial_feed_fire_complete";
     SAVE_KEY_CRAFT_SPEAR :: "tutorial_craft_spear_complete";
@@ -19,12 +19,6 @@ TutorialSystem :: struct {
     SAVE_KEY_UPGRADE_BEACON :: "tutorial_upgrade_beacon_complete";
     SAVE_KEY_SURVIVE_5_NIGHTS :: "tutorial_survive_5_nights_complete";
     LEGACY_DOTTED_SAVE_ROOT :: "tutorial";
-    LEGACY_DOTTED_SAVE_KEY_HARVEST_WOOD :: "tutorial.harvest_wood_complete";
-    LEGACY_DOTTED_SAVE_KEY_FEED_FIRE :: "tutorial.feed_fire_complete";
-    LEGACY_DOTTED_SAVE_KEY_CRAFT_SPEAR :: "tutorial.craft_spear_complete";
-    LEGACY_DOTTED_SAVE_KEY_DEFEAT_MOB :: "tutorial.defeat_mob_complete";
-    LEGACY_DOTTED_SAVE_KEY_UPGRADE_BEACON :: "tutorial.upgrade_beacon_complete";
-    LEGACY_DOTTED_SAVE_KEY_SURVIVE_5_NIGHTS :: "tutorial.survive_5_nights_complete";
     TARGET_REFRESH_INTERVAL_SECONDS :: 0.15;
     TARGET_RESAMPLE_DISTANCE_SQ :: 1.0;
 
@@ -32,13 +26,8 @@ TutorialSystem :: struct {
         if player == null return;
         if !Game.is_server() return;
 
+        // Remove the legacy nested object through its valid root key.
         Save.delete_key(player, LEGACY_DOTTED_SAVE_ROOT);
-        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_HARVEST_WOOD);
-        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_FEED_FIRE);
-        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_CRAFT_SPEAR);
-        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_DEFEAT_MOB);
-        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_UPGRADE_BEACON);
-        Save.delete_key(player, LEGACY_DOTTED_SAVE_KEY_SURVIVE_5_NIGHTS);
     }
 
     load_player_progress :: proc(player: Player) {
