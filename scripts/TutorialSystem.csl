@@ -1,6 +1,6 @@
 import "core:ao"
 
-Tutorial_Step :: enum {
+Stranded_Tutorial_Step :: enum {
     NONE;
     HARVEST_WOOD;
     FEED_FIRE;
@@ -57,7 +57,7 @@ TutorialSystem :: struct {
         }
     }
 
-    mark_step_complete :: proc(player: Player, step: Tutorial_Step) {
+    mark_step_complete :: proc(player: Player, step: Stranded_Tutorial_Step) {
         if player == null return;
 
         save_key := "";
@@ -162,7 +162,7 @@ TutorialSystem :: struct {
         }
     }
 
-    get_active_step :: proc(player: Player) -> Tutorial_Step {
+    get_active_step :: proc(player: Player) -> Stranded_Tutorial_Step {
         if player == null return .NONE;
 
         if !player.tutorial_harvest_wood_complete return .HARVEST_WOOD;
@@ -184,7 +184,7 @@ TutorialSystem :: struct {
         return CraftingSystem.get_item_count_in_inventory(player.default_inventory, wood) > 0;
     }
 
-    get_step_text :: proc(step: Tutorial_Step) -> string {
+    get_step_text :: proc(step: Stranded_Tutorial_Step) -> string {
         switch step {
             case .HARVEST_WOOD: return "Harvest some Wood!";
             case .FEED_FIRE: return "Feed the Fire!";
@@ -198,7 +198,7 @@ TutorialSystem :: struct {
         return "";
     }
 
-    compute_step_target_position :: proc(player: Player, step: Tutorial_Step) -> v2, bool {
+    compute_step_target_position :: proc(player: Player, step: Stranded_Tutorial_Step) -> v2, bool {
         switch step {
             case .HARVEST_WOOD: {
                 target_pos, found := TutorialSystem.get_closest_wood_node_position(player);
@@ -226,7 +226,7 @@ TutorialSystem :: struct {
         return v2.{0.0, 0.0}, false;
     }
 
-    get_step_target_position :: proc(player: Player, step: Tutorial_Step) -> v2, bool {
+    get_step_target_position :: proc(player: Player, step: Stranded_Tutorial_Step) -> v2, bool {
         if player == null return v2.{0.0, 0.0}, false;
         if player.entity == null return v2.{0.0, 0.0}, false;
         if step == .SURVIVE_5_NIGHTS {

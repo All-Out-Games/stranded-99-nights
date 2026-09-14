@@ -409,7 +409,7 @@ VoyagePrepSystem :: struct {
         info_panel.padding = v4{10, 14, 10, 14};
         UIK.panel_begin(info_panel);
         info_text := UIK.text_body();
-        UIK.text_set_halign(&info_text, .LEFT);
+        info_text.set_halign(.LEFT);
         UIK.text("Bring together the resources needed to launch the next voyage.", info_text);
         UIK.panel_end();
 
@@ -423,12 +423,12 @@ VoyagePrepSystem :: struct {
         UIK.panel_begin(crew_panel);
 
         crew_title := UIK.text_title();
-        UIK.text_set_halign(&crew_title, .LEFT);
+        crew_title.set_halign(.LEFT);
         UIK.text("Crew Status", crew_title);
 
         crew_body := UIK.text_body();
-        UIK.text_set_halign(&crew_body, .LEFT);
-        UIK.text_set_color(&crew_body, v4{0.82, 0.9, 1.0, 1.0});
+        crew_body.set_halign(.LEFT);
+        crew_body.set_color(v4{0.82, 0.9, 1.0, 1.0});
         UIK.text(ready_text, crew_body);
         UIK.panel_end();
 
@@ -442,17 +442,17 @@ VoyagePrepSystem :: struct {
         UIK.panel_begin(supplies_panel);
 
         supplies_title := UIK.text_title();
-        UIK.text_set_halign(&supplies_title, .LEFT);
+        supplies_title.set_halign(.LEFT);
         UIK.text("Required Supplies", supplies_title);
 
         supplies_body := UIK.text_body();
-        UIK.text_set_halign(&supplies_body, .LEFT);
+        supplies_body.set_halign(.LEFT);
         UIK.text("Deposit the listed resources to finish voyage prep.", supplies_body);
 
         if requirements.count <= 0 {
             unavailable_text := UIK.text_body();
-            UIK.text_set_halign(&unavailable_text, .LEFT);
-            UIK.text_set_color(&unavailable_text, v4{1.0, 0.55, 0.55, 1.0});
+            unavailable_text.set_halign(.LEFT);
+            unavailable_text.set_color(v4{1.0, 0.55, 0.55, 1.0});
             UIK.text("No voyage prep requirements are configured here yet.", unavailable_text);
         }
 
@@ -500,15 +500,15 @@ VoyagePrepSystem :: struct {
             UIK.panel_begin(text_panel);
 
             item_name := UIK.text_button();
-            UIK.text_set_halign(&item_name, .LEFT);
+            item_name.set_halign(.LEFT);
             UIK.text(display_name, item_name);
 
             item_status := UIK.text_body();
-            UIK.text_set_halign(&item_status, .LEFT);
+            item_status.set_halign(.LEFT);
             if requirement_met {
-                UIK.text_set_color(&item_status, v4{0.65, 1.0, 0.65, 1.0});
+                item_status.set_color(v4{0.65, 1.0, 0.65, 1.0});
             } else {
-                UIK.text_set_color(&item_status, v4{1.0, 0.7, 0.55, 1.0});
+                item_status.set_color(v4{1.0, 0.7, 0.55, 1.0});
             }
             UIK.text(
                 format_string("Stockpile %/%  |  You: %", {stockpiled, requirement.count, have}),
@@ -549,12 +549,12 @@ VoyagePrepSystem :: struct {
         UIK.panel_begin(status_panel);
 
         status_title := UIK.text_title();
-        UIK.text_set_halign(&status_title, .LEFT);
+        status_title.set_halign(.LEFT);
         UIK.text("Voyage Status", status_title);
 
         status_body := UIK.text_body();
-        UIK.text_set_halign(&status_body, .LEFT);
-        UIK.text_set_color(&status_body, status_tint);
+        status_body.set_halign(.LEFT);
+        status_body.set_color(status_tint);
         UIK.text(status_text, status_body);
         UIK.panel_end();
 

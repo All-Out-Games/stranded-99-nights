@@ -763,7 +763,7 @@ BeaconSystem :: struct {
         info_panel.padding = v4{10, 14, 10, 14};
         UIK.panel_begin(info_panel);
         info_text := UIK.text_body();
-        UIK.text_set_halign(&info_text, .LEFT);
+        info_text.set_halign(.LEFT);
         UIK.text(
             "Feed the beacon to keep the safety zone alive. Fill the stockpile to automatically clear more Dark Fog and expand the island.",
             info_text
@@ -792,12 +792,12 @@ BeaconSystem :: struct {
         UIK.panel_begin(fuel_header_text);
 
         fuel_title := UIK.text_title();
-        UIK.text_set_halign(&fuel_title, .LEFT);
+        fuel_title.set_halign(.LEFT);
         UIK.text("Fuel & Safety Zone", fuel_title);
 
         fuel_body := UIK.text_body();
-        UIK.text_set_halign(&fuel_body, .LEFT);
-        UIK.text_set_color(&fuel_body, fuel_tint);
+        fuel_body.set_halign(.LEFT);
+        fuel_body.set_color(fuel_tint);
         UIK.text(fuel_status, fuel_body);
         UIK.panel_end();
 
@@ -818,12 +818,12 @@ BeaconSystem :: struct {
         UIK.progress_bar(fuel_progress);
 
         fuel_timer_desc := UIK.text_body();
-        UIK.text_set_halign(&fuel_timer_desc, .LEFT);
+        fuel_timer_desc.set_halign(.LEFT);
         UIK.text(fuel_timer_text, fuel_timer_desc);
 
         radius_desc := UIK.text_body();
-        UIK.text_set_halign(&radius_desc, .LEFT);
-        UIK.text_set_color(&radius_desc, v4{0.82, 0.9, 1.0, 1.0});
+        radius_desc.set_halign(.LEFT);
+        radius_desc.set_color(v4{0.82, 0.9, 1.0, 1.0});
         UIK.text(radius_text, radius_desc);
         UIK.panel_end();
 
@@ -837,7 +837,7 @@ BeaconSystem :: struct {
         UIK.panel_begin(upgrade_panel);
 
         upgrade_title := UIK.text_title();
-        UIK.text_set_halign(&upgrade_title, .LEFT);
+        upgrade_title.set_halign(.LEFT);
         if beacon.level >= Beacon.MAX_LEVEL {
             UIK.text("Beacon Status", upgrade_title);
         } else {
@@ -845,9 +845,9 @@ BeaconSystem :: struct {
         }
 
         upgrade_body := UIK.text_body();
-        UIK.text_set_halign(&upgrade_body, .LEFT);
+        upgrade_body.set_halign(.LEFT);
         if beacon.level >= Beacon.MAX_LEVEL {
-            UIK.text_set_color(&upgrade_body, v4{0.65, 1.0, 0.65, 1.0});
+            upgrade_body.set_color(v4{0.65, 1.0, 0.65, 1.0});
             UIK.text("The beacon is fully upgraded. Keep it fueled to hold the full safety radius.", upgrade_body);
         } else {
             UIK.text("Deposit the listed materials. The beacon upgrades automatically once every stockpile requirement is filled.", upgrade_body);
@@ -896,15 +896,15 @@ BeaconSystem :: struct {
                 UIK.panel_begin(text_panel);
 
                 item_name_desc := UIK.text_button();
-                UIK.text_set_halign(&item_name_desc, .LEFT);
+                item_name_desc.set_halign(.LEFT);
                 UIK.text(display_name, item_name_desc);
 
                 item_status_desc := UIK.text_body();
-                UIK.text_set_halign(&item_status_desc, .LEFT);
+                item_status_desc.set_halign(.LEFT);
                 if requirement_met {
-                    UIK.text_set_color(&item_status_desc, v4{0.65, 1.0, 0.65, 1.0});
+                    item_status_desc.set_color(v4{0.65, 1.0, 0.65, 1.0});
                 } else {
-                    UIK.text_set_color(&item_status_desc, v4{1.0, 0.7, 0.55, 1.0});
+                    item_status_desc.set_color(v4{1.0, 0.7, 0.55, 1.0});
                 }
                 UIK.text(
                     format_string("Stockpile %/%  |  You: %", {stockpiled, cost.count, have}),

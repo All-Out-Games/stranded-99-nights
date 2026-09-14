@@ -197,7 +197,7 @@ MerchantSystem :: struct {
         info_panel.padding = v4{10, 14, 10, 14};
         UIK.panel_begin(info_panel);
         info_text := UIK.text_body();
-        UIK.text_set_halign(&info_text, .LEFT);
+        info_text.set_halign(.LEFT);
         UIK.text("Spend Fossils on supply bundles and rare gear before the event ends.", info_text);
         UIK.panel_end();
         UIK.spacer(UIK.pixels(1), UIK.pixels(20));
@@ -210,7 +210,7 @@ MerchantSystem :: struct {
         UIK.panel_begin(balance_panel);
 
         balance_title := UIK.text_title();
-        UIK.text_set_halign(&balance_title, .LEFT);
+        balance_title.set_halign(.LEFT);
         UIK.text("Current Balance", balance_title);
 
         balance_row := UIK.layout_row();
@@ -234,8 +234,8 @@ MerchantSystem :: struct {
         }
 
         balance_text := UIK.text_button();
-        UIK.text_set_halign(&balance_text, .LEFT);
-        UIK.text_set_color(&balance_text, v4{1.0, 0.92, 0.62, 1.0});
+        balance_text.set_halign(.LEFT);
+        balance_text.set_color(v4{1.0, 0.92, 0.62, 1.0});
         UIK.text(format_string("%: %", {MOON_CURRENCY_DISPLAY, balance}), balance_text);
         UIK.panel_end();
         UIK.panel_end();
@@ -249,11 +249,11 @@ MerchantSystem :: struct {
         UIK.panel_begin(stock_panel);
 
         stock_title := UIK.text_title();
-        UIK.text_set_halign(&stock_title, .LEFT);
+        stock_title.set_halign(.LEFT);
         UIK.text("Shop Inventory", stock_title);
 
         stock_body := UIK.text_body();
-        UIK.text_set_halign(&stock_body, .LEFT);
+        stock_body.set_halign(.LEFT);
         UIK.text("Each purchase goes straight into your inventory if you have room.", stock_body);
         UIK.panel_end();
         UIK.spacer(UIK.pixels(1), UIK.pixels(20));
@@ -267,7 +267,7 @@ MerchantSystem :: struct {
             empty_panel.cross_align = .CENTER;
             UIK.panel_begin(empty_panel);
             empty_text := UIK.text_body();
-            UIK.text_set_color(&empty_text, v4{1.0, 0.55, 0.55, 1.0});
+            empty_text.set_color(v4{1.0, 0.55, 0.55, 1.0});
             UIK.text("No merchant offers are configured.", empty_text);
             UIK.panel_end();
         } else {
@@ -327,25 +327,25 @@ MerchantSystem :: struct {
                 UIK.panel_begin(text_panel);
 
                 item_name := UIK.text_button();
-                UIK.text_set_halign(&item_name, .LEFT);
+                item_name.set_halign(.LEFT);
                 UIK.text(format_string("% x%", {display_name, stack_count}), item_name);
 
                 item_status := UIK.text_body();
-                UIK.text_set_halign(&item_status, .LEFT);
+                item_status.set_halign(.LEFT);
                 if defn == null {
-                    UIK.text_set_color(&item_status, v4{1.0, 0.55, 0.55, 1.0});
+                    item_status.set_color(v4{1.0, 0.55, 0.55, 1.0});
                     UIK.text(format_string("Missing item definition: %", {offer.item_id}), item_status);
                 } else if !offer_valid {
-                    UIK.text_set_color(&item_status, v4{1.0, 0.55, 0.55, 1.0});
+                    item_status.set_color(v4{1.0, 0.55, 0.55, 1.0});
                     UIK.text("This offer is not configured correctly.", item_status);
                 } else if !room_ok {
-                    UIK.text_set_color(&item_status, v4{1.0, 0.55, 0.55, 1.0});
+                    item_status.set_color(v4{1.0, 0.55, 0.55, 1.0});
                     UIK.text("Need more inventory room for this purchase.", item_status);
                 } else if !balance_ok {
-                    UIK.text_set_color(&item_status, v4{1.0, 0.78, 0.52, 1.0});
+                    item_status.set_color(v4{1.0, 0.78, 0.52, 1.0});
                     UIK.text("You do not have enough Fossils yet.", item_status);
                 } else {
-                    UIK.text_set_color(&item_status, v4{0.76, 0.82, 0.9, 1.0});
+                    item_status.set_color(v4{0.76, 0.82, 0.9, 1.0});
                     UIK.text("Ready to buy.", item_status);
                 }
                 UIK.panel_end();
@@ -394,7 +394,7 @@ MerchantSystem :: struct {
                     UIK.currency(fossil_icon, offer.moon_cost, UIK.text_body());
                 } else {
                     cost_text := UIK.text_body();
-                    UIK.text_set_halign(&cost_text, .LEFT);
+                    cost_text.set_halign(.LEFT);
                     UIK.text(format_string("Cost: % %", {offer.moon_cost, MOON_CURRENCY_DISPLAY}), cost_text);
                 }
                 UIK.panel_end();

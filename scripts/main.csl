@@ -459,7 +459,7 @@ Player :: class : Player_Base {
     tutorial_defeat_mob_complete: bool;
     tutorial_upgrade_beacon_complete: bool;
     tutorial_survive_5_nights_complete: bool;
-    tutorial_target_cached_step: Tutorial_Step;
+    tutorial_target_cached_step: Stranded_Tutorial_Step;
     tutorial_target_cached_position: v2;
     tutorial_target_cached_found: bool;
     tutorial_target_next_refresh_time_seconds: float;

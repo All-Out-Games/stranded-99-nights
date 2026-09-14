@@ -445,7 +445,7 @@ CraftingSystem :: struct {
         UIK.panel_begin(left);
 
         list_title := UIK.text_title();
-        UIK.text_set_halign(&list_title, .LEFT);
+        list_title.set_halign(.LEFT);
         UIK.text("Recipes", list_title);
 
         recipe_list := UIK.layout_column();
@@ -507,8 +507,8 @@ CraftingSystem :: struct {
             label_panel.show_background = false;
             UIK.panel_begin(label_panel);
             recipe_name := UIK.text_body();
-            UIK.text_set_halign(&recipe_name, .LEFT);
-            UIK.text_set_size_mult(&recipe_name, 1.05);
+            recipe_name.set_halign(.LEFT);
+            recipe_name.set_size_mult(1.05);
             UIK.text(recipe.name, recipe_name);
             UIK.panel_end();
 
@@ -536,7 +536,7 @@ CraftingSystem :: struct {
         UIK.list_begin(format_string("craft_detail_scroll_%", {player.get_user_id()}), details_content);
 
         details_title := UIK.text_title();
-        UIK.text_set_halign(&details_title, .LEFT);
+        details_title.set_halign(.LEFT);
         UIK.text(selected_recipe.name, details_title);
 
         desc_panel := UIK.panel_styled(.MODAL_TRANSP_BLACK);
@@ -545,7 +545,7 @@ CraftingSystem :: struct {
         desc_panel.padding = v4{10, 14, 10, 14};
         UIK.panel_begin(desc_panel);
         desc_text := UIK.text_body();
-        UIK.text_set_halign(&desc_text, .LEFT);
+        desc_text.set_halign(.LEFT);
         UIK.text(selected_recipe.description, desc_text);
         UIK.panel_end();
 

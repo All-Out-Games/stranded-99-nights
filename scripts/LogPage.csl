@@ -150,7 +150,7 @@ LogPageSystem :: struct {
         info_panel.padding = v4{10, 14, 10, 14};
         UIK.panel_begin(info_panel);
         info_text := UIK.text_body();
-        UIK.text_set_halign(&info_text, .LEFT);
+        info_text.set_halign(.LEFT);
         UIK.text(
             "Recovered pages stay in your codex for this run. Open any discovered entry to read it again.",
             info_text
@@ -165,12 +165,12 @@ LogPageSystem :: struct {
         UIK.panel_begin(summary_panel);
 
         summary_title := UIK.text_title();
-        UIK.text_set_halign(&summary_title, .LEFT);
+        summary_title.set_halign(.LEFT);
         UIK.text("Recovered Pages", summary_title);
 
         summary_body := UIK.text_body();
-        UIK.text_set_halign(&summary_body, .LEFT);
-        UIK.text_set_color(&summary_body, v4{0.82, 0.9, 1.0, 1.0});
+        summary_body.set_halign(.LEFT);
+        summary_body.set_color(v4{0.82, 0.9, 1.0, 1.0});
         UIK.text(format_string("Recovered this run: %", {page_count}), summary_body);
         UIK.panel_end();
 

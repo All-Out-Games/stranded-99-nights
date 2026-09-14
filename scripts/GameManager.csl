@@ -436,7 +436,7 @@ send_cheat_chat_message :: proc(player: Player, message: string) {
 
 player_can_use_cheat_commands :: proc(player: Player) -> bool {
     if player == null return false;
-    return player.is_admin() || player.is_youtuber();
+    return player.is_owner_or_editor() || player.is_youtuber();
 }
 
 show_cheat_command_help :: proc(player: Player, reason: string = "") {
@@ -450,7 +450,7 @@ show_cheat_command_help :: proc(player: Player, reason: string = "") {
     send_cheat_chat_message(player, "Cheat commands:");
     send_cheat_chat_message(player, "/start - Force-start the run if it has not started yet.");
     send_cheat_chat_message(player, "/win - Trigger the win sequence immediately.");
-    if player.is_admin() {
+    if player.is_owner_or_editor() {
         send_cheat_chat_message(player, "/skiptutorial - Mark your tutorial complete.");
         send_cheat_chat_message(player, "/giveitem <item_id> [quantity] - Give yourself an item by id or name.");
         send_cheat_chat_message(player, "/g <item_id> [quantity] - Alias for /giveitem.");
