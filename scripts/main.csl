@@ -46,10 +46,9 @@ ao_start :: proc() {
     // Called after the scene is loaded
     ensure_game_manager_exists();
 
-    // Use left mouse button as the default primary ability keybind for desktop players.
-    core_globals.ability_keybinds[0] = Keybinds.register("Ability 1", .MOUSE_LEFT);
-    // Keep dodge roll on a familiar movement key for desktop players.
-    core_globals.ability_keybinds[1] = Keybinds.register("Ability 2", .LEFT_SHIFT);
+    // Replace the core defaults with project-specific binds. Keybind names must be unique.
+    core_globals.ability_keybinds[0] = Keybinds.register("Primary Attack", .MOUSE_LEFT);
+    core_globals.ability_keybinds[1] = Keybinds.register("Dodge Roll", .LEFT_SHIFT);
 }
 
 ao_update :: proc(dt: float) {
