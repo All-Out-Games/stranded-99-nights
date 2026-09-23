@@ -23,7 +23,7 @@
   "internal_component_type": "Sprite_Renderer",
   "data": {
     "texture": "UI/BeaconImage.png",
-    "tint": {
+    "color": {
       "X": 0,
       "Z": 0.2971432209014893
     },

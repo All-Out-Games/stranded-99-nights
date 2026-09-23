@@ -1138,7 +1138,7 @@ Mob :: class : Component {
 
         if damage_pulse_elapsed_seconds >= MOB_DAMAGE_PULSE_DURATION_SECONDS {
             if !damage_pulse_color_reset_applied {
-                spine_animator.instance.color_multiplier = {1, 1, 1, 1};
+                spine_animator.instance.color = {1, 1, 1, 1};
                 damage_pulse_color_reset_applied = true;
             }
             return;
@@ -1146,7 +1146,7 @@ Mob :: class : Component {
 
         damage_pulse_elapsed_seconds += dt;
         if damage_pulse_elapsed_seconds >= MOB_DAMAGE_PULSE_DURATION_SECONDS {
-            spine_animator.instance.color_multiplier = {1, 1, 1, 1};
+            spine_animator.instance.color = {1, 1, 1, 1};
             damage_pulse_color_reset_applied = true;
             return;
         }
@@ -1155,7 +1155,7 @@ Mob :: class : Component {
         phase := t * MOB_DAMAGE_PULSE_OSCILLATIONS * 6.2831853;
         white_mix := 0.5 + 0.5 * sin(phase - 1.5707963);
         white_mix = clamp(white_mix, 0.0, 1.0);
-        spine_animator.instance.color_multiplier = {1.0, white_mix, white_mix, 1.0};
+        spine_animator.instance.color = {1.0, white_mix, white_mix, 1.0};
     }
 }
 

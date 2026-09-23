@@ -1328,13 +1328,13 @@ Player :: class : Player_Base {
         if animator.instance == null return;
 
         if damage_pulse_elapsed_seconds >= PLAYER_DAMAGE_PULSE_DURATION_SECONDS {
-            animator.instance.color_multiplier = {1, 1, 1, 1};
+            animator.instance.color = {1, 1, 1, 1};
             return;
         }
 
         damage_pulse_elapsed_seconds += dt;
         if damage_pulse_elapsed_seconds >= PLAYER_DAMAGE_PULSE_DURATION_SECONDS {
-            animator.instance.color_multiplier = {1, 1, 1, 1};
+            animator.instance.color = {1, 1, 1, 1};
             return;
         }
 
@@ -1342,7 +1342,7 @@ Player :: class : Player_Base {
         phase := t * PLAYER_DAMAGE_PULSE_OSCILLATIONS * 6.2831853;
         white_mix := 0.5 + 0.5 * sin(phase - 1.5707963);
         white_mix = clamp(white_mix, 0.0, 1.0);
-        animator.instance.color_multiplier = {1.0, white_mix, white_mix, 1.0};
+        animator.instance.color = {1.0, white_mix, white_mix, 1.0};
     }
 
     ao_on_state_sync :: method() {
